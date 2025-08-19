@@ -1,0 +1,9 @@
+{
+  "header": "Configurer llms.txt pour {{siteName}}",
+  "heading": "Fichier llms.txt",
+  "description": "Le fichier llms.txt fournit aux modèles de langage (LLM) des indications claires sur la manière d’exploiter les contenus de votre site. Il sert de point d’entrée structuré pour faciliter leur compréhension, en précisant quelles ressources sont pertinentes ou à privilégier.",
+  "save": "Enregistrer et publier",
+  "notification": {
+    "save": "Le fichier llms.txt a été enregistré et est en cours de publication."
+  }
+}

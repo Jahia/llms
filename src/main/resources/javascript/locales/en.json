@@ -1,0 +1,9 @@
+{
+  "header": "Configure llms.txt for {{siteName}}",
+  "heading": "llms.txt file",
+  "description": "The llms.txt file provides language models (LLMs) with clear instructions on how the content of your website can be used. It serves as a structured entry point and highlights which resources are relevant and prioritized.",
+  "save": "Save and Publish",
+  "notification": {
+    "save": "The llms.txt file has been saved and is now being published."
+  }
+}

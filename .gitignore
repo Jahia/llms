@@ -1,0 +1,23 @@
+/.settings
+/.project
+/.classpath
+.idea
+*.iml
+*.ipr
+target
+xunit.xml
+
+src/main/resources/javascript/bundles
+node
+node_modules
+yarn-error.log
+/src/main/resources/javascript/apps
+graphql.config.json
+graphql.schema.json
+
+coverage/
+
+# macOS
+.DS_Store
+.yalc
+yalc.lock
