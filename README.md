@@ -1,112 +1,93 @@
-[![CircleCI](https://circleci.com/gh/Jahia/llms/tree/master.svg?style=svg)](https://circleci.com/gh/Jahia/llms/tree/master)\
-![GitHub tag (latest by
-version)](https://img.shields.io/github/v/tag/Jahia/llms?sort=semver)\
+[![CircleCI](https://circleci.com/gh/Jahia/llms/tree/master.svg?style=svg)](https://circleci.com/gh/Jahia/llms/tree/master)  
+![GitHub tag (latest by version)](https://img.shields.io/github/v/tag/Jahia/llms?sort=semver)  
 ![License](https://img.shields.io/github/license/jahia/llms)
 
-# Jahia `llms.txt` Manager Module
+# Jahia `llms.txt` Manager
 
-This module provides an interface in Jahia to manage **`llms.txt`
-configuration files** directly from site settings.
-
-📖 Learn more about the `llms.txt` initiative at <https://llmstxt.org/>.
-
-The goal of `llms.txt` is to give Large Language Models (LLMs) a
-**structured, curated entry point** into your site, highlighting the
-most relevant resources (in Markdown) so they can use your content more
-effectively at **inference time**.
-
-------------------------------------------------------------------------
-
-## 🚀 Features
-
--   Adds a **site settings panel** in Jahia for configuring `llms.txt`.\
--   Supports **per-site configuration**, aggregated at the server root
-    (`/llms.txt`).\
--   Automatically prefixes entries with the site path when multiple
-    sites are managed.\
--   Fully integrated into the Jahia UI---no manual file creation or
-    editing required.
-
-------------------------------------------------------------------------
-
-## 📂 Example Usage
-
-Imagine two sites: `mySite` and `mySite2`.
-
-### `mySite` configuration
-
-``` markdown
-# mySite Documentation
-
-> Primary API documentation for mySite, ideal for developers.
-
-## Overview
-- /sites/mySite/docs/overview
-- /sites/mySite/docs/api
-
-## Tutorials
-- /sites/mySite/docs/tutorials/getting-started
-
-## Optional Resources
-- /sites/mySite/docs/changelog
-```
-
-### `mySite2` configuration
-
-``` markdown
-# mySite2 Docs
-
-> Documentation for the second site with advanced usage guides.
-
-## Guides
-- /sites/mySite2/docs/setup
-- /sites/mySite2/docs/advanced
-
-## Optional
-- /sites/mySite2/community
-```
-
-### Resulting aggregated `llms.txt`
-
-``` markdown
-# mySite Documentation
-
-> Primary API documentation for mySite, ideal for developers.
-
-## Overview
-- /sites/mySite/docs/overview
-- /sites/mySite/docs/api
-
-## Tutorials
-- /sites/mySite/docs/tutorials/getting-started
-
-## Optional Resources
-- /sites/mySite/docs/changelog
-Path: /sites/mySite
+The **`llms.txt` Manager Module** provides a simple interface in Jahia to configure and publish [`llms.txt`](https://llmstxt.org/) files directly from your site settings.  
+No manual file editing is required — everything is handled from the Jahia UI.
 
 ---
 
-# mySite2 Docs
+## 📖 What is `llms.txt`?
+
+`llms.txt` is an emerging standard designed to give Large Language Models (LLMs) a **structured and curated entry point** into your website.  
+It highlights the most relevant resources (in Markdown), making your content easier for LLMs to use at **inference time**.
+
+Think of it as **robots.txt for LLMs** — but instead of crawl instructions, it provides high-quality content references.
+
+---
+
+## 🚀 Features
+
+- Dedicated **site settings panel** in Jahia  
+- Supports **per-site configuration**, aggregated at the server root (`/llms.txt`)  
+- Automatically prefixes entries with the site path when multiple sites are managed  
+- Fully integrated into the Jahia UI — no manual file creation or deployment  
+
+---
+
+## 🔧 Installation & Access
+
+1. Ask your **administrator** to install and activate the `llms.txt` Manager module  
+   - Available from the Jahia Store  
+2. Once activated, go to:  
+   **jContent → Additional → SEO → llms.txt**  
+3. Enter your `llms.txt` content in the editor panel  
+4. Click **Save & Publish** (top-right) to make it live  
+
+To verify: open your site URL and append `/llms.txt`  
+👉 Example: `https://www.example.com/llms.txt`
+
+---
+
+## 📂 Example Usage
+
+Imagine two sites in Jahia: `site1` and `site2`.
+
+### Configuration for `site1`
+
+```markdown
+# site1 Documentation
+
+> Primary API documentation for site1, ideal for developers.
+
+## Overview
+- /docs/overview
+- /docs/api
+
+## Tutorials
+- /docs/tutorials/getting-started
+
+## Optional Resources
+- /docs/changelog
+```
+
+### Configuration for `site2`
+
+```markdown
+# site2 Docs
 
 > Documentation for the second site with advanced usage guides.
 
 ## Guides
-- /sites/mySite2/docs/setup
-- /sites/mySite2/docs/advanced
+- /docs/setup
+- /docs/advanced
 
 ## Optional
-- /sites/mySite2/community
-Path: /sites/mySite2
+- /community
 ```
-
-------------------------------------------------------------------------
+---
 
 ## 💡 Why This Matters
 
--   **LLMs gain clarity** → The structured format (titles, summaries,
-    sectioned links, optional info) makes it easier for language models
-    to use your site content.\
--   **Efficient** → Reduces noise from full HTML pages and preserves
-    valuable context space for LLMs.\
--   **Editor-friendly** → Empower content editors to manage `llms.txt`
-    within Jahia---no manual file handling required.
+- **Clarity for LLMs** → Structured sections (titles, summaries, links) make it easier for models to find what matters  
+- **Efficiency** → Reduces noise from full HTML pages and keeps LLMs focused on relevant resources  
+- **Editor-friendly** → Content editors can manage everything directly in Jahia, without developer intervention  
+
+---
+
+## 🔗 Learn More
+
+- [llms.txt Initiative](https://llmstxt.org/)  
+- [Jahia Store](https://store.jahia.com/) (module availability)  
