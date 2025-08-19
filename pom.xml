@@ -8,8 +8,8 @@
         <relativePath />
     </parent>
     <artifactId>llms</artifactId>
-    <groupId>org.jahiacommunity.modules</groupId>    
-    <version>1.0.0-SNAPSHOT</version>
+    <groupId>org.jahiacommunity.modules</groupId>
+    <version>1.0.0</version>
     <packaging>bundle</packaging>
     <name>llms.txt manager module</name>
     <description>Jahia module to configure the /llms.txt file, which provides curated information for Large Language Models (LLMs) to better use site content at inference time.</description>
