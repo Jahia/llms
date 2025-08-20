@@ -21,8 +21,7 @@ Think of it as **robots.txt for LLMs** — but instead of crawl instructions, it
 ## 🚀 Features
 
 - Dedicated **site settings panel** in Jahia  
-- Supports **per-site configuration**, aggregated at the server root (`/llms.txt`)  
-- Automatically prefixes entries with the site path when multiple sites are managed  
+- Supports **per-site configuration** at the domain root (`/llms.txt`)  
 - Fully integrated into the Jahia UI — no manual file creation or deployment  
 
 ---
