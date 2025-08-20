@@ -1,4 +1,3 @@
-[![CircleCI](https://circleci.com/gh/Jahia/llms/tree/master.svg?style=svg)](https://circleci.com/gh/Jahia/llms/tree/master)  
 ![GitHub tag (latest by version)](https://img.shields.io/github/v/tag/Jahia/llms?sort=semver)  
 ![License](https://img.shields.io/github/license/jahia/llms)
 
