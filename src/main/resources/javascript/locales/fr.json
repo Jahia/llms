@@ -6,6 +6,7 @@
   "loading": "Chargement…",
   "error": "Une erreur est survenue lors de la lecture de la configuration llms.txt.",
   "notification": {
-    "save": "Le fichier llms.txt a été enregistré et est en cours de publication."
+    "save": "Le fichier llms.txt a été enregistré et est en cours de publication.",
+    "error": "Une erreur est survenue lors de l’enregistrement du fichier llms.txt."
   }
 }

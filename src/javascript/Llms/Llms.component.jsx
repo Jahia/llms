@@ -44,6 +44,9 @@ const LlmsComponent = () => {
     }).then(() => {
         refetch();
         notificationContext.notify(t('notification.save'), ['closeButton'], {autoHideDuration: 3000});
+    }).catch(err => {
+        console.error(err);
+        notificationContext.notify(t('notification.error'), ['closeButton'], {autoHideDuration: 3000});
     });
     return (
 

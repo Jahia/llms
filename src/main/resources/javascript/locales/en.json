@@ -6,6 +6,7 @@
   "loading": "Loading…",
   "error": "There was an error reading the llms.txt configuration.",
   "notification": {
-    "save": "The llms.txt file has been saved and is now being published."
+    "save": "The llms.txt file has been saved and is now being published.",
+    "error": "There was an error saving the llms.txt file."
   }
 }

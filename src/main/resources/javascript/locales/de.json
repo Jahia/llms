@@ -1,11 +1,12 @@
 {
-  "header": "Configure llms.txt for {{siteName}}",
-  "heading": "llms.txt file",
-  "description": "The llms.txt file provides language models (LLMs) with clear guidance on how to use your site’s content. It acts as a structured entry point, highlighting which resources are relevant and should be prioritized.",
-  "save": "Save and Publish",
-  "loading": "Loading…",
-  "error": "There was an error reading the llms.txt configuration.",
+  "header": "llms.txt für {{siteName}} konfigurieren",
+  "heading": "llms.txt-Datei",
+  "description": "Die llms.txt-Datei gibt Sprachmodellen (LLMs) klare Hinweise, wie die Inhalte Ihrer Website verwendet werden dürfen. Sie dient als strukturierter Einstiegspunkt und hebt hervor, welche Ressourcen relevant sind und priorisiert werden sollen.",
+  "save": "Speichern und veröffentlichen",
+  "loading": "Wird geladen…",
+  "error": "Beim Lesen der llms.txt-Konfiguration ist ein Fehler aufgetreten.",
   "notification": {
-    "save": "The llms.txt file has been saved and is being published."
+    "save": "Die llms.txt-Datei wurde gespeichert und wird nun veröffentlicht.",
+    "error": "Beim Speichern der llms.txt-Datei ist ein Fehler aufgetreten."
   }
 }
