@@ -3,7 +3,10 @@
   "heading": "Fichier llms.txt",
   "description": "Le fichier llms.txt fournit aux modèles de langage (LLM) des indications claires sur la manière d’exploiter les contenus de votre site. Il sert de point d’entrée structuré pour faciliter leur compréhension, en précisant quelles ressources sont pertinentes ou à privilégier.",
   "save": "Enregistrer et publier",
+  "loading": "Chargement…",
+  "error": "Une erreur est survenue lors de la lecture de la configuration llms.txt.",
   "notification": {
-    "save": "Le fichier llms.txt a été enregistré et est en cours de publication."
+    "save": "Le fichier llms.txt a été enregistré et est en cours de publication.",
+    "error": "Une erreur est survenue lors de l’enregistrement du fichier llms.txt."
   }
 }

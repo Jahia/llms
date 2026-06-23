@@ -1,6 +1,8 @@
 import React from 'react';
 import LlmsComponent from './Llms.component';
 
-export default () => {
+const Llms = () => {
     return <LlmsComponent/>;
 };
+
+export default Llms;

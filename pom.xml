@@ -21,8 +21,10 @@
     </scm>
 
     <properties>
+        <jahia.plugin.version>6.10</jahia.plugin.version>
         <yarn.arguments>build:production</yarn.arguments>
         <sonar.sources>src/javascript</sonar.sources>
+        <sonar.javascript.lcov.reportPaths>coverage/lcov.info</sonar.javascript.lcov.reportPaths>
     </properties>
 
     <repositories>

@@ -7,7 +7,7 @@ import styles from './Llms.component.scss';
 import {useTranslation} from 'react-i18next';
 import {useNotifications} from '@jahia/react-material';
 
-export default () => {
+const LlmsComponent = () => {
     const sitePath = '/sites/' + window.contextJsParameters.siteKey;
     const {t} = useTranslation('llms');
     const [textArea, setTextArea] = useState('');
@@ -19,29 +19,35 @@ export default () => {
 
     useEffect(() => {
         if (loading === false && data) {
-            setTextArea(data?.jcr?.nodeByPath?.property?.value);
+            setTextArea(data?.jcr?.nodeByPath?.property?.value ?? '');
         }
     }, [loading, data]);
 
     const [updateLlms] = useMutation(LlmsMutation);
 
     if (loading) {
-        return 'Loading ...';
+        return t('loading');
     }
 
     if (error) {
         console.error(error);
-        return 'There was an error reading llms configuration';
+        return t('error');
     }
 
-    const initialValue = data?.jcr?.nodeByPath?.property?.value;
+    const initialValue = data?.jcr?.nodeByPath?.property?.value ?? '';
     const handleClick = () => updateLlms({
         variables: {
             path: sitePath,
             value: textArea,
             publish: data?.jcr?.nodeByPath?.aggregatedPublicationInfo?.publicationStatus === 'PUBLISHED'
-        }, refetchQueries: refetch
-    }).then(() => notificationContext.notify(t('notification.save'), ['closeButton'], {autoHideDuration: 3000}));
+        }
+    }).then(() => {
+        refetch();
+        notificationContext.notify(t('notification.save'), ['closeButton'], {autoHideDuration: 3000});
+    }).catch(err => {
+        console.error(err);
+        notificationContext.notify(t('notification.error'), ['closeButton'], {autoHideDuration: 3000});
+    });
     return (
 
         <>
@@ -63,8 +69,10 @@ export default () => {
                     <Typography className={styles.header} variant="heading">{t('heading')}</Typography>
                     <Typography className={styles.description} variant="caption" color="grey">{t('description')}</Typography>
                 </div>
-                <textarea id="llmsTextArea" className={styles.llmsTextArea} value={textArea} onChange={e => setTextArea(e.target.value)}/>
+                <textarea id="llmsTextArea" aria-label={t('heading')} className={styles.llmsTextArea} value={textArea} onChange={e => setTextArea(e.target.value)}/>
             </div>
         </>
     );
 };
+
+export default LlmsComponent;

@@ -1,5 +1,6 @@
 .llmsTextArea {
-    width: 666px;
+    width: 100%;
+    max-width: 666px;
     height: 300px;
 
     border-width: 1px;
@@ -15,7 +16,8 @@
 }
 
 .textContainer {
-    width: 666px;
+    width: 100%;
+    max-width: 666px;
 }
 
 .header {

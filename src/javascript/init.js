@@ -1,7 +1,7 @@
 import {registry} from '@jahia/ui-extender';
 import Llms from './Llms';
 
-export default function () {
+export default function initLlms() {
     registry.add('callback', 'llms', {
         targets: ['jahiaApp-init:24'],
         callback: () => {

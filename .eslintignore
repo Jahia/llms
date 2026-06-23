@@ -9,3 +9,5 @@ src/javascript/publicPath.js
 webpack.config.js
 webpack.shared.js
 jest.config.js
+babel.config.js
+__mocks__
