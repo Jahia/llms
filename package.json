@@ -16,6 +16,7 @@
     "lint:scss:fix": "yarn lint:scss --fix",
     "lint": "yarn lint:js && yarn lint:scss",
     "lint:fix": "yarn lint:js:fix && yarn lint:scss:fix",
+    "test": "jest --coverage",
     "sync-pom": "sync-pom-version --use-yarn"
   },
   "husky": {
@@ -25,6 +26,11 @@
   },
   "description": "Llms for Jahia",
   "main": "index.js",
+  "resolutions": {
+    "strip-ansi": "^6.0.1",
+    "string-width": "^4.2.3",
+    "wrap-ansi": "^7.0.0"
+  },
   "repository": "git@github.com:Jahia/llms.git",
   "author": "Jahia Core Team <core@jahia.com>",
   "license": "MIT",
@@ -67,6 +73,9 @@
     "@cyclonedx/webpack-plugin": "^3.9.1",
     "@jahia/eslint-config": "^1.1.0",
     "@jahia/stylelint-config": "^0.0.3",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^11.2.7",
+    "babel-jest": "^26.6.3",
     "babel-loader": "^8.0.4",
     "case-sensitive-paths-webpack-plugin": "^2.2.0",
     "clean-webpack-plugin": "^1.0.0",
@@ -79,6 +88,7 @@
     "eslint-plugin-react-hooks": "^2.3.0",
     "file-loader": "^2.0.0",
     "husky": "^3.0.5",
+    "jest": "^26.6.3",
     "rimraf": "^2.6.2",
     "sass-loader": "^8.0.2",
     "style-loader": "^0.23.1",
