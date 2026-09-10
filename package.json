@@ -41,7 +41,7 @@
     "@jahia/moonstone": "^1.2.0",
     "@jahia/react-material": "^3.0.5",
     "@jahia/ui-extender": "^1.0.0",
-    "@jahia/webpack-config": "^1.0.0",
+    "@jahia/webpack-config": "^1.1.1",
     "@react-aria/focus": "^3.0.0",
     "apollo-cache-inmemory": "1.6.6",
     "apollo-client": "2.6.10",
