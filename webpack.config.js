@@ -1,120 +1,58 @@
 const path = require('path');
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-const CleanWebpackPlugin = require('clean-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
-const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
 const getModuleFederationConfig = require('@jahia/webpack-config/getModuleFederationConfig');
-const packageJson = require('./package.json');
+const {CleanWebpackPlugin} = require('clean-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
 const {CycloneDxWebpackPlugin} = require('@cyclonedx/webpack-plugin');
-
-/** @type {import('@cyclonedx/webpack-plugin').CycloneDxWebpackPluginOptions} */
-const cycloneDxWebpackPluginOptions = {
-    specVersion: '1.4',
-    rootComponentType: 'library',
-    outputLocation: './bom'
-};
+const packageJson = require('./package.json');
 
 module.exports = (env, argv) => {
-    let config = {
-        entry: {
-            main: path.resolve(__dirname, 'src/javascript/index')
-        },
+    const isProduction = argv.mode === 'production';
+    return {
+        entry: {main: path.resolve(__dirname, 'src/javascript/index')},
         output: {
             path: path.resolve(__dirname, 'src/main/resources/javascript/apps/'),
+            publicPath: 'auto',
             filename: 'llms.bundle.js',
             chunkFilename: '[name].llms.[chunkhash:6].js'
         },
-        resolve: {
-            mainFields: ['module', 'main'],
-            extensions: ['.mjs', '.js', '.jsx', '.json', '.scss'],
-            alias: {
-                '~': path.resolve(__dirname, './src/javascript'),
-            },
-            fallback: { "url": false }
-        },
+        resolve: {extensions: ['.mjs', '.js', '.jsx']},
         module: {
             rules: [
+                {test: /\.jsx?$/, use: 'babel-loader', exclude: /node_modules/},
                 {
-                    test: /\.m?js$/,
-                    type: 'javascript/auto'
+                    test: /\.module\.css$/,
+                    use: ['style-loader', {loader: 'css-loader', options: {modules: {namedExport: false, exportLocalsConvention: 'asIs'}}}]
                 },
-                {
-                    test: /\.jsx?$/,
-                    include: [path.join(__dirname, 'src')],
-                    use: {
-                        loader: 'babel-loader',
-                        options: {
-                            presets: [
-                                ['@babel/preset-env', {
-                                    modules: false,
-                                    targets: {chrome: '60', edge: '44', firefox: '54', safari: '12'}
-                                }],
-                                '@babel/preset-react'
-                            ]
-                        }
-                    }
-                },
-                {
-                    test: /\.css$/,
-                    sideEffects: true,
-                    use: ['style-loader', 'css-loader']
-                },
-                {
-                    test: /\.scss$/i,
-                    sideEffects: true,
-                    use: [
-                        'style-loader',
-                        // Translates CSS into CommonJS
-                        {
-                            loader: 'css-loader',
-                            options: {
-                                modules: {
-                                    mode: 'local'
-                                }
-                            }
-                        },
-                        // Compiles Sass to CSS
-                        'sass-loader'
-                    ]
-                },
-                {
-                    test: /\.(woff(2)?|ttf|eot|svg)(\?v=\d+\.\d+\.\d+)?$/,
-                    use: [{
-                        loader: 'file-loader',
-                        options: {
-                            name: '[name].[ext]',
-                            outputPath: 'fonts/'
-                        }
-                    }]
-                }
+                {test: /\.css$/, exclude: /\.module\.css$/, use: ['style-loader', 'css-loader']}
             ]
         },
         plugins: [
             new ModuleFederationPlugin(getModuleFederationConfig(packageJson, {
+                name: 'llms',
+                library: {type: 'assign', name: 'appShell.remotes.llms'},
+                filename: 'remoteEntry.js',
                 exposes: {
                     './init': './src/javascript/init'
                 },
                 remotes: {
                     '@jahia/app-shell': 'appShellRemote'
                 },
-            }, Object.keys(packageJson.dependencies))),
-            new CleanWebpackPlugin(path.resolve(__dirname, 'src/main/resources/javascript/apps/'), {verbose: false}),
-            new CopyWebpackPlugin({
-                patterns: [{from: './package.json', to: ''}]
-            }),
-            new CaseSensitivePathsPlugin(),
-            new CycloneDxWebpackPlugin(cycloneDxWebpackPluginOptions)
+                shared: {
+                    react: {singleton: true, requiredVersion: packageJson.dependencies.react},
+                    'react-dom': {singleton: true, requiredVersion: packageJson.dependencies['react-dom']},
+                    // Host-provided, never bundled: the jContent store and Apollo client are the ones we use.
+                    'react-redux': {singleton: true, import: false},
+                    redux: {singleton: true, import: false},
+                    '@apollo/client': {singleton: true, import: false}
+                }
+            })),
+            new CleanWebpackPlugin({verbose: false}),
+            // app-shell discovers the remote through the "jahia.remotes" key of this file.
+            new CopyWebpackPlugin({patterns: [{from: './package.json', to: ''}]}),
+            new CycloneDxWebpackPlugin({specVersion: '1.4', rootComponentType: 'library', outputLocation: './bom'})
         ],
-        mode: 'development'
+        mode: isProduction ? 'production' : 'development',
+        devtool: isProduction ? 'source-map' : 'eval-source-map'
     };
-
-    config.devtool = (argv.mode === 'production') ? 'source-map' : 'source-map';
-
-    if (argv.analyze) {
-        config.devtool = 'source-map';
-        config.plugins.push(new BundleAnalyzerPlugin());
-    }
-
-    return config;
 };
