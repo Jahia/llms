@@ -3,5 +3,9 @@
 <mix = 'http://www.jcp.org/jcr/mix/1.0'>
 <j = 'http://www.jahia.org/jahia/1.0'>
 
+// Added to the site node by the llms.txt panel. Every property is one file, served at the site root.
 [jmix:llms] mixin
 - j:llms (string, textarea) = '# Title' autocreated
+- j:llmsFull (string, textarea)
+// Scheme, host and port the generated links start with (https://www.example.com)
+- j:llmsBaseUrl (string) < '^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$'

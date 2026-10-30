@@ -1,9 +1,59 @@
 {
-  "header": "Configurer llms.txt pour {{siteName}}",
-  "heading": "Fichier llms.txt",
-  "description": "Le fichier llms.txt fournit aux modèles de langage (LLM) des indications claires sur la manière d’exploiter les contenus de votre site. Il sert de point d’entrée structuré pour faciliter leur compréhension, en précisant quelles ressources sont pertinentes ou à privilégier.",
+  "navLabel": "llms.txt",
+  "header": "{{siteName}} : llms.txt et llms-full.txt",
+  "about": "À propos de llms.txt",
   "save": "Enregistrer et publier",
+  "generate": "Générer",
+  "regenerate": "Générer à nouveau",
+  "revert": "Annuler les modifications",
+  "view": "Voir le fichier publié",
+  "editorLabel": "Contenu de {{file}}",
+  "stats": "{{lines}} lignes · {{links}} liens · {{size}}",
+  "settings": {
+    "title": "Génération",
+    "description": "La génération lit les pages publiées du site et visibles des visiteurs sans compte. Les pages masquées de la navigation, marquées noindex ou non traduites dans la langue choisie sont écartées. Rien n'est enregistré avant Enregistrer et publier.",
+    "language": "Langue",
+    "languageHelp": "Langue des titres, descriptions et contenus des pages. Le site a un seul llms.txt et un seul llms-full.txt.",
+    "baseUrl": "URL publique du site",
+    "baseUrlHelp": "Protocole, hôte et port facultatif par lesquels commencent les liens des deux fichiers, par exemple https://www.example.com. Enregistrée avec les fichiers.",
+    "baseUrlError": "Saisissez un protocole, un hôte et un port facultatif, sans chemin : https://www.example.com"
+  },
+  "llms": {
+    "description": "Un index du site pour les assistants d'IA : le nom du site, un résumé d'une ligne, puis ses pages par section, chacune avec son lien et sa description. Servi à l'adresse /llms.txt.",
+    "placeholder": "# Nom du site\n\n> Résumé du site en une ligne\n\n## Section\n\n- [Page](https://www.example.com/page.html) : sujet de la page"
+  },
+  "llmsFull": {
+    "description": "Le texte des pages listées dans llms.txt, converti en Markdown, pour qu'un assistant lise le site en un seul fichier. Servi à l'adresse /llms-full.txt.",
+    "placeholder": "# Nom du site\n\n---\n\n# Titre de la page\n\nSource : https://www.example.com/page.html\n\nContenu de la page en Markdown"
+  },
+  "status": {
+    "none": "Non créé",
+    "placeholder": "Texte par défaut",
+    "published": "Publié",
+    "notPublished": "Enregistré, non publié",
+    "unsaved": "Modifications non enregistrées"
+  },
+  "generating": {
+    "title": "Génération en cours",
+    "index": "Lecture des pages publiées du site.",
+    "full": "Rendu de chaque page publiée telle qu'un visiteur la voit. Un grand site peut prendre une minute."
+  },
+  "generated": {
+    "title": "Généré à partir de {{pages}} pages en {{language}}",
+    "review": "Relisez et modifiez le texte, puis choisissez Enregistrer et publier. Annuler les modifications rétablit le fichier enregistré.",
+    "truncated": " La limite de pages ou de taille de la configuration du module a coupé le fichier.",
+    "failed": " Pages dont le rendu a échoué, écartées du fichier ({{count}}) :"
+  },
   "notification": {
-    "save": "Le fichier llms.txt a été enregistré et est en cours de publication."
+    "saved": "Les fichiers ont été enregistrés et publiés."
+  },
+  "error": {
+    "read": "Les réglages llms.txt de ce site n'ont pas pu être lus.",
+    "generate": "Le fichier n'a pas pu être généré.",
+    "save": "Les fichiers n'ont pas pu être enregistrés."
+  },
+  "disabled": {
+    "title": "llms.txt n'est pas disponible sur ce site",
+    "text": "Activez le module llms.txt manager sur le site et vérifiez que vous avez la permission de publier."
   }
 }

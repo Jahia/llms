@@ -2,11 +2,29 @@
 <!DOCTYPE urlrewrite PUBLIC "-//tuckey.org//DTD UrlRewrite 3.2//EN" "http://tuckey.org/res/dtds/urlrewrite3.2.dtd">
 <urlrewrite>
 
-    <!-- Inbound rules -->
+    <!-- Inbound rules. The first match wins (last="true"). -->
+    <rule>
+        <name>Llms full of a site</name>
+        <note>/sites/{siteKey}/llms-full.txt serves that site's llms-full.txt, whatever the host.</note>
+        <from>^.*/sites/([A-Za-z0-9_-]+)/llms-full\.txt$</from>
+        <to last="true">/modules/llms/llms?file=full&amp;site=$1</to>
+    </rule>
+    <rule>
+        <name>Llms of a site</name>
+        <note>/sites/{siteKey}/llms.txt serves that site's llms.txt, whatever the host.</note>
+        <from>^.*/sites/([A-Za-z0-9_-]+)/llms\.txt$</from>
+        <to last="true">/modules/llms/llms?site=$1</to>
+    </rule>
+    <rule>
+        <name>Llms full</name>
+        <note>llms-full.txt of the site whose server name is the request's host.</note>
+        <from>^(.*)/llms-full\.txt$</from>
+        <to last="true">/modules/llms/llms?file=full</to>
+    </rule>
     <rule>
         <name>Llms</name>
-        <note>Redirects requests to llms.txt to the appropriate generated version for each site. Don't process any subsequent rules if we match.</note>
-        <from>^(.*)/llms.txt$</from>
+        <note>llms.txt of the site whose server name is the request's host.</note>
+        <from>^(.*)/llms\.txt$</from>
         <to last="true">/modules/llms/llms</to>
     </rule>
 

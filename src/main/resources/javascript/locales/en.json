@@ -1,9 +1,59 @@
 {
-  "header": "Configure llms.txt for {{siteName}}",
-  "heading": "llms.txt file",
-  "description": "The llms.txt file provides language models (LLMs) with clear instructions on how the content of your website can be used. It serves as a structured entry point and highlights which resources are relevant and prioritized.",
-  "save": "Save and Publish",
+  "navLabel": "llms.txt",
+  "header": "{{siteName}}: llms.txt and llms-full.txt",
+  "about": "About llms.txt",
+  "save": "Save and publish",
+  "generate": "Generate",
+  "regenerate": "Generate again",
+  "revert": "Discard changes",
+  "view": "View published file",
+  "editorLabel": "Content of {{file}}",
+  "stats": "{{lines}} lines · {{links}} links · {{size}}",
+  "settings": {
+    "title": "Generation",
+    "description": "Generation reads the pages published on the site and visible to visitors without an account. Pages hidden from the navigation, marked noindex or not translated in the chosen language are left out. Nothing is saved until you select Save and publish.",
+    "language": "Language",
+    "languageHelp": "Language of the page titles, descriptions and content. The site has one llms.txt and one llms-full.txt.",
+    "baseUrl": "Public site URL",
+    "baseUrlHelp": "Scheme, host and optional port that the links in both files start with, for example https://www.example.com. Saved with the files.",
+    "baseUrlError": "Enter a scheme, a host and an optional port, with no path: https://www.example.com"
+  },
+  "llms": {
+    "description": "An index of the site for AI assistants: the site's name, a one-line summary, then its pages by section, each with a link and its description. Served at /llms.txt.",
+    "placeholder": "# Site name\n\n> One-line summary of the site\n\n## Section\n\n- [Page](https://www.example.com/page.html): what the page is about"
+  },
+  "llmsFull": {
+    "description": "The text of the pages listed in llms.txt, converted to Markdown, so an assistant can read the site in one file. Served at /llms-full.txt.",
+    "placeholder": "# Site name\n\n---\n\n# Page title\n\nSource: https://www.example.com/page.html\n\nPage content in Markdown"
+  },
+  "status": {
+    "none": "Not created",
+    "placeholder": "Placeholder only",
+    "published": "Published",
+    "notPublished": "Saved, not published",
+    "unsaved": "Unsaved changes"
+  },
+  "generating": {
+    "title": "Generating",
+    "index": "Reading the published pages of the site.",
+    "full": "Rendering each published page as a visitor sees it. A large site can take a minute."
+  },
+  "generated": {
+    "title": "Generated from {{pages}} pages in {{language}}",
+    "review": "Review and edit the text, then select Save and publish. Discard changes restores the saved file.",
+    "truncated": " The page or size limit of the module configuration cut the file.",
+    "failed": " Pages that could not be rendered, left out of the file ({{count}}):"
+  },
   "notification": {
-    "save": "The llms.txt file has been saved and is now being published."
+    "saved": "The files were saved and published."
+  },
+  "error": {
+    "read": "The llms.txt settings of this site could not be read.",
+    "generate": "The file could not be generated.",
+    "save": "The files could not be saved."
+  },
+  "disabled": {
+    "title": "llms.txt is not available on this site",
+    "text": "Enable the llms.txt manager module on the site, and make sure you have the publish permission on it."
   }
 }

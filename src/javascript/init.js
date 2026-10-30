@@ -1,20 +1,19 @@
+import React from 'react';
+import i18next from 'i18next';
 import {registry} from '@jahia/ui-extender';
-import Llms from './Llms';
+import {LlmsPanel} from './Llms/LlmsPanel';
+import {MODULE} from './Llms/module';
 
-export default function () {
-    registry.add('callback', 'llms', {
-        targets: ['jahiaApp-init:24'],
-        callback: () => {
-            registry.add('adminRoute', 'siteSettingsSeo/llms', {
-                targets: ['jcontent-siteSettingsSeo:75'],
-                label: 'Llms.txt',
-                isSelectable: true,
-                requiredPermission: 'publish',
-                requireModuleInstalledOnSite: 'llms',
-                render: Llms
-            });
+export default async function register() {
+    await i18next.loadNamespaces(MODULE);
 
-            console.log('%c Llms registered routes', 'color: #3c8cba');
-        }
+    // jContent > Additional > SEO, next to the site's other public files (robots.txt, sitemap).
+    registry.add('adminRoute', 'siteSettingsSeo/llms', {
+        targets: ['jcontent-siteSettingsSeo:75'],
+        label: `${MODULE}:navLabel`,
+        isSelectable: true,
+        requiredPermission: 'publish',
+        requireModuleInstalledOnSite: MODULE,
+        render: () => <LlmsPanel/>
     });
 }

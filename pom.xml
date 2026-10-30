@@ -4,15 +4,15 @@
     <parent>
         <groupId>org.jahia.modules</groupId>
         <artifactId>jahia-modules</artifactId>
-        <version>8.1.5.0</version>
+        <version>8.2.0.0</version>
         <relativePath />
     </parent>
     <artifactId>llms</artifactId>
     <groupId>org.jahiacommunity.modules</groupId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.1.0-SNAPSHOT</version>
     <packaging>bundle</packaging>
     <name>llms.txt manager module</name>
-    <description>Jahia module to configure the /llms.txt file, which provides curated information for Large Language Models (LLMs) to better use site content at inference time.</description>
+    <description>Jahia module to write, generate and publish /llms.txt and /llms-full.txt for each site: curated information for Large Language Models (LLMs) to use site content at inference time.</description>
     <scm>
         <connection>scm:git:git@github.com:Jahia/llms.git</connection>
         <developerConnection>scm:git:git@github.com:Jahia/llms.git</developerConnection>
@@ -21,35 +21,174 @@
     </scm>
 
     <properties>
+        <!-- jcontent hosts the panel; graphql-dxm-provider serves the generate and save fields. -->
+        <jahia-depends>default,jcontent,graphql-dxm-provider</jahia-depends>
         <yarn.arguments>build:production</yarn.arguments>
-        <sonar.sources>src/javascript</sonar.sources>
+        <sonar.sources>src/javascript,src/main/java</sonar.sources>
+        <!-- The 8.2 parent sets <source>11</source> on the compiler plugin: release takes precedence. -->
+        <maven.compiler.release>17</maven.compiler.release>
+        <graphql-dxm-provider.version>3.5.1</graphql-dxm-provider.version>
+        <graphql-java-annotations.version>21.1</graphql-java-annotations.version>
+        <jsoup.version>1.18.3</jsoup.version>
     </properties>
 
     <repositories>
         <repository>
-            <releases>
-                <enabled>true</enabled>
-                <updatePolicy>never</updatePolicy>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
             <id>jahia-public</id>
             <name>Jahia Public Repository</name>
             <url>https://devtools.jahia.com/nexus/content/groups/public</url>
+            <releases><enabled>true</enabled><updatePolicy>never</updatePolicy></releases>
+            <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>jahia-releases-archives</id>
+            <name>Jahia Releases Archive</name>
+            <url>https://archives-devtools.jahia.com/jahia-releases</url>
+            <releases><enabled>true</enabled><updatePolicy>never</updatePolicy></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>jahia-thirdparty-archives</id>
+            <name>Jahia Third-Party Releases Archive</name>
+            <url>https://archives-devtools.jahia.com/thirdparty-releases</url>
+            <releases><enabled>true</enabled><updatePolicy>never</updatePolicy></releases>
+            <snapshots><enabled>false</enabled></snapshots>
         </repository>
     </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>jahia-public</id>
+            <name>Jahia Public Repository</name>
+            <url>https://devtools.jahia.com/nexus/content/groups/public</url>
+            <releases><enabled>true</enabled><updatePolicy>never</updatePolicy></releases>
+            <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+        <pluginRepository>
+            <id>jahia-releases-archives</id>
+            <name>Jahia Releases Archive</name>
+            <url>https://archives-devtools.jahia.com/jahia-releases</url>
+            <releases><enabled>true</enabled><updatePolicy>never</updatePolicy></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </pluginRepository>
+        <pluginRepository>
+            <id>jahia-thirdparty-archives</id>
+            <name>Jahia Third-Party Releases Archive</name>
+            <url>https://archives-devtools.jahia.com/thirdparty-releases</url>
+            <releases><enabled>true</enabled><updatePolicy>never</updatePolicy></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </pluginRepository>
+    </pluginRepositories>
 
     <dependencies>
+        <!-- Jahia's own classes without the ~310 libraries jahia-impl depends on; the APIs this module
+             compiles against are declared below. The parent declares jahia-impl too; this replaces it. -->
         <dependency>
-            <groupId>javax.servlet.jsp</groupId>
-            <artifactId>jsp-api</artifactId>
+            <groupId>org.jahia.server</groupId>
+            <artifactId>jahia-impl</artifactId>
+            <version>8.2.0.0</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.jahia.server</groupId>
+            <artifactId>jahia-api</artifactId>
+            <version>8.2.0.0</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>javax.jcr</groupId>
+            <artifactId>jcr</artifactId>
+            <version>2.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.1.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.cmpn</artifactId>
+            <version>7.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.36</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jahia.modules</groupId>
+            <artifactId>graphql-dxm-provider</artifactId>
+            <version>${graphql-dxm-provider.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.github.graphql-java</groupId>
+            <artifactId>graphql-java-annotations</artifactId>
+            <version>${graphql-java-annotations.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.graphql-java</groupId>
+            <artifactId>graphql-java</artifactId>
+            <version>21.5</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
+            <version>1</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Embedded: reads the rendered pages that llms-full.txt is converted from. -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>${jsoup.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.25.3</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -63,14 +202,44 @@
                 <configuration>
                     <instructions>
                         <_dsannotations>*</_dsannotations>
-                        <Jahia-Depends>graphql-dxm-provider</Jahia-Depends>
+                        <_metatypeannotations>*</_metatypeannotations>
+                        <Embed-Dependency>jsoup;inline=false</Embed-Dependency>
+                        <!-- Named explicitly: graphql-dxm-provider's transitive dependencies are excluded,
+                             so the bundle plugin would not infer these packages. jsoup's optional
+                             dependencies (re2j, jspecify) are not needed for parsing. -->
+                        <Import-Package>
+                            org.jahia.modules.graphql.provider.dxm,
+                            org.jahia.modules.graphql.provider.dxm.util,
+                            org.jahia.modules.graphql.provider.dxm.osgi.annotations,
+                            graphql.annotations.annotationTypes,
+                            com.google.re2j;resolution:=optional,
+                            org.jspecify.annotations;resolution:=optional,
+                            *
+                        </Import-Package>
                     </instructions>
                 </configuration>
             </plugin>
             <plugin>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>src/main/resources/javascript/apps</directory>
+                            <includes><include>*</include></includes>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+            <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
-                <version>1.6</version>
+                <version>2.0.1</version>
                 <executions>
                     <execution>
                         <id>npm install node and yarn</id>
@@ -79,8 +248,8 @@
                             <goal>install-node-and-yarn</goal>
                         </goals>
                         <configuration>
-                            <nodeVersion>v18.16.0</nodeVersion>
-                            <yarnVersion>v1.22.19</yarnVersion>
+                            <nodeVersion>v22.21.0</nodeVersion>
+                            <yarnVersion>v1.22.22</yarnVersion>
                         </configuration>
                     </execution>
                     <execution>

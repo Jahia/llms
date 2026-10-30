@@ -1,0 +1,95 @@
+/* Fills jContent's flex column so LayoutContent's own box scrolls, and never grows past the pane. */
+.root {
+    display: flex;
+    flex: 1 1 0%;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    contain: inline-size;
+    isolation: isolate;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-large, 24px);
+    width: 100%;
+    min-width: 0;
+    contain: inline-size;
+}
+
+/* Content card, as jContent draws it. */
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-medium, 16px);
+    padding: var(--spacing-large, 24px);
+    border-radius: 4px;
+    background: var(--color-white);
+    box-shadow: 0 4px 8px 0 rgba(19, 28, 33, 0.2);
+}
+
+.card > * {
+    flex-shrink: 0;
+}
+
+.cardHead {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-medium, 16px);
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cardTitle,
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-small, 8px);
+    align-items: center;
+}
+
+.settings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    gap: var(--spacing-medium, 16px);
+}
+
+.muted {
+    color: var(--color-gray_dark60);
+}
+
+/* Header tabs scroll rather than wrap under the content. */
+.tabs {
+    overflow-x: auto;
+}
+
+.tabBar {
+    flex-wrap: nowrap;
+    width: max-content;
+}
+
+.editor {
+    width: 100%;
+    min-height: 320px;
+    box-sizing: border-box;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.failed {
+    margin: var(--spacing-small, 8px) 0 0;
+    padding-left: var(--spacing-large, 24px);
+    overflow-wrap: anywhere;
+}
+
+.srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
