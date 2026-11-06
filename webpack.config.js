@@ -70,7 +70,10 @@ module.exports = (env, argv) => {
                             loader: 'css-loader',
                             options: {
                                 modules: {
-                                    mode: 'local'
+                                    mode: 'local',
+                                    // css-loader 7 defaults to named exports; the code uses `import styles from`
+                                    namedExport: false,
+                                    exportLocalsConvention: 'as-is'
                                 }
                             }
                         },
