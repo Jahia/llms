@@ -59,3 +59,12 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # stylelint-config-standard-scss 17 needs stylelint 17 (stylelint majors are ignored above)
+      - dependency-name: "stylelint-config-standard-scss"
+        update-types: ["version-update:semver-major"]
+      # eslint-plugin-jest 29 needs eslint >= 8.57 (this module is on eslint 6, majors ignored above)
+      - dependency-name: "eslint-plugin-jest"
+        update-types: ["version-update:semver-major"]
+      # husky 9 drops the package.json "husky.hooks" config; needs a .husky/ migration
+      - dependency-name: "husky"
+        update-types: ["version-update:semver-major"]

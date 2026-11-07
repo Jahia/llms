@@ -1,6 +1,6 @@
 const path = require('path');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-const CleanWebpackPlugin = require('clean-webpack-plugin');
+const {CleanWebpackPlugin} = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
@@ -102,7 +102,8 @@ module.exports = (env, argv) => {
                     '@jahia/app-shell': 'appShellRemote'
                 },
             }, Object.keys(packageJson.dependencies))),
-            new CleanWebpackPlugin(path.resolve(__dirname, 'src/main/resources/javascript/apps/'), {verbose: false}),
+            // Cleans output.path (src/main/resources/javascript/apps/) before each build
+            new CleanWebpackPlugin({verbose: false}),
             new CopyWebpackPlugin({
                 patterns: [{from: './package.json', to: ''}]
             }),
