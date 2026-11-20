@@ -200,4 +200,50 @@ class HtmlToMarkdownTest {
         String md = convert("<main><dl><dt>Phone</dt><dd>01 23 45 67 89</dd></dl></main>", "T");
         assertThat(md).isEqualTo("**Phone**\n\n01 23 45 67 89");
     }
+
+    @Test
+    void keepsTheContentBesideMain() {
+        // An intro above <main> and a section after it: all of it is the page.
+        String md = convert("<body><header role='banner'><nav>Menu</nav></header>"
+                + "<div class='hero'><h1>Our school</h1><p>Founded in 1950, in the heart of the city.</p></div>"
+                + "<main><h2>Courses</h2><p>" + LONG + "</p></main>"
+                + "<section><h2>Contact</h2><p>Write to us at the address below, we answer within two days.</p></section>"
+                + "<footer role='contentinfo'>Legal</footer></body>", "Our school");
+        assertThat(md).isEqualTo("Founded in 1950, in the heart of the city.\n\n## Courses\n\n" + LONG
+                + "\n\n## Contact\n\nWrite to us at the address below, we answer within two days.");
+    }
+
+    @Test
+    void keepsMainAloneWhenLittleSitsOutsideIt() {
+        String md = convert("<body><div><a href='#c'>Skip to content</a></div><main id='c'><p>" + LONG + "</p></main>"
+                + "<div><p>Share</p></div></body>", "T");
+        assertThat(md).isEqualTo(LONG);
+    }
+
+    @Test
+    void dropsChromeThatIsOnlyNamedAndKeepsContentNamedAlike() {
+        String md = convert("<body><div id='header'><a href='/'>Logo</a> Menu of the site with many entries</div>"
+                + "<div class='navbar'>Products Services Company</div>"
+                + "<div class='content-area'><div class='card-header'><h2>Offer</h2></div><p>" + LONG + "</p></div>"
+                + "<div class='site-footer'>Legal notice and other links of the footer</div></body>", "T");
+        assertThat(md).isEqualTo("## Offer\n\n" + LONG);
+    }
+
+    @Test
+    void readsAPageOfATemplateWithoutLandmarks() {
+        // The skeleton of a page of dx-base-demo-templates: no <main>, no <header>, no <footer>.
+        String md = convert("<body class='header-fixed header-fixed-space-v2'><div class='wrapper'>"
+                + "<div class='header-v8 header-sticky'><div class='blog-topbar'><a id='login' role='button'>Login</a>"
+                + "<span class='user-box'>&nbsp;|&nbsp;</span><a id='login' role='button'>Login</a></div>"
+                + "<div class='navbar mega-menu' role='navigation'><ul class='nav navbar-nav'><li><a href='/home.html'>Home</a></li>"
+                + "<li class='active'><a href='/p1.html'>P1</a></li></ul></div></div>"
+                + "<div class='container margin-top-20'><div class='row'><div class='col-md-9'><p>yeah!</p></div>"
+                + "<div class='col-md-3'></div></div></div>"
+                + "<div class='footer-v1'><div class='footer'></div><div class='copyright'><p>2026 &copy; All Rights Reserved."
+                + "<a href='#'>Privacy Policy</a> | <a href='#'>Terms of Service</a></p>"
+                + "<a href='http://www.jahia.com'><img src='/img/poweredByJahia.png' alt='Powered by Jahia'></a></div></div>"
+                + "<div id='loginForm' class='modal fade' role='dialog'><form><label>Username</label><input></form></div>"
+                + "</div></body>", "P1");
+        assertThat(md).isEqualTo("yeah!");
+    }
 }

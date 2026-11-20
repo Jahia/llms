@@ -42,6 +42,11 @@
   a visitor can open (accordions, tabs under the name of their tab, carousel slides), the title of an
   accordion (a button in a heading), the content of a form wrapped around a page, an article's own
   header and asides, embedded videos as a link, and lazy-loaded images. Dialogs stay out.
+* **Content beside `<main>` is kept, and a template without landmarks is read cleanly.** `<main>` is
+  taken alone only when it holds nearly all the text; otherwise the whole body is read. The chrome that
+  older templates only name with a class (`header-v8`, `blog-topbar`, `navbar`, `footer-v1`,
+  `copyright`) is dropped, so a page of such a template gives its content and not its login bar and
+  footer.
 * A media file or a module resource named `llms.txt` is no longer captured by the module's URLs.
 
 ### Panel

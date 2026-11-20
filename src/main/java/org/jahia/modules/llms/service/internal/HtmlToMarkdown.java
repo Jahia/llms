@@ -20,9 +20,9 @@ import java.util.regex.Pattern;
  * <p>Only what a reader needs survives: headings, paragraphs, lists, quotes, code, tables, links and
  * images that have a text alternative. Scripts, styles, form controls, dialogs and the page chrome
  * (header, navigation, footer) are dropped. Hidden elements are dropped too, except the panels a visitor
- * can open (tabs, accordions, slides). The main content is the first usual place that holds a fair share
- * of the text ({@code <main>}, a single {@code <article>}, {@code #content}), else the body without its
- * chrome. Stateless and thread-safe.</p>
+ * can open (tabs, accordions, slides). The content is the whole body without its chrome; a usual place
+ * ({@code <main>}, a single {@code <article>}, {@code #content}) replaces it only when it holds nearly
+ * all the text, so content beside {@code <main>} is kept. Stateless and thread-safe.</p>
  */
 public final class HtmlToMarkdown {
 
@@ -39,8 +39,27 @@ public final class HtmlToMarkdown {
     private static final String HEADINGS = "h1, h2, h3, h4, h5, h6, summary";
     /** Where the main content of a page usually is, most specific first (the order url2md settled on). */
     private static final String[] CONTENT_ROOTS = {"main, [role=main]", "article", "#content", "#main", ".content", ".main"};
-    /** A candidate root this short is a wrapper around a title, not the content. */
-    private static final int MIN_CONTENT_CHARS = 200;
+    /**
+     * A usual place is taken as the content only when it holds nearly all the text of the page. Sites put
+     * content beside their {@code <main>} (an intro above it, sections after it): below this share, the
+     * whole body is read, without its chrome, rather than drop what sits outside.
+     */
+    private static final double WHOLE_CONTENT_SHARE = 0.9;
+    /**
+     * Chrome a site marks with a class or an id instead of an element or a role, as templates written
+     * before HTML5 do ({@code header-v8}, {@code blog-topbar}, {@code footer-v1}, {@code navbar}). The
+     * name starts the class: {@code card-header} and {@code page-header} are parts of the content.
+     */
+    private static final Pattern CHROME_NAME = Pattern.compile(
+            "^(?:site-|global-|blog-|main-|top-)?(?:header|footer|navbar|topbar|masthead)(?:[-_].*)?$");
+    private static final Set<String> CHROME_NAMES = Set.of("nav", "menu", "copyright", "skip-link", "skip-links",
+            "skiplinks", "cookies", "cookie-banner");
+    /**
+     * A block named like chrome that holds nearly all the text of the page is a wrapper around the page
+     * ({@code <div class="header-fixed">}), not chrome. The bar is high on purpose: on a short page the
+     * footer alone is most of the text.
+     */
+    private static final double WRAPPER_SHARE = 0.9;
     /** Breadcrumbs repeat what llms.txt lists. Other menus inside main stay: a site map page is one. */
     private static final String BREADCRUMB = "[class*=breadcrumb], [aria-label~=(?i)breadcrumb|ariane|brotkr]";
     private static final String CHROME = "header, footer, nav, aside, [role=navigation], [role=banner], "
@@ -136,9 +155,10 @@ public final class HtmlToMarkdown {
     }
 
     /**
-     * The element that holds the content of the page: the first of the usual places that holds a fair
-     * share of the page's text, else the body without its chrome. A {@code <main>} that only wraps a
-     * title, with the text beside it, is passed over: taking it would drop the page.
+     * The element that holds the content of the page. A usual place ({@code <main>}, a single article,
+     * {@code #content}) is only a hint: it is taken when it holds nearly all the text, which spares the
+     * reader what little surrounds it. As soon as a real share of the text sits outside it, the body is
+     * read whole, without its chrome: content beside {@code <main>} is content.
      */
     private static Element mainContent(Element body) {
         Element withoutChrome = body.clone();
@@ -150,8 +170,7 @@ public final class HtmlToMarkdown {
             if (found.isEmpty() || ("article".equals(selector) && found.size() != 1)) {
                 continue;
             }
-            int length = found.get(0).text().length();
-            if (length >= all * 0.6 || (length >= MIN_CONTENT_CHARS && length >= all * 0.25)) {
+            if (all > 0 && found.get(0).text().length() >= all * WHOLE_CONTENT_SHARE) {
                 return found.get(0);
             }
         }
@@ -160,18 +179,45 @@ public final class HtmlToMarkdown {
     }
 
     /**
-     * Drops the page chrome. Navigation goes wherever it is; a header, a footer or an aside goes only
-     * outside the content: an article has its own header (its title and lead) and its own asides (notes).
+     * Drops the page chrome, and only outside the content: an article has its own header (its title and
+     * lead), its own asides (notes), and a page can be a menu (a site map). Chrome is what HTML or ARIA
+     * says is chrome, and what the template only names so.
      */
     private static void removeChrome(Element root) {
+        int total = root.text().length();
         for (Element el : root.select(CHROME)) {
             String name = el.normalName();
-            boolean ofContent = ("header".equals(name) || "footer".equals(name) || "aside".equals(name))
-                    && !el.hasAttr("role") && el.parent() != null && el.parent().closest("article, section, main, [role=main]") != null;
+            boolean sectioning = "header".equals(name) || "footer".equals(name) || "aside".equals(name);
+            boolean ofContent = el.parent() != null && (sectioning && !el.hasAttr("role")
+                    ? el.parent().closest("article, section, main, [role=main]") != null
+                    : el.parent().closest("article, main, [role=main]") != null);
             if (!ofContent) {
                 el.remove();
             }
         }
+        for (Element el : root.select("[class], [id]")) {
+            if (el != root && el.parent() != null && isNamedChrome(el) && el.closest("article, main, [role=main]") == null
+                    && el.text().length() < total * WRAPPER_SHARE) {
+                el.remove();
+            }
+        }
+    }
+
+    private static boolean isNamedChrome(Element el) {
+        if (isChromeName(el.id())) {
+            return true;
+        }
+        for (String name : el.classNames()) {
+            if (isChromeName(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isChromeName(String name) {
+        String n = name.toLowerCase(Locale.ROOT);
+        return !n.isEmpty() && (CHROME_NAMES.contains(n) || CHROME_NAME.matcher(n).matches());
     }
 
     /** One conversion: the blocks written so far and whether the page title was already dropped. */
