@@ -41,6 +41,30 @@ public final class DiscoveryLinks {
     }
 
     /**
+     * The address of the Markdown version of a page, built from the page and never from the URL a visitor
+     * asked for: the head of a page is cached for every visitor, and must not carry what one of them typed.
+     *
+     * @param renderUrl       the render URL Jahia gives the page ({@code <context>/cms/render/live/en/sites/a/home.html})
+     * @param contextPath     the context path of Jahia
+     * @param language        the language the page is rendered in
+     * @param defaultLanguage the default language of the site
+     * @return the address, or null when the page is not one that has a Markdown version
+     */
+    public static String markdownHref(String renderUrl, String contextPath, String language, String defaultLanguage) {
+        String context = contextPath == null ? "" : contextPath;
+        if (renderUrl == null || language == null || !renderUrl.startsWith(context + "/")) {
+            return null;
+        }
+        String path = renderUrl.substring(context.length());
+        String prefix = "/cms/render/live/" + language;
+        // In the default language of the site the short address is the same page: /sites/a/home.html.
+        if (language.equals(defaultLanguage) && path.startsWith(prefix + "/sites/")) {
+            path = path.substring(prefix.length());
+        }
+        return PageMarkdown.siteKeyOf(path) == null ? null : context + path + ".md";
+    }
+
+    /**
      * @param canonicalHref the address of the page a Markdown version is the other form of, or null
      * @param llmsHref      the address of the llms.txt, or null
      * @return the same links as the value of an HTTP {@code Link} header, for a resource that is not HTML;

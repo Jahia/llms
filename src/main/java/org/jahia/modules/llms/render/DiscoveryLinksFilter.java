@@ -17,8 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.jcr.RepositoryException;
-import javax.servlet.RequestDispatcher;
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * Writes in the {@code <head>} of the published pages the two links the llms.txt proposal asks for: to
@@ -54,8 +52,7 @@ public class DiscoveryLinksFilter extends AbstractFilter {
             if (!service.discoveryLinks() || site == null || !site.getInstalledModulesWithAllDependencies().contains(MODULE)) {
                 return previousOut;
             }
-            HttpServletRequest request = renderContext.getRequest();
-            return DiscoveryLinks.addTo(previousOut, markdownHref(request), llmsHref(resource.getNode(), site));
+            return DiscoveryLinks.addTo(previousOut, markdownHref(resource, site), llmsHref(resource.getNode(), site));
         } catch (Exception e) {
             // Two optional links never cost a page its rendering.
             LOGGER.debug("Could not add the llms.txt discovery links", e);
@@ -63,11 +60,17 @@ public class DiscoveryLinksFilter extends AbstractFilter {
         }
     }
 
-    /** The address the visitor asked for, followed by .md, when the page has a Markdown version. */
-    private String markdownHref(HttpServletRequest request) {
-        Object asked = request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI);
-        String uri = asked instanceof String forwarded ? forwarded : request.getRequestURI();
-        return service.servesPageMarkdown() && uri != null && uri.endsWith(".html") ? uri + ".md" : null;
+    /**
+     * The Markdown version of the page, from the page itself. Never from the URL of the request: this
+     * output is cached for every visitor, and one of them could ask for the page under an address of
+     * their making.
+     */
+    private String markdownHref(Resource resource, JCRSiteNode site) {
+        if (!service.servesPageMarkdown() || !"html".equals(resource.getTemplateType()) || resource.getLocale() == null) {
+            return null;
+        }
+        return DiscoveryLinks.markdownHref(resource.getNode().getUrl(), Jahia.getContextPath(),
+                resource.getLocale().toString(), site.getDefaultLanguage());
     }
 
     /** The llms.txt of the site, when it serves one: read in the session of the page, so as the visitor. */

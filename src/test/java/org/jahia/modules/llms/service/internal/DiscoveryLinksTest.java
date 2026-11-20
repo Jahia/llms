@@ -55,4 +55,24 @@ class DiscoveryLinksTest {
         assertThat(DiscoveryLinks.header(null, null)).isNull();
         assertThat(DiscoveryLinks.header("/a>\r\nSet-Cookie: x=1", null)).isEqualTo("</a%3ESet-Cookie: x=1>; rel=\"canonical\"");
     }
+
+    @Test
+    void theMarkdownAddressComesFromThePageInItsShortFormForTheDefaultLanguage() {
+        assertThat(DiscoveryLinks.markdownHref("/cms/render/live/en/sites/a/home/about.html", "", "en", "en"))
+                .isEqualTo("/sites/a/home/about.html.md");
+        // Another language keeps the address that names it.
+        assertThat(DiscoveryLinks.markdownHref("/cms/render/live/fr/sites/a/home/about.html", "", "fr", "en"))
+                .isEqualTo("/cms/render/live/fr/sites/a/home/about.html.md");
+        assertThat(DiscoveryLinks.markdownHref("/jahia/cms/render/live/en/sites/a/home.html", "/jahia", "en", "en"))
+                .isEqualTo("/jahia/sites/a/home.html.md");
+    }
+
+    @Test
+    void noMarkdownAddressForWhatIsNotAPageOfASite() {
+        assertThat(DiscoveryLinks.markdownHref("/cms/render/live/en/sites/a/home/about.pdf", "", "en", "en")).isNull();
+        assertThat(DiscoveryLinks.markdownHref("/cms/render/live/en/users/root/x.html", "", "en", "en")).isNull();
+        assertThat(DiscoveryLinks.markdownHref("//evil.test/sites/a/home.html", "", "en", "en")).isNull();
+        assertThat(DiscoveryLinks.markdownHref("/other/cms/render/live/en/sites/a/home.html", "/jahia", "en", "en")).isNull();
+        assertThat(DiscoveryLinks.markdownHref(null, "", "en", "en")).isNull();
+    }
 }
