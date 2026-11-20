@@ -6,8 +6,10 @@ import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
@@ -16,14 +18,29 @@ import java.util.regex.Pattern;
  * Turns the main content of a rendered page into Markdown for llms-full.txt.
  *
  * <p>Only what a reader needs survives: headings, paragraphs, lists, quotes, code, tables, links and
- * images that have a text alternative. Scripts, styles, forms, hidden elements and the page chrome
- * (header, navigation, footer) are dropped. The main content is {@code <main>} (or {@code role="main"}),
- * else the body without its chrome. Stateless and thread-safe.</p>
+ * images that have a text alternative. Scripts, styles, form controls, dialogs and the page chrome
+ * (header, navigation, footer) are dropped. Hidden elements are dropped too, except the panels a visitor
+ * can open (tabs, accordions, slides). The main content is the first usual place that holds a fair share
+ * of the text ({@code <main>}, a single {@code <article>}, {@code #content}), else the body without its
+ * chrome. Stateless and thread-safe.</p>
  */
 public final class HtmlToMarkdown {
 
-    private static final String DROPPED = "script, style, noscript, template, svg, iframe, object, embed, canvas, "
-            + "form, button, input, select, textarea, dialog, [hidden], [aria-hidden=true], .sr-only, .visually-hidden";
+    /**
+     * Never content. A form is not in the list: sites wrap whole pages in one, so only its controls and
+     * their labels go.
+     * Hidden elements are dropped after {@link #revealDisclosed} kept the ones a visitor can open.
+     */
+    private static final String DROPPED = "script, style, noscript, template, svg, object, embed, canvas, "
+            + "button, input, select, textarea, label, dialog, [role=dialog], [role=alertdialog], "
+            + "[hidden], [aria-hidden=true], .sr-only, .visually-hidden";
+    private static final String HIDDEN = "[hidden], [aria-hidden=true], [style~=(?i)display\\s*:\\s*none]";
+    private static final String NEVER_REVEALED = "dialog, [role=dialog], [role=alertdialog], .modal";
+    private static final String HEADINGS = "h1, h2, h3, h4, h5, h6, summary";
+    /** Where the main content of a page usually is, most specific first (the order url2md settled on). */
+    private static final String[] CONTENT_ROOTS = {"main, [role=main]", "article", "#content", "#main", ".content", ".main"};
+    /** A candidate root this short is a wrapper around a title, not the content. */
+    private static final int MIN_CONTENT_CHARS = 200;
     /** Breadcrumbs repeat what llms.txt lists. Other menus inside main stay: a site map page is one. */
     private static final String BREADCRUMB = "[class*=breadcrumb], [aria-label~=(?i)breadcrumb|ariane|brotkr]";
     private static final String CHROME = "header, footer, nav, aside, [role=navigation], [role=banner], "
@@ -35,7 +52,7 @@ public final class HtmlToMarkdown {
     private static final Set<String> LINK_SCHEMES = Set.of("http", "https", "mailto", "tel");
     private static final Set<String> IMAGE_SCHEMES = Set.of("http", "https");
     private static final Set<String> BLOCKS = Set.of("address", "article", "aside", "blockquote", "dd", "details",
-            "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6",
+            "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
             "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "summary", "table", "tbody", "td",
             "tfoot", "th", "thead", "tr", "ul");
 
@@ -49,16 +66,112 @@ public final class HtmlToMarkdown {
      * @return the Markdown of the page's main content, without a trailing new line
      */
     public static String convert(Document page, String title, UnaryOperator<String> linkMap) {
-        page.select(DROPPED).remove();
-        Element main = page.selectFirst("main, [role=main]");
-        if (main == null) {
-            main = page.body();
-            main.select(CHROME).remove();
+        Element body = page.body();
+        revealDisclosed(body);
+        // The title of an accordion is a button inside a heading: its text is the heading.
+        for (Element heading : body.select(HEADINGS)) {
+            heading.select("button").unwrap();
         }
+        page.select(DROPPED).remove();
+        Element main = mainContent(body);
         main.select(BREADCRUMB).remove();
         Writer writer = new Writer(title, linkMap, false);
         writer.blocks(main, 0);
         return writer.result();
+    }
+
+    /**
+     * Keeps what a visitor can open: the panel of a tab, of an accordion or of a carousel is hidden in the
+     * HTML until a control shows it, and it is content all the same. A hidden element is kept when it is
+     * a tab panel or a slide, or when it, or an element around it, is the target of a control
+     * ({@code aria-controls}, Bootstrap's {@code data-bs-target}). Everything else hidden is dropped:
+     * decorative icons, templates, off-screen duplicates. Dialogs are never kept: a visitor reads a page,
+     * and a dialog is mostly a form or a consent banner.
+     */
+    private static void revealDisclosed(Element body) {
+        Map<String, Element> controls = new HashMap<>();
+        for (Element control : body.select("[aria-controls], [data-bs-target], [data-target], a[href^=#][data-toggle], a[href^=#][data-bs-toggle]")) {
+            for (String attribute : new String[]{"aria-controls", "data-bs-target", "data-target", "href"}) {
+                for (String id : control.attr(attribute).trim().split("\\s+")) {
+                    String target = id.startsWith("#") ? id.substring(1) : id;
+                    if (!target.isEmpty()) {
+                        controls.putIfAbsent(target, control);
+                    }
+                }
+            }
+        }
+        for (Element hidden : body.select(HIDDEN)) {
+            if (hidden.closest(NEVER_REVEALED) != null) {
+                continue;
+            }
+            if (isDisclosed(hidden, controls)) {
+                hidden.removeAttr("hidden").removeAttr("aria-hidden").removeAttr("style");
+            } else if (hidden.hasAttr("style") && !hidden.hasAttr("hidden") && !"true".equals(hidden.attr("aria-hidden"))) {
+                // display:none in a style attribute, opened by nothing: dropped here, DROPPED does not see it.
+                hidden.remove();
+            }
+        }
+        // The name of a tab is on its control, away from the panel: written at the top of the panel.
+        for (Map.Entry<String, Element> entry : controls.entrySet()) {
+            Element control = entry.getValue();
+            Element panel = body.getElementById(entry.getKey());
+            String label = control.text().trim();
+            if (panel != null && !label.isEmpty() && control.closest(HEADINGS) == null && control.closest("nav, [role=navigation]") == null
+                    && panel.closest(NEVER_REVEALED) == null && ("tab".equals(control.attr("role")) || "tabpanel".equals(panel.attr("role")))) {
+                panel.prependElement("p").appendElement("strong").text(label);
+            }
+        }
+    }
+
+    private static boolean isDisclosed(Element hidden, Map<String, Element> controls) {
+        if ("tabpanel".equals(hidden.attr("role")) || "slide".equals(hidden.attr("aria-roledescription"))) {
+            return true;
+        }
+        for (Element el = hidden; el != null; el = el.parent()) {
+            if (!el.id().isEmpty() && controls.containsKey(el.id())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The element that holds the content of the page: the first of the usual places that holds a fair
+     * share of the page's text, else the body without its chrome. A {@code <main>} that only wraps a
+     * title, with the text beside it, is passed over: taking it would drop the page.
+     */
+    private static Element mainContent(Element body) {
+        Element withoutChrome = body.clone();
+        removeChrome(withoutChrome);
+        int all = withoutChrome.text().length();
+        for (String selector : CONTENT_ROOTS) {
+            List<Element> found = body.select(selector);
+            // Several articles are a list of teasers, not the content.
+            if (found.isEmpty() || ("article".equals(selector) && found.size() != 1)) {
+                continue;
+            }
+            int length = found.get(0).text().length();
+            if (length >= all * 0.6 || (length >= MIN_CONTENT_CHARS && length >= all * 0.25)) {
+                return found.get(0);
+            }
+        }
+        removeChrome(body);
+        return body;
+    }
+
+    /**
+     * Drops the page chrome. Navigation goes wherever it is; a header, a footer or an aside goes only
+     * outside the content: an article has its own header (its title and lead) and its own asides (notes).
+     */
+    private static void removeChrome(Element root) {
+        for (Element el : root.select(CHROME)) {
+            String name = el.normalName();
+            boolean ofContent = ("header".equals(name) || "footer".equals(name) || "aside".equals(name))
+                    && !el.hasAttr("role") && el.parent() != null && el.parent().closest("article, section, main, [role=main]") != null;
+            if (!ofContent) {
+                el.remove();
+            }
+        }
     }
 
     /** One conversion: the blocks written so far and whether the page title was already dropped. */
@@ -107,7 +220,8 @@ public final class HtmlToMarkdown {
             String name = el.normalName();
             switch (name) {
                 case "h1", "h2", "h3", "h4", "h5", "h6" -> heading(el, name.charAt(1) - '0');
-                case "p", "summary", "dt", "figcaption" -> add(tidy(inlineOf(el)));
+                case "p", "summary", "figcaption" -> add(tidy(inlineOf(el)));
+                case "dt" -> add(wrap(tidy(inlineOf(el)), "**"));
                 case "ul", "ol" -> add(list(el, listDepth));
                 case "blockquote" -> add(quote(el));
                 case "pre" -> add("```\n" + el.wholeText().stripTrailing() + "\n```");
@@ -241,6 +355,7 @@ public final class HtmlToMarkdown {
                 case "br" -> "\n";
                 case "a" -> link(el);
                 case "img" -> image(el);
+                case "iframe" -> embed(el);
                 case "strong", "b" -> wrap(inlineOf(el), "**");
                 case "em", "i" -> wrap(inlineOf(el), "*");
                 case "code", "kbd", "samp" -> wrap(el.text(), "`");
@@ -266,10 +381,24 @@ public final class HtmlToMarkdown {
         private String image(Element img) {
             String alt = img.attr("alt").trim();
             String src = img.absUrl("src");
+            if (!hasScheme(src, IMAGE_SCHEMES)) {
+                // Lazy loading keeps the address aside until the image scrolls into view.
+                src = img.hasAttr("data-src") ? img.absUrl("data-src") : img.absUrl("data-lazy-src");
+            }
             if (alt.isEmpty() || !hasScheme(src, IMAGE_SCHEMES)) {
                 return "";
             }
             return "![" + alt.replace("[", "\\[").replace("]", "\\]") + "](" + target(src) + ")";
+        }
+
+        /** An embedded video or map is content a text file cannot hold: its title and address are kept. */
+        private String embed(Element iframe) {
+            String label = iframe.attr("title").trim();
+            String src = iframe.absUrl("src");
+            if (label.isEmpty() || !hasScheme(src, IMAGE_SCHEMES)) {
+                return "";
+            }
+            return "[" + label.replace("[", "\\[").replace("]", "\\]") + "](" + target(src) + ")";
         }
 
         /** Only the listed schemes are written as a link: {@code javascript:}, {@code data:} and the like never are. */

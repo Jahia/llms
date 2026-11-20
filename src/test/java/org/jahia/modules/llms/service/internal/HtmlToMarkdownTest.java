@@ -120,4 +120,84 @@ class HtmlToMarkdownTest {
             assertThat(md).startsWith("```\ncode").endsWith("- a b");
         });
     }
+
+    private static final String LONG = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ".repeat(6).trim();
+
+    @Test
+    void keepsTheTitleAndThePanelOfAnAccordion() {
+        // The title is a button in a heading, the panel is hidden until the button opens it.
+        String md = convert("<main><h3><button aria-expanded='false' aria-controls='p1'>Opening hours</button></h3>"
+                + "<div id='p1' hidden><p>Monday to Friday, 9 to 5.</p></div>"
+                + "<h3><button aria-controls='p2'>Prices</button></h3>"
+                + "<div id='p2' aria-hidden='true' style='display:none'><p>Free.</p></div></main>", "T");
+        assertThat(md).isEqualTo("### Opening hours\n\nMonday to Friday, 9 to 5.\n\n### Prices\n\nFree.");
+    }
+
+    @Test
+    void keepsEveryTabPanelUnderTheNameOfItsTab() {
+        String md = convert("<main><div role='tablist'><button role='tab' aria-controls='a'>Students</button>"
+                + "<button role='tab' aria-controls='b'>Teachers</button></div>"
+                + "<div id='a' role='tabpanel'><p>For students.</p></div>"
+                + "<div id='b' role='tabpanel' hidden><p>For teachers.</p></div></main>", "T");
+        assertThat(md).isEqualTo("**Students**\n\nFor students.\n\n**Teachers**\n\nFor teachers.");
+    }
+
+    @Test
+    void keepsTheSlidesOfACarouselAndDropsDecorativeIcons() {
+        String md = convert("<main><p>Intro <span aria-hidden='true'>*</span></p><div id='c'>"
+                + "<div aria-roledescription='slide'><p>One</p></div>"
+                + "<div aria-roledescription='slide' aria-hidden='true'><p>Two</p></div></div>"
+                + "<div style='display: none'>Leftover</div></main>", "T");
+        assertThat(md).isEqualTo("Intro\n\nOne\n\nTwo");
+    }
+
+    @Test
+    void neverKeepsADialog() {
+        String md = convert("<main><p>Page</p><button data-bs-target='#m'>Sign in</button>"
+                + "<div class='modal' id='m' aria-hidden='true'><p>Your password</p></div></main>", "T");
+        assertThat(md).isEqualTo("Page");
+    }
+
+    @Test
+    void keepsTheContentOfAFormWrappedAroundThePage() {
+        String md = convert("<main><form action='/x'><h2>Team</h2><p>Ten people</p>"
+                + "<input type='hidden' name='t' value='1'><button>Send</button></form></main>", "T");
+        assertThat(md).isEqualTo("## Team\n\nTen people");
+    }
+
+    @Test
+    void passesOverAMainThatOnlyWrapsATitle() {
+        String md = convert("<body><header><a href='/'>Logo</a></header><main><h1>About</h1></main>"
+                + "<div id='content'><p>" + LONG + "</p></div><footer>Legal</footer></body>", "About");
+        assertThat(md).isEqualTo(LONG);
+    }
+
+    @Test
+    void takesTheSingleArticleAndKeepsItsOwnHeaderAndAside() {
+        String md = convert("<body><header>Site</header><div><article><header><h1>News</h1><p>Lead paragraph.</p></header>"
+                + "<p>" + LONG + "</p><aside><p>Note for readers.</p></aside></article></div>"
+                + "<aside><p>Related links</p></aside><footer>Legal</footer></body>", "News");
+        assertThat(md).isEqualTo("Lead paragraph.\n\n" + LONG + "\n\nNote for readers.");
+    }
+
+    @Test
+    void withoutAnyUsualPlaceKeepsTheHeaderOfASectionAndDropsThePageHeader() {
+        String md = convert("<body><header><nav>Menu</nav></header><section><header><h2>Offer</h2></header>"
+                + "<p>Details</p></section><footer>Legal</footer></body>", "T");
+        assertThat(md).isEqualTo("## Offer\n\nDetails");
+    }
+
+    @Test
+    void keepsAnEmbeddedVideoAsALinkAndALazyImage() {
+        String md = convert("<main><p><iframe title='Presentation video' src='https://video.example.com/embed/1'></iframe></p>"
+                + "<p><iframe src='https://tracker.example.com/x'></iframe></p>"
+                + "<p><img alt='Team' src='data:image/gif;base64,AAAA' data-src='/team.jpg'></p></main>", "T");
+        assertThat(md).isEqualTo("[Presentation video](https://video.example.com/embed/1)\n\n![Team](https://www.example.com/team.jpg)");
+    }
+
+    @Test
+    void writesADefinitionListAsTermsAndDefinitions() {
+        String md = convert("<main><dl><dt>Phone</dt><dd>01 23 45 67 89</dd></dl></main>", "T");
+        assertThat(md).isEqualTo("**Phone**\n\n01 23 45 67 89");
+    }
 }

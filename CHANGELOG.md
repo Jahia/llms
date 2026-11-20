@@ -34,6 +34,16 @@
 * Saving llms-full.txt alone no longer publishes the autocreated `# Title` as llms.txt, and the
   placeholder is never served.
 
+### Fixed
+
+* **llms-full.txt no longer drops parts of a page.** The converter kept only `<main>` and removed every
+  hidden element, form and button. It now takes the first usual place that holds a fair share of the
+  text (`<main>`, a single `<article>`, `#content`, else the body without its chrome), keeps the panels
+  a visitor can open (accordions, tabs under the name of their tab, carousel slides), the title of an
+  accordion (a button in a heading), the content of a form wrapped around a page, an article's own
+  header and asides, embedded videos as a link, and lazy-loaded images. Dialogs stay out.
+* A media file or a module resource named `llms.txt` is no longer captured by the module's URLs.
+
 ### Performance
 
 * The panel asks the server whether each file is served and current (`llms { status }`) instead of
