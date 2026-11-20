@@ -25,6 +25,7 @@
     flex-direction: column;
     gap: var(--spacing-medium, 16px);
     padding: var(--spacing-large, 24px);
+
     border-radius: 4px;
     background: var(--color-white);
     box-shadow: 0 4px 8px 0 rgba(19, 28, 33, 0.2);
@@ -38,8 +39,8 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--spacing-medium, 16px);
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
 }
 
 .cardTitle,
@@ -60,6 +61,7 @@
    The opaque colour at 80% gives about 7:1, as Moonstone does for a Field helper. */
 .muted {
     color: var(--color-gray_dark);
+
     opacity: 0.8;
 }
 
@@ -85,11 +87,12 @@
 }
 
 .editor {
+    box-sizing: border-box;
     width: 100%;
     min-height: 320px;
-    box-sizing: border-box;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
     font-size: 0.8125rem;
+    font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
     line-height: 1.5;
 }
 
@@ -103,14 +106,17 @@ textarea.editor:focus-visible {
 .failed {
     margin: var(--spacing-small, 8px) 0 0;
     padding-left: var(--spacing-large, 24px);
+
     overflow-wrap: anywhere;
 }
 
 .srOnly {
     position: absolute;
+
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip: rect(0 0 0 0);
+
     white-space: nowrap;
 }

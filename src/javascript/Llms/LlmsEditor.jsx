@@ -80,8 +80,9 @@ export const LlmsEditor = ({siteKey}) => {
     useEffect(() => {
         if (refocus > 0) {
             const active = document.activeElement;
-            if (!active || active === document.body || active.disabled) {
-                document.getElementById(`llms-editor-${tab}`)?.focus();
+            const editor = document.getElementById(`llms-editor-${tab}`);
+            if (editor && (!active || active === document.body || active.disabled)) {
+                editor.focus();
             }
         }
         // Runs after an action only, not when the tab changes: the focus then stays on the tab.
@@ -232,7 +233,8 @@ export const LlmsEditor = ({siteKey}) => {
                                 {/* Moonstone's Field does not tie its label, helper or error to the control: done here. */}
                                 <Field id="llms-language-field"
                                        label={t('settings.language')}
-                                       helper={<span id="llms-language-help">{t('settings.languageHelp')}</span>}>
+                                       helper={<span id="llms-language-help">{t('settings.languageHelp')}</span>}
+                                >
                                     <Dropdown data={languages}
                                               value={language}
                                               variant="outlined"
@@ -245,7 +247,8 @@ export const LlmsEditor = ({siteKey}) => {
                                        label={t('settings.baseUrl')}
                                        helper={<span id="llms-baseurl-help">{t('settings.baseUrlHelp')}</span>}
                                        hasError={!baseUrlValid}
-                                       errorMessage={baseUrlValid ? undefined : <span id="llms-baseurl-error">{t('settings.baseUrlError')}</span>}>
+                                       errorMessage={baseUrlValid ? undefined : <span id="llms-baseurl-error">{t('settings.baseUrlError')}</span>}
+                                >
                                     <Input id="llms-baseurl"
                                            value={baseUrl}
                                            placeholder="https://www.example.com"
@@ -267,7 +270,7 @@ export const LlmsEditor = ({siteKey}) => {
                             isCurrent={Boolean(published[file.id]?.current)}
                             generation={generations[file.id]}
                             isGenerating={generating === file.id}
-                            canGenerate={baseUrlValid && Boolean(language) && !generating && !saving}
+                            isGenerateEnabled={baseUrlValid && Boolean(language) && !generating && !saving}
                             liveUrl={fileUrl(file.fileName)}
                             onChange={value => setDrafts(d => ({...d, [file.id]: value}))}
                             onGenerate={generate}

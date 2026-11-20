@@ -38,16 +38,19 @@ const status = (value, saved, isCurrent) => {
     if (value !== saved) {
         return {key: 'unsaved', color: 'accent'};
     }
+
     if (!saved.trim()) {
         return {key: 'none', color: 'default'};
     }
+
     if (saved.trim() === PLACEHOLDER) {
         return {key: 'placeholder', color: 'warning'};
     }
+
     return isCurrent ? {key: 'published', color: 'success'} : {key: 'notPublished', color: 'warning'};
 };
 
-export const FileCard = ({file, value, saved, isServed, isCurrent, generation, isGenerating, canGenerate, liveUrl, onChange, onGenerate, onRevert}) => {
+export const FileCard = ({file, value, saved, isServed, isCurrent, generation, isGenerating, isGenerateEnabled, liveUrl, onChange, onGenerate, onRevert}) => {
     const {t} = useTranslation(MODULE);
     const state = status(value, saved, isCurrent);
     // Deferred: while the editor types in a large file, React keeps the keystroke ahead of the counts.
@@ -62,7 +65,8 @@ export const FileCard = ({file, value, saved, isServed, isCurrent, generation, i
                  id="llms-tabpanel"
                  aria-labelledby={`llms-tab-${file.id}`}
                  aria-busy={isGenerating}
-                 data-llms-file={file.id}>
+                 data-llms-file={file.id}
+        >
             <div className={styles.cardHead}>
                 <div className={styles.cardTitle}>
                     <Typography variant="heading" component="h2">{file.fileName}</Typography>
@@ -72,7 +76,7 @@ export const FileCard = ({file, value, saved, isServed, isCurrent, generation, i
                     <Button data-llms-role="generate"
                             icon={<Reload aria-hidden="true"/>}
                             label={t(saved.trim() ? 'regenerate' : 'generate')}
-                            isDisabled={!canGenerate}
+                            isDisabled={!isGenerateEnabled}
                             onClick={onGenerate}/>
                     <Button data-llms-role="revert"
                             variant="ghost"
@@ -101,7 +105,8 @@ export const FileCard = ({file, value, saved, isServed, isCurrent, generation, i
                 {!isGenerating && generation && (
                     <Banner variant={generation.failedPages.length || generation.truncated ? 'warning' : 'info'}
                             title={t('generated.title', {pages: generation.pages, language: generation.language})}
-                            data-llms-role="generated">
+                            data-llms-role="generated"
+                    >
                         <span>{t('generated.review')}</span>
                         {generation.truncated && <span>{t('generated.truncated')}</span>}
                         {generation.failedPages.length > 0 && (
@@ -117,13 +122,13 @@ export const FileCard = ({file, value, saved, isServed, isCurrent, generation, i
             </div>
 
             <label htmlFor={textareaId} className={styles.srOnly}>{t('editorLabel', {file: file.fileName})}</label>
-            <Textarea id={textareaId}
+            <Textarea isResizable
+                      id={textareaId}
                       className={styles.editor}
                       value={value}
                       rows={file.full ? 28 : 20}
                       spellCheck={false}
                       aria-describedby={descriptionId}
-                      isResizable
                       isReadOnly={isGenerating}
                       placeholder={t(`${file.id}.placeholder`)}
                       onChange={e => onChange(e.target.value)}/>
@@ -151,7 +156,7 @@ FileCard.propTypes = {
         language: PropTypes.string
     }),
     isGenerating: PropTypes.bool.isRequired,
-    canGenerate: PropTypes.bool.isRequired,
+    isGenerateEnabled: PropTypes.bool.isRequired,
     liveUrl: PropTypes.string.isRequired,
     onChange: PropTypes.func.isRequired,
     onGenerate: PropTypes.func.isRequired,
