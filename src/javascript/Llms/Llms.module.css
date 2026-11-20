@@ -164,6 +164,9 @@ textarea.editor:focus-visible {
 .rulesList {
     margin: 0;
     padding-left: var(--spacing-large, 24px);
+
+    /* jContent resets lists: the marks are what makes these lines a list to the eye. */
+    list-style: disc;
 }
 
 /* A generation of llms-full.txt as it goes. */

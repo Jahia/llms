@@ -108,4 +108,63 @@ describe('llms.txt of a section of the site', () => {
         describedBy(`${DOCS}/guide.html`).should('eq', `${DOCS}/llms.txt`);
         describedBy(`/sites/${SITE}/home/about.html`).should('eq', `/sites/${SITE}/llms.txt`);
     });
+
+    /**
+     * The same in the panel: the editor chooses what the two files are about. In a browser, since what an
+     * editor sees cannot be proven by a GraphQL call.
+     */
+    describe('in the panel', () => {
+        const PANEL = `/jahia/jcontent/${SITE}/en/apps/siteSettingsSeo/llms`;
+        const choose = (label: string) => {
+            cy.get('[data-llms-role="scope"] [role="listbox"]').click();
+            cy.contains('[role="option"], li', label).click();
+        };
+
+        beforeEach(() => {
+            cy.login();
+            cy.visit(PANEL);
+            cy.get('[data-llms-role="panel"]', {timeout: 60000}).should('be.visible');
+        });
+
+        afterEach(() => {
+            cy.visit('/cms/logout', {failOnStatusCode: false});
+        });
+
+        it('shows the files of the whole site first, and offers the sections', () => {
+            cy.get('[data-llms-role="scope"] [role="group"]').should('have.attr', 'aria-label', 'Files of');
+            cy.get('#llms-editor-llms').should('have.value', '# The whole site');
+            cy.get('[data-llms-role="view"]').should('have.attr', 'href', `/sites/${SITE}/llms.txt`);
+        });
+
+        it('shows the files of a section once it is chosen, where they are served, and keeps the panel in place', () => {
+            choose('Documentation');
+            cy.get('h1').should('contain.text', 'Documentation');
+            cy.get('#llms-editor-llms').invoke('val').should('match', /^# Documentation\n/);
+            cy.get('[data-llms-role="view"]').should('have.attr', 'href', `${DOCS}/llms.txt`);
+            // The tabs still control the panel, and the public URL, which is the site's, cannot be changed here.
+            cy.get('#llms-tabpanel').should('have.attr', 'aria-labelledby', 'llms-tab-llms').and('have.attr', 'aria-busy', 'false');
+            cy.get('#llms-baseurl').should('have.attr', 'readonly');
+            cy.get('[data-llms-role="generate"]').should('contain.text', 'Generate llms.txt again');
+        });
+
+        it('refuses to change scope with unsaved changes, and says so next to the control', () => {
+            cy.get('#llms-editor-llms').type('{moveToEnd}\n\nNot saved yet.', {delay: 0});
+            choose('Documentation');
+            cy.get('[data-llms-role="scope-refusal"]').should('have.attr', 'role', 'alert')
+                .and('have.text', 'Save or discard your changes before choosing another scope.');
+            // Nothing changed, nothing was lost.
+            cy.get('#llms-editor-llms').invoke('val').should('contain', 'Not saved yet.');
+            cy.get('[data-llms-role="view"]').should('have.attr', 'href', `/sites/${SITE}/llms.txt`);
+        });
+
+        it('saves the file of the section, and only that one', () => {
+            choose('Documentation');
+            cy.get('#llms-editor-llms').invoke('val').should('match', /^# Documentation\n/);
+            cy.get('#llms-editor-llms').type('{moveToEnd}\n\nEdited in the panel.', {delay: 0});
+            cy.get('[data-llms-role="save"]').should('be.enabled').click();
+            cy.get('[data-llms-status="published"]', {timeout: 30000}).should('exist');
+            fetchFile(`${DOCS}/llms.txt`).its('body').should('contain', 'Edited in the panel.');
+            fetchFile(`/sites/${SITE}/llms.txt`).its('body').should('eq', '# The whole site');
+        });
+    });
 });

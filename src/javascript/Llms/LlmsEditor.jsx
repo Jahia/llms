@@ -16,6 +16,8 @@ import {
 import {LLMS_GENERATE, LLMS_PROGRESS, LLMS_RULES, LLMS_SAVE, LLMS_SITE, LLMS_START, LLMS_STATUS} from './Llms.gql';
 import {FileCard} from './FileCard';
 import {GenerationCard} from './GenerationCard';
+import {ScopeSelector} from './ScopeSelector';
+import {useScope} from './useScope';
 import {BASE_URL, FILES, MODULE} from './module';
 import styles from './Llms.module.css';
 
@@ -37,6 +39,15 @@ const wait = ms => new Promise(resolve => {
 
 /** What went wrong in the given action, or undefined when the last failure is another action's or none. */
 const messageOf = (failure, action, fallback) => (failure && failure.action === action ? failure.message || fallback : undefined);
+
+/** What the server says of the files in live; nothing is claimed when it could not be read. */
+const statusOf = live => (live.error ? null : live.data?.llms?.status) || {};
+
+/** Generate needs a valid public URL and a language, and waits for a save or for the other file to end. */
+const canGenerate = ({baseUrlValid, language, saving, generating, fileId}) =>
+    baseUrlValid && Boolean(language) && !saving && (!generating || generating === fileId);
+
+const contextPath = () => globalThis.contextJsParameters?.contextPath || '';
 
 const errorText = error => error?.graphQLErrors?.[0]?.message || error?.message || '';
 
@@ -88,6 +99,21 @@ ReadFailure.propTypes = {
     message: PropTypes.string.isRequired
 };
 
+/** What the panel shows in place of nothing while the files of a section load, or when they cannot be read. */
+const ScopeState = ({isLoading, error}) => {
+    const {t} = useTranslation(MODULE);
+    if (isLoading) {
+        return <Loader size="big" aria-label={t('loading')}/>;
+    }
+
+    return error ? <Banner variant="danger" title={t('error.read')} role="alert">{errorText(error)}</Banner> : null;
+};
+
+ScopeState.propTypes = {
+    isLoading: PropTypes.bool.isRequired,
+    error: PropTypes.object
+};
+
 /** One tab per file. A file with unsaved changes says so in its name, not only with a mark. */
 const FileTabs = ({selected, changed, onSelect}) => {
     const {t} = useTranslation(MODULE);
@@ -119,25 +145,68 @@ FileTabs.propTypes = {
     onSelect: PropTypes.func.isRequired
 };
 
+/** The header of the panel: its title, Save and publish, one tab per file, and the link to the proposal. */
+const EditorHeader = ({title, tab, changed, isSaving, isSaveBlocked, onSave, onSelectTab}) => {
+    const {t} = useTranslation(MODULE);
+    return (
+        <Header
+            title={title}
+            mainActions={[
+                <Button key="save"
+                        data-llms-role="save"
+                        size="big"
+                        color="accent"
+                        icon={<Publish aria-hidden="true"/>}
+                        label={t('save')}
+                        isDisabled={isSaveBlocked || isSaving}
+                        isLoading={isSaving}
+                        onClick={onSave}/>
+            ]}
+            toolbarLeft={<FileTabs selected={tab} changed={changed} onSelect={onSelectTab}/>}
+            toolbarRight={[
+                <Button key="spec"
+                        variant="ghost"
+                        icon={<OpenInNew aria-hidden="true"/>}
+                        label={t('about')}
+                        aria-label={`${t('about')} (${t('newTab')})`}
+                        onClick={() => globalThis.open('https://llmstxt.org/', '_blank', 'noopener')}/>
+            ]}
+        />
+    );
+};
+
+EditorHeader.propTypes = {
+    title: PropTypes.string.isRequired,
+    tab: PropTypes.string.isRequired,
+    changed: PropTypes.objectOf(PropTypes.bool).isRequired,
+    isSaving: PropTypes.bool.isRequired,
+    isSaveBlocked: PropTypes.bool.isRequired,
+    onSave: PropTypes.func.isRequired,
+    onSelectTab: PropTypes.func.isRequired
+};
+
 export const LlmsEditor = ({siteKey}) => {
     const {t} = useTranslation(MODULE);
     const client = useApolloClient();
     const sitePath = `/sites/${siteKey}`;
     const {data, loading, error, refetch} = useQuery(LLMS_SITE, {variables: {path: sitePath}, fetchPolicy: 'network-only'});
-    const live = useQuery(LLMS_STATUS, {variables: {siteKey}, fetchPolicy: 'network-only', errorPolicy: 'all'});
+    // The whole site, or one section of it: the files then come from the page of the section.
+    const scoped = useScope(siteKey);
+    const live = useQuery(LLMS_STATUS, {variables: {siteKey, path: scoped.scope}, fetchPolicy: 'network-only', errorPolicy: 'all'});
     // Read on its own: the panel works without it, it only says less about what is left out.
     const rules = useQuery(LLMS_RULES, {variables: {siteKey}, errorPolicy: 'all'});
     const [saveFiles, {loading: saving}] = useMutation(LLMS_SAVE);
 
     const node = data?.jcr?.nodeByPath;
     const site = node?.site;
+    const fileNode = scoped.scope ? scoped.node : node;
     const saved = useMemo(() => ({
-        llms: text(node?.llms),
-        llmsFull: text(node?.llmsFull),
+        llms: text(fileNode?.llms),
+        llmsFull: text(fileNode?.llmsFull),
+        // The public URL is the site's, whatever the scope.
         baseUrl: text(node?.baseUrl) || suggestedBaseUrl(site?.serverName)
-    }), [node, site]);
-    // Nothing is claimed about live when its status could not be read.
-    const published = (live.error ? null : live.data?.llms?.status) || {};
+    }), [fileNode, node, site]);
+    const published = statusOf(live);
 
     const [tab, setTab] = useState('llms');
     const [drafts, setDrafts] = useState({llms: '', llmsFull: ''});
@@ -153,15 +222,25 @@ export const LlmsEditor = ({siteKey}) => {
     }, []);
     const [failure, setFailure] = useState(null);
     const [announcement, setAnnouncement] = useState('');
+    const [refusal, setRefusal] = useState('');
+    // The scope just chosen, to be announced once its files are there.
+    const chosen = useRef(null);
     const [refocus, setRefocus] = useState(0);
 
     // The drafts follow what is stored each time it is read again (first load, after a save).
     useEffect(() => {
-        if (node) {
+        if (fileNode) {
             setDrafts({llms: saved.llms, llmsFull: saved.llmsFull});
             setBaseUrl(saved.baseUrl);
         }
-    }, [node, saved]);
+    }, [fileNode, saved]);
+    // Said once the files of the scope are shown, not when it is chosen: the title changes without a word.
+    useEffect(() => {
+        if (chosen.current && !scoped.isLoading) {
+            setAnnouncement(t('scope.showing', {name: chosen.current}));
+            chosen.current = null;
+        }
+    }, [scoped.isLoading, scoped.scope, t]);
     useEffect(() => {
         if (site && !language) {
             const served = (site.languages || []).filter(l => l.activeInLive).map(l => l.language);
@@ -187,7 +266,8 @@ export const LlmsEditor = ({siteKey}) => {
     const changed = {
         llms: drafts.llms !== saved.llms,
         llmsFull: drafts.llmsFull !== saved.llmsFull,
-        baseUrl: baseUrl !== saved.baseUrl
+        // Saved with the files of the site only.
+        baseUrl: !scoped.scope && baseUrl !== saved.baseUrl
     };
     const dirty = changed.llms || changed.llmsFull || changed.baseUrl;
 
@@ -195,7 +275,9 @@ export const LlmsEditor = ({siteKey}) => {
         return <div className={styles.root}><Loader size="big" aria-label={t('loading')}/></div>;
     }
 
-    const title = t('header', {siteName: node?.displayName || siteKey});
+    const siteName = node?.displayName || siteKey;
+    const scopeName = scoped.titleOf(scoped.scope) || siteName;
+    const title = t('header', {siteName: scopeName});
     if (error || !node) {
         return <ReadFailure title={title} message={errorText(error)}/>;
     }
@@ -211,14 +293,14 @@ export const LlmsEditor = ({siteKey}) => {
         if (!file.full) {
             const {data: result} = await client.query({
                 query: LLMS_GENERATE,
-                variables: {siteKey, language, baseUrl, full: false},
+                variables: {siteKey, path: scoped.scope, language, baseUrl, full: false},
                 fetchPolicy: 'network-only'
             });
             return result.llms.generate;
         }
 
         setProgress(null);
-        const {data: started} = await client.mutate({mutation: LLMS_START, variables: {siteKey, language, baseUrl}});
+        const {data: started} = await client.mutate({mutation: LLMS_START, variables: {siteKey, path: scoped.scope, language, baseUrl}});
         return followGeneration({client, siteKey, id: started.llms.startGeneration, isMounted, onProgress: setProgress});
     };
 
@@ -246,6 +328,7 @@ export const LlmsEditor = ({siteKey}) => {
             await saveFiles({
                 variables: {
                     siteKey,
+                    path: scoped.scope,
                     llms: changed.llms ? drafts.llms : null,
                     llmsFull: changed.llmsFull ? drafts.llmsFull : null,
                     baseUrl: baseUrlValid ? baseUrl : null
@@ -253,7 +336,7 @@ export const LlmsEditor = ({siteKey}) => {
             });
             setGenerations({});
             setProgress(null);
-            await Promise.all([refetch(), live.refetch()]);
+            await Promise.all([refetch(), live.refetch(), scoped.refetch()]);
             toast(t('notification.saved'), 'success');
             // The toast belongs to jContent and may not be announced: the status region says it too.
             setAnnouncement(t('notification.saved'));
@@ -266,7 +349,27 @@ export const LlmsEditor = ({siteKey}) => {
     };
 
     const saveFailure = messageOf(failure, 'save', '');
-    const fileUrl = name => `${globalThis.contextJsParameters?.contextPath || ''}/sites/${siteKey}/${name}`;
+    const fileUrl = name => `${contextPath()}${scoped.scope || sitePath}/${name}`;
+
+    // A scope chosen with unsaved changes, or while a file is generated, is refused: nothing changes.
+    const selectScope = path => {
+        setRefusal('');
+        if (path === scoped.scope) {
+            return;
+        }
+
+        if (dirty || generating) {
+            // Emptied first, written next: a second refusal is announced like the first.
+            setTimeout(() => setRefusal(t('scope.refused')), 0);
+            return;
+        }
+
+        chosen.current = scoped.titleOf(path) || siteName;
+        setGenerations({});
+        setProgress(null);
+        setFailure(null);
+        scoped.setScope(path);
+    };
 
     return (
         <div className={styles.root}>
@@ -274,29 +377,13 @@ export const LlmsEditor = ({siteKey}) => {
                 hasPadding
                 data-llms-role="panel"
                 header={(
-                    <Header
-                        title={title}
-                        mainActions={[
-                            <Button key="save"
-                                    data-llms-role="save"
-                                    size="big"
-                                    color="accent"
-                                    icon={<Publish aria-hidden="true"/>}
-                                    label={t('save')}
-                                    isDisabled={!dirty || saving || !baseUrlValid || Boolean(generating)}
-                                    isLoading={saving}
-                                    onClick={save}/>
-                        ]}
-                        toolbarLeft={<FileTabs selected={tab} changed={changed} onSelect={setTab}/>}
-                        toolbarRight={[
-                            <Button key="spec"
-                                    variant="ghost"
-                                    icon={<OpenInNew aria-hidden="true"/>}
-                                    label={t('about')}
-                                    aria-label={`${t('about')} (${t('newTab')})`}
-                                    onClick={() => globalThis.open('https://llmstxt.org/', '_blank', 'noopener')}/>
-                        ]}
-                    />
+                    <EditorHeader title={title}
+                                  tab={tab}
+                                  changed={changed}
+                                  isSaving={saving}
+                                  isSaveBlocked={!dirty || !baseUrlValid || Boolean(generating)}
+                                  onSave={save}
+                                  onSelectTab={setTab}/>
                 )}
                 content={(
                     <div className={styles.content}>
@@ -307,13 +394,24 @@ export const LlmsEditor = ({siteKey}) => {
                                 {saveFailure}
                             </Banner>
                         )}
-                        {/* One panel per tab: what generates the file, then the file. */}
+                        {/* Before the panel of the tabs: the scope applies to both files. Only when there is a choice. */}
+                        {scoped.sections.length > 0 && (
+                            <ScopeSelector siteName={siteName}
+                                           sections={scoped.sections}
+                                           scope={scoped.scope}
+                                           refusal={refusal}
+                                           onSelect={selectScope}/>
+                        )}
+                        {/* One panel per tab: what generates the file, then the file. It stays in place
+                            while the files of a section load, so the tabs keep the panel they control. */}
                         <div role="tabpanel"
                              id="llms-tabpanel"
                              aria-labelledby={`llms-tab-${file.id}`}
+                             aria-busy={scoped.isLoading}
                              className={styles.panel}
                              data-llms-file={file.id}
                         >
+                            <ScopeState isLoading={scoped.isLoading} error={scoped.error}/>
                             <GenerationCard
                                 file={file}
                                 languages={languages}
@@ -324,8 +422,9 @@ export const LlmsEditor = ({siteKey}) => {
                                 rules={rules.data?.llms?.rules}
                                 failure={messageOf(failure, 'generate', t('error.generate'))}
                                 isBaseUrlValid={baseUrlValid}
+                                isBaseUrlLocked={Boolean(scoped.scope)}
                                 isGenerating={generating === file.id}
-                                isGenerateEnabled={baseUrlValid && Boolean(language) && !saving && (!generating || generating === file.id)}
+                                isGenerateEnabled={canGenerate({baseUrlValid, language, saving, generating, fileId: file.id})}
                                 hasSavedFile={Boolean(saved[file.id].trim())}
                                 onLanguageChange={setLanguage}
                                 onBaseUrlChange={setBaseUrl}
@@ -339,6 +438,7 @@ export const LlmsEditor = ({siteKey}) => {
                                 isCurrent={Boolean(published[file.id]?.current)}
                                 isGenerating={generating === file.id}
                                 liveUrl={fileUrl(file.fileName)}
+                                rootUrl={scoped.scope ? null : `/${file.fileName}`}
                                 onChange={value => setDrafts(d => ({...d, [file.id]: value}))}
                                 onRevert={() => {
                                     setDrafts(d => ({...d, [file.id]: saved[file.id]}));

@@ -88,6 +88,24 @@ file gets `304 Not Modified`. `Cache-Control` is `public, no-cache` for a visito
 (`private, no-cache` for a signed-in user): a proxy or CDN may keep the file but revalidates it on each
 request, so a published change is served at once.
 
+## Files of a section
+
+The proposal lets an llms.txt sit in a sub-path: it then covers the pages under that path, and the most
+specific file applies. A section is a page of the site with the pages below it.
+
+- In the panel, **Files of** switches between the whole site and a section. The list offers the pages
+  that already have files and the pages below the home page that have sub-pages.
+- The files of a section are served under the path of its page: the page `/home/docs.html` has
+  `/home/docs/llms.txt` and `/home/docs/llms-full.txt` (and the same under `/sites/<siteKey>/`).
+- Generation starts from that page, with the same rules. The public URL stays the one of the site.
+- The files are stored on the page, with the same `jmix:llms` mixin as on the site. The files and the
+  storage of the site itself do not change.
+- A page name with a character an address would have to encode (a space, an accent) cannot be the top
+  of a section.
+
+Typical use: a large site that only wants its documentation described gives `/documentation` its own
+files, and keeps a short llms.txt, or none, at the root.
+
 ## Markdown version of each page
 
 The llms.txt proposal asks that what an llms.txt links to be readable by a language model: each page
@@ -142,9 +160,13 @@ reads: `j:llms` in live and both URLs, and it links to the panel.
 
 ## API
 
-The panel uses five GraphQL fields, open to signed-in users with the right permissions on the site:
+The panel uses these GraphQL fields, open to signed-in users with the right permissions on the site:
 
 ```graphql
+# generate, startGeneration, save and status take an optional `path`: a page of the site, for the files
+# of that section. `sections` lists the pages that have files and those that can be given some.
+query { llms { sections(siteKey: "mySite") { path title hasFiles } } }
+
 # publish on the site: whether each file is served, and is the saved one
 query { llms { status(siteKey: "mySite") { llms { served current } llmsFull { served current } } } }
 

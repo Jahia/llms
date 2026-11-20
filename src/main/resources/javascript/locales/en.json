@@ -16,14 +16,23 @@
   "tabUnsaved": "{{file}}, unsaved changes",
   "newTab": "opens in a new tab",
   "stats": "{{lines}} lines · {{links}} links · {{size}}",
+  "scope": {
+    "label": "Files of",
+    "help": "The whole site, or one section of it: a page and the pages below it, with files served under the path of that page. Choosing reloads both files.",
+    "site": "The whole site ({{name}})",
+    "refused": "Save or discard your changes before choosing another scope.",
+    "showing": "Showing the files of {{name}}",
+    "noResult": "No section found"
+  },
   "settings": {
     "title": "Generate from the site",
     "description": "Generation reads the pages published on the site that visitors without an account can see. Nothing is saved until you select Save and publish.",
     "language": "Language",
-    "languageHelp": "Language of the page titles, descriptions and content. The site has one llms.txt and one llms-full.txt.",
+    "languageHelp": "Language of the page titles, descriptions and content. Each scope has one llms.txt and one llms-full.txt.",
     "baseUrl": "Public site URL",
     "baseUrlHelp": "Scheme, host and optional port that the links in both files start with, for example https://www.example.com. Saved with the files.",
-    "baseUrlError": "Enter a scheme, a host and an optional port, with no path: https://www.example.com"
+    "baseUrlError": "Enter a scheme, a host and an optional port, with no path: https://www.example.com",
+    "baseUrlSection": "Set for the whole site: choose the whole site above to change it."
   },
   "rules": {
     "title": "Left out of both files",

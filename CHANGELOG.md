@@ -26,6 +26,11 @@
   (`rel="alternate" type="text/markdown"`, `rel="describedby"`), and a Markdown version does so in a
   `Link` header. This is how the proposal lets an agent find these files from a page.
 
+* **A section of the site can have its own llms.txt and llms-full.txt**, as the proposal (v2) defines a
+  file in a sub-path. In the panel, "Files of" switches between the whole site and a section; the files
+  are generated from the page of the section down and served under its path
+  (`/home/docs/llms.txt`). The link of a page to its llms.txt names the nearest one.
+
 ### Security
 
 * The public files are served with an `ETag` and `304 Not Modified` (`Cache-Control: no-cache`, so a

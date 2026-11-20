@@ -17,7 +17,7 @@ const PLAIN = {interpolation: {escapeValue: false}};
  */
 export const GenerationCard = ({
     file, languages, language, baseUrl, generation, progress, rules, failure,
-    isBaseUrlValid, isGenerating, isGenerateEnabled, hasSavedFile,
+    isBaseUrlValid, isBaseUrlLocked, isGenerating, isGenerateEnabled, hasSavedFile,
     onLanguageChange, onBaseUrlChange, onGenerate
 }) => {
     const {t} = useTranslation(MODULE);
@@ -47,7 +47,7 @@ export const GenerationCard = ({
                 <div className={styles.field}>
                     <Typography component="label" htmlFor="llms-baseurl" weight="bold">{t('settings.baseUrl')}</Typography>
                     <Typography id="llms-baseurl-help" variant="caption" className={styles.muted}>
-                        {t('settings.baseUrlHelp')}
+                        {t(isBaseUrlLocked ? 'settings.baseUrlSection' : 'settings.baseUrlHelp')}
                     </Typography>
                     <Input id="llms-baseurl"
                            size="big"
@@ -57,6 +57,7 @@ export const GenerationCard = ({
                            autoComplete="url"
                            inputMode="url"
                            spellCheck={false}
+                           isReadOnly={isBaseUrlLocked}
                            aria-invalid={!isBaseUrlValid}
                            aria-describedby={isBaseUrlValid ? 'llms-baseurl-help' : 'llms-baseurl-help llms-baseurl-error'}
                            onChange={e => onBaseUrlChange(e.target.value.trim())}/>
@@ -140,6 +141,7 @@ GenerationCard.propTypes = {
     rules: PropTypes.object,
     failure: PropTypes.string,
     isBaseUrlValid: PropTypes.bool.isRequired,
+    isBaseUrlLocked: PropTypes.bool.isRequired,
     isGenerating: PropTypes.bool.isRequired,
     isGenerateEnabled: PropTypes.bool.isRequired,
     hasSavedFile: PropTypes.bool.isRequired,

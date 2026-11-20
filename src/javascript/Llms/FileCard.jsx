@@ -57,7 +57,7 @@ const PLAIN = {interpolation: {escapeValue: false}};
  * One file: where it stands, where visitors get it, and its text. Generating it is the block above
  * ({@link GenerationCard}); saving it is the action of the page header.
  */
-export const FileCard = ({file, value, saved, isServed, isCurrent, isGenerating, liveUrl, onChange, onRevert}) => {
+export const FileCard = ({file, value, saved, isServed, isCurrent, isGenerating, liveUrl, rootUrl, onChange, onRevert}) => {
     const {t} = useTranslation(MODULE);
     const state = status(value, saved, isCurrent);
     // Deferred: while the editor types in a large file, React keeps the keystroke ahead of the counts.
@@ -93,7 +93,8 @@ export const FileCard = ({file, value, saved, isServed, isCurrent, isGenerating,
                             <span className={styles.srOnly}> ({t('view')}, {t('newTab')})</span>
                             <OpenInNew aria-hidden="true" size="small"/>
                         </a>
-                        {t('servedRoot', {path: `/${file.fileName}`, ...PLAIN})}
+                        {/* The file of the site is at the root of its domain too; the file of a section is not. */}
+                        {rootUrl ? t('servedRoot', {path: rootUrl, ...PLAIN}) : '.'}
                     </>
                 ) : t('notServed', {path: liveUrl, ...PLAIN})}
             </Typography>
@@ -131,6 +132,7 @@ FileCard.propTypes = {
     isCurrent: PropTypes.bool.isRequired,
     isGenerating: PropTypes.bool.isRequired,
     liveUrl: PropTypes.string.isRequired,
+    rootUrl: PropTypes.string,
     onChange: PropTypes.func.isRequired,
     onRevert: PropTypes.func.isRequired
 };

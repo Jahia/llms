@@ -16,14 +16,23 @@
   "tabUnsaved": "{{file}}, ungespeicherte Änderungen",
   "newTab": "wird in neuem Tab geöffnet",
   "stats": "{{lines}} Zeilen · {{links}} Links · {{size}}",
+  "scope": {
+    "label": "Dateien von",
+    "help": "Die gesamte Website oder ein Bereich davon: eine Seite und die Seiten darunter, mit Dateien unter dem Pfad dieser Seite. Die Auswahl lädt beide Dateien neu.",
+    "site": "Die gesamte Website ({{name}})",
+    "refused": "Speichern oder verwerfen Sie Ihre Änderungen, bevor Sie einen anderen Bereich wählen.",
+    "showing": "Dateien von {{name}} werden angezeigt",
+    "noResult": "Kein Bereich gefunden"
+  },
   "settings": {
     "title": "Aus der Website generieren",
     "description": "Die Generierung liest die veröffentlichten Seiten der Website, die Besucher ohne Konto sehen. Erst Speichern und veröffentlichen speichert etwas.",
     "language": "Sprache",
-    "languageHelp": "Sprache der Seitentitel, Beschreibungen und Inhalte. Die Website hat eine llms.txt und eine llms-full.txt.",
+    "languageHelp": "Sprache der Seitentitel, Beschreibungen und Inhalte. Jeder Bereich hat eine llms.txt und eine llms-full.txt.",
     "baseUrl": "Öffentliche URL der Website",
     "baseUrlHelp": "Schema, Host und optionaler Port, mit denen die Links beider Dateien beginnen, zum Beispiel https://www.example.com. Wird mit den Dateien gespeichert.",
-    "baseUrlError": "Geben Sie Schema, Host und optionalen Port ohne Pfad ein: https://www.example.com"
+    "baseUrlError": "Geben Sie Schema, Host und optionalen Port ohne Pfad ein: https://www.example.com",
+    "baseUrlSection": "Für die gesamte Website festgelegt: Wählen Sie oben die gesamte Website, um sie zu ändern."
   },
   "rules": {
     "title": "In beiden Dateien ausgelassen",

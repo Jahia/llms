@@ -11,6 +11,7 @@ the panel in jContent.
 | `03-generation` | only published pages are listed, links use the public URL, nothing is stored, invalid public URLs and languages are refused |
 | `04-panel` | the panel as a publisher: tabs, field names for assistive technology, the invalid URL error, generate then edit then save and publish |
 | `06-page-markdown` | `page.html.md`: a published page as Markdown, 404 for a page that is not published or closed to visitors, the short URL on the site's host, a visitor's query string ignored, the servlet unreachable directly, a `.md` media file left alone; the page names its Markdown version and the llms.txt of its site, and both links answer |
+| `07-sections` | the files of a section: generated from its page, served under its path and on the site's host, apart from the site's; unknown paths refused; a page names the nearest llms.txt; in the panel, choosing a scope, the refusal with unsaved changes, saving a section alone |
 | `05-exclusions` | a page marked **No index** (sitemap module) leaves both files once the mark is published, and comes back when it is removed |
 
 ## Run

@@ -35,9 +35,9 @@ export const LLMS_SITE = gql`
  * reading the live properties would download llms-full.txt a second time. Fails on its own.
  */
 export const LLMS_STATUS = gql`
-    query LlmsStatus($siteKey: String!) {
+    query LlmsStatus($siteKey: String!, $path: String) {
         llms {
-            status(siteKey: $siteKey) {
+            status(siteKey: $siteKey, path: $path) {
                 llms {
                     served
                     current
@@ -52,13 +52,45 @@ export const LLMS_STATUS = gql`
 `;
 
 export const LLMS_GENERATE = gql`
-    query LlmsGenerate($siteKey: String!, $language: String!, $baseUrl: String!, $full: Boolean!) {
+    query LlmsGenerate($siteKey: String!, $path: String, $language: String!, $baseUrl: String!, $full: Boolean!) {
         llms {
-            generate(siteKey: $siteKey, language: $language, baseUrl: $baseUrl, full: $full) {
+            generate(siteKey: $siteKey, path: $path, language: $language, baseUrl: $baseUrl, full: $full) {
                 content
                 pages
                 failedPages
                 truncated
+            }
+        }
+    }
+`;
+
+/** The pages that have their own files, and the pages that can be given some: the scopes of the panel. */
+export const LLMS_SECTIONS = gql`
+    query LlmsSections($siteKey: String!) {
+        llms {
+            sections(siteKey: $siteKey) {
+                path
+                title
+                hasFiles
+            }
+        }
+    }
+`;
+
+/** The files stored on the page at the top of a section. */
+export const LLMS_SCOPE = gql`
+    query LlmsScope($path: String!) {
+        jcr {
+            nodeByPath(path: $path) {
+                uuid
+                path
+                displayName
+                llms: property(name: "j:llms") {
+                    value
+                }
+                llmsFull: property(name: "j:llmsFull") {
+                    value
+                }
             }
         }
     }
@@ -80,9 +112,9 @@ export const LLMS_RULES = gql`
 
 /** Starts llms-full.txt in the background: it renders every page, too long for one silent request. */
 export const LLMS_START = gql`
-    mutation LlmsStart($siteKey: String!, $language: String!, $baseUrl: String!) {
+    mutation LlmsStart($siteKey: String!, $path: String, $language: String!, $baseUrl: String!) {
         llms {
-            startGeneration(siteKey: $siteKey, language: $language, baseUrl: $baseUrl)
+            startGeneration(siteKey: $siteKey, path: $path, language: $language, baseUrl: $baseUrl)
         }
     }
 `;
@@ -114,9 +146,9 @@ export const LLMS_PROGRESS = gql`
 `;
 
 export const LLMS_SAVE = gql`
-    mutation LlmsSave($siteKey: String!, $llms: String, $llmsFull: String, $baseUrl: String) {
+    mutation LlmsSave($siteKey: String!, $path: String, $llms: String, $llmsFull: String, $baseUrl: String) {
         llms {
-            save(siteKey: $siteKey, llms: $llms, llmsFull: $llmsFull, baseUrl: $baseUrl)
+            save(siteKey: $siteKey, path: $path, llms: $llms, llmsFull: $llmsFull, baseUrl: $baseUrl)
         }
     }
 `;

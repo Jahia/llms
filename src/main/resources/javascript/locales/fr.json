@@ -16,14 +16,23 @@
   "tabUnsaved": "{{file}}, modifications non enregistrées",
   "newTab": "s'ouvre dans un nouvel onglet",
   "stats": "{{lines}} lignes · {{links}} liens · {{size}}",
+  "scope": {
+    "label": "Fichiers de",
+    "help": "Tout le site, ou une de ses sections : une page et les pages en dessous, avec des fichiers servis sous le chemin de cette page. Le choix recharge les deux fichiers.",
+    "site": "Tout le site ({{name}})",
+    "refused": "Enregistrez ou annulez vos modifications avant de choisir une autre portée.",
+    "showing": "Fichiers de {{name}} affichés",
+    "noResult": "Aucune section trouvée"
+  },
   "settings": {
     "title": "Générer à partir du site",
     "description": "La génération lit les pages publiées du site que voient les visiteurs sans compte. Rien n'est enregistré avant Enregistrer et publier.",
     "language": "Langue",
-    "languageHelp": "Langue des titres, descriptions et contenus des pages. Le site a un seul llms.txt et un seul llms-full.txt.",
+    "languageHelp": "Langue des titres, descriptions et contenus des pages. Chaque portée a un seul llms.txt et un seul llms-full.txt.",
     "baseUrl": "URL publique du site",
     "baseUrlHelp": "Protocole, hôte et port facultatif par lesquels commencent les liens des deux fichiers, par exemple https://www.example.com. Enregistrée avec les fichiers.",
-    "baseUrlError": "Saisissez un protocole, un hôte et un port facultatif, sans chemin : https://www.example.com"
+    "baseUrlError": "Saisissez un protocole, un hôte et un port facultatif, sans chemin : https://www.example.com",
+    "baseUrlSection": "Réglée pour tout le site : choisissez tout le site ci-dessus pour la modifier."
   },
   "rules": {
     "title": "Écartées des deux fichiers",
