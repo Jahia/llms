@@ -22,7 +22,7 @@ module.exports = (env, argv) => {
                 {test: /\.jsx?$/, use: 'babel-loader', exclude: /node_modules/},
                 {
                     test: /\.module\.css$/,
-                    use: ['style-loader', {loader: 'css-loader', options: {modules: {namedExport: false, exportLocalsConvention: 'asIs'}}}]
+                    use: ['style-loader', {loader: 'css-loader', options: {modules: {namedExport: false, exportLocalsConvention: 'as-is'}}}]
                 },
                 {test: /\.css$/, exclude: /\.module\.css$/, use: ['style-loader', 'css-loader']}
             ]
