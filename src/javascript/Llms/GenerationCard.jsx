@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Dropdown, Input, Loader, Paper, Reload, Typography} from '@jahia/moonstone';
+import {Banner, Button, Dropdown, Input, Paper, Reload, Typography} from '@jahia/moonstone';
 import {GenerationProgress} from './GenerationProgress';
 import {GenerationRules} from './GenerationRules';
 import {MODULE} from './module';
@@ -9,6 +9,9 @@ import styles from './Llms.module.css';
 
 // File names and paths are written as they are: nothing here is inserted as HTML.
 const PLAIN = {interpolation: {escapeValue: false}};
+
+// Before the server has listed the pages: the site is being read, nothing is counted yet.
+const STARTING = {isStarted: false, total: 0, done: 0, pages: []};
 
 /**
  * What generation needs and the button that runs it, in one block: the language and the public URL sit
@@ -87,13 +90,11 @@ export const GenerationCard = ({
                     {failure}
                 </Banner>
             )}
-            {/* Outside the status region below: read every second, it would be announced every second. */}
-            {progress && <GenerationProgress key={progress.runId} progress={progress}/>}
             {/* Always in the page, empty or not: a status region inserted with its text already in is often not announced. */}
             <div role="status" className={styles.live}>
-                {isGenerating && (
-                    <Banner variant="info" title={t('generating.title')} iconStart={<Loader size="small" aria-hidden="true"/>}>
-                        {t(file.full ? 'generating.full' : 'generating.index')}
+                {isGenerating && !file.full && (
+                    <Banner variant="info" title={t('generating.title')} data-llms-role="generating">
+                        {t('generating.index')}
                     </Banner>
                 )}
                 {!isGenerating && generation && (
@@ -114,6 +115,13 @@ export const GenerationCard = ({
                     </Banner>
                 )}
             </div>
+            {/* llms-full.txt renders every page: while it runs this block says so and shows the pages go by, and
+                once it is over the pages stay listed under the result. One element at one place for both, so
+                the reader in the list keeps their place when the generation ends. Outside the status region
+                above: read every second, it would be announced every second. */}
+            {file.full && (isGenerating || progress) && (
+                <GenerationProgress isRunning={isGenerating} fileName={file.fileName} progress={progress || STARTING}/>
+            )}
         </Paper>
     );
 };

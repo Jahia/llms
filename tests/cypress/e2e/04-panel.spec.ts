@@ -108,7 +108,18 @@ describe('the llms.txt panel in jContent', () => {
         cy.get('[data-llms-tab="llmsFull"]').click();
         cy.get('#llms-baseurl').clear().type('https://www.example.com');
         cy.get('[data-llms-role="generate"]').should('contain.text', 'Generate llms-full.txt').click();
+        // At once, one block says what runs and holds the bar and the pages: no second, empty banner beside it.
+        cy.get('[data-llms-role="progress"][data-llms-running="true"]').should('be.visible')
+            .and('have.attr', 'role', 'group').and('contain.text', 'Generating llms-full.txt')
+            .then($block => {
+                ($block[0] as unknown as {llmsSeen: boolean}).llmsSeen = true;
+            });
+        cy.get('[data-llms-role="generating"]').should('not.exist');
         cy.get('[data-llms-role="generated"]', {timeout: 120000}).should('be.visible');
+        // The same element stays once it is over, under another name: a reader in the log keeps their place.
+        cy.get('[data-llms-role="progress"]').should('have.attr', 'data-llms-running', 'false')
+            .and('contain.text', 'Pages of the last generation').and('not.contain.text', 'Generating')
+            .then($block => expect(($block[0] as unknown as {llmsSeen: boolean}).llmsSeen).to.eq(true));
 
         // The bar is a real progress element, named and described: nothing to guess for a screen reader.
         cy.get('[data-llms-role="progress"] progress').should('have.attr', 'aria-labelledby', 'llms-progress-label')

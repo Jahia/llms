@@ -60,11 +60,11 @@
   },
   "generating": {
     "title": "Generating",
-    "index": "Reading the published pages of the site.",
-    "full": "Rendering each published page as a visitor sees it. A large site can take a minute."
+    "titleFile": "Generating {{file}}",
+    "index": "Reading the published pages of the site."
   },
   "progress": {
-    "label": "Progress of the generation",
+    "done": "Pages of the last generation",
     "preparing": "Reading the site",
     "count": "{{done}} / {{total}} pages",
     "logTitle": "Pages processed",

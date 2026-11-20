@@ -76,6 +76,17 @@ class HtmlToMarkdownTest {
     }
 
     @Test
+    void dropsATagLeftOpenAsTextAndKeepsTextAboutTags() {
+        // As served by a page whose rich text is broken: the tag is text, between a paragraph and a list item.
+        String md = convert("<main><p>Service provided by:</p><p>Google LLC</p>&lt;ul <li>Google Ireland</li>"
+                + "<p>Use &lt;ul&gt; for a list, and a &lt; b comparison.</p></main>", "x");
+        assertThat(md).doesNotContain("<ul \n").doesNotContain("<ul\n")
+                .contains("Google LLC").contains("Google Ireland")
+                .contains("Use <ul> for a list, and a < b comparison.");
+        assertThat(md.lines().map(String::trim)).doesNotContain("<ul");
+    }
+
+    @Test
     void writesTablesQuotesAndCode() {
         String md = convert("<main><table><tr><th>Plan</th><th>Price</th></tr><tr><td>Pro | EU</td><td>10</td></tr></table>"
                 + "<blockquote><p>Quoted</p></blockquote><pre>a  b\n c</pre></main>", "x");

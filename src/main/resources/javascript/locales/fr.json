@@ -60,11 +60,11 @@
   },
   "generating": {
     "title": "Génération en cours",
-    "index": "Lecture des pages publiées du site.",
-    "full": "Rendu de chaque page publiée telle qu'un visiteur la voit. Un grand site peut prendre une minute."
+    "titleFile": "Génération de {{file}} en cours",
+    "index": "Lecture des pages publiées du site."
   },
   "progress": {
-    "label": "Avancement de la génération",
+    "done": "Pages de la dernière génération",
     "preparing": "Lecture du site",
     "count": "{{done}} / {{total}} pages",
     "logTitle": "Pages traitées",

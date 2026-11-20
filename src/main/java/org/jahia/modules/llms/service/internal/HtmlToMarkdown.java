@@ -67,6 +67,12 @@ public final class HtmlToMarkdown {
     /** Compiled once: the converter runs these on every fragment of text of every page. */
     private static final Pattern BLANK_LINES = Pattern.compile("\n{3,}");
     private static final Pattern SPACES = Pattern.compile("[ \\t\\r\\f]+");
+    /**
+     * A text that is nothing but a tag left open ({@code <ul}, {@code </div}): what a broken rich text leaves
+     * on a page, where the visitor reads it too. No sentence is that, so it is not written. A text that
+     * speaks of a tag ({@code use <ul> for a list}) is more than that, and stays.
+     */
+    private static final Pattern TAG_DEBRIS = Pattern.compile("\\s*</?[A-Za-z][A-Za-z0-9-]*\\s*");
     private static final String SENTENCE_END = ".:!?";
     private static final Set<String> LINK_SCHEMES = Set.of("http", "https", "mailto", "tel");
     private static final Set<String> IMAGE_SCHEMES = Set.of("http", "https");
@@ -405,7 +411,7 @@ public final class HtmlToMarkdown {
 
         private String inline(Node node) {
             if (node instanceof TextNode text) {
-                return text.text();
+                return TAG_DEBRIS.matcher(text.text()).matches() ? "" : text.text();
             }
             if (!(node instanceof Element el)) {
                 return "";
