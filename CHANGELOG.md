@@ -4,6 +4,8 @@
 
 ### Added
 
+**The two files**
+
 * **llms-full.txt.** A second file per site, stored in `j:llmsFull` and served at `/llms-full.txt` and
   `/sites/<siteKey>/llms-full.txt`.
 * **Generate both files from the site.** llms.txt lists the published pages a visitor without an account
@@ -11,47 +13,79 @@
   anonymously and keeps its main content as Markdown. Generation never saves: the editor reviews and
   edits the text first. Language picker (site default first) and a per-site public URL for the links
   (`j:llmsBaseUrl`).
-* GraphQL `llms { generate }` and `llms { save }`, with the permission checks on the server.
 * `/sites/<siteKey>/llms.txt` serves that site's file whatever the host, for sites that share a host
   (`localhost`, Jahia Cloud).
-* OSGi configuration `org.jahia.modules.llms` for the generation limits.
-* German, French and English labels for the panel and the content type fields, with tooltips.
+
+**What the llms.txt proposal (v2) asks**
+
+* **Each page has a Markdown version at its own URL followed by `.md`** (`page.html.md`). It is the page
+  as a visitor without an account gets it: no Markdown version of a page that is not published or not
+  open to visitors. `linkToMarkdown` makes a generated llms.txt link to these versions.
+* **Pages name their Markdown version and the llms.txt of their site** in their `<head>`
+  (`rel="alternate" type="text/markdown"`, `rel="describedby"`), and a Markdown version does so in a
+  `Link` header.
+* **A section of the site can have its own llms.txt and llms-full.txt**, as the proposal defines a file
+  in a sub-path. In the panel, "Files of" switches between the whole site and a section; the files are
+  generated from the page of the section down and served under its path (`/home/docs/llms.txt`). The
+  pages below a menu group can be chosen too, named after their group.
+* **Chaining.** A generated llms.txt ends with the links to the llms.txt of the sections that have one:
+  the proposal has no paging, and this is how the files of a large site chain.
+
+**What is listed**
+
 * **Contents shown as a page of their own** (`jmix:mainResource`: news, articles) are listed after the
   pages, the most recent first (`maxMainResources`, 100 by default), get a Markdown version and name it
   in their head.
-* **List only marked pages**: `includedNodeTypes` lists only the pages and contents that carry a mixin,
+* **Fair page selection.** When a site has more pages than one file lists, every page of a level is
+  listed before any page of the next, instead of filling the limit with the first sections. `maxDepth`
+  now defaults to 10: `maxPages` is the limit.
+* **List only marked pages.** `includedNodeTypes` lists only the pages and contents that carry a mixin,
   such as the new page option `jmix:llmsListed` (List in llms.txt). The content editor shows that
   option only to who holds the new permission `llmsListPages` on the site.
-* A generated llms.txt ends with the links to the llms.txt of the sections that have one, so the files
-  of a large site chain.
-* **Preview** of a file in the panel: its Markdown rendered and sanitized, in place of the editor.
+* The node types that leave a page out are configurable (`excludedNodeTypes`, as many as needed), with
+  the "hidden in the menu" marks of the jahia.com and Academy templates among the defaults, and a
+  second list leaves out a page with all its sub-pages (`excludedTreeNodeTypes`).
+
+**Configuration**
+
+* OSGi configuration `org.jahia.modules.llms` for the values of every site and the limits that protect
+  the server.
+* **A configuration per site**: `org.jahia.modules.llms.site-<name>.cfg` changes, for one site, what is
+  listed (depth, numbers, excluded and listed types, links to Markdown, images). A key left out keeps
+  the value of the module configuration.
+* **Settings tab** in the panel, for who administers the site (permission `siteAdminLlmsSettings`, added
+  to the role `site-administrator`): the values of the site, each explained, with the value it inherits,
+  and checked. A value the module would have to correct is refused, and nothing is saved while one is.
+  Saving writes the configuration of that site.
+
+**The panel**
+
+* **A generation of llms-full.txt shows the pages go by.** One block says what runs, with a progress bar
+  and each page as it is done; it stays under the result afterwards. The generation runs in the
+  background (`llms { startGeneration }`, read with `llms { generationProgress }`) instead of one request
+  that says nothing for a minute.
+* **The panel says which limit cut a generated file** (pages, size or time) and how many pages were left
+  out. Pages not written because llms-full.txt was full are marked so, no longer shown as failures or
+  left unsaid.
+* **The panel says which pages are left out**, from the rules in force for its site: hidden from the
+  menu, not translated, marked No index, of a configured type, and how many entries a file may list.
+* **Preview** of a file: its Markdown rendered and sanitized, in place of the editor.
 * A generated llms-full.txt says it is the pages put end to end, and that proofreading and cleaning it
   up before publishing is strongly advised.
-* The pages below a menu group can be chosen as a section, named after their group.
-* **Settings tab** in the panel, for who administers the site (permission `siteAdminLlmsSettings`): the
-  values of the site, each explained and checked, written in the configuration of that site.
-* **Fair page selection**: when a site has more pages than one file lists, every page of a level is
-  listed before any page of the next. `maxDepth` now defaults to 10: `maxPages` is the limit.
-* The panel says which limit cut a generated file (pages, size or time) and how many pages were left
-  out; pages not written because llms-full.txt was full are marked so, no longer as failures.
-* **A configuration per site**: `org.jahia.modules.llms.site-<name>.cfg` changes, for one site, what is
-  listed (depth, numbers, excluded and listed types, links to Markdown, images).
+* German, French and English labels for the panel, the settings, the permissions and the content type
+  fields.
 
-* **Each page has a Markdown version at its own URL followed by `.md`** (`page.html.md`), as the
-  llms.txt proposal (v2) asks. It is the page as a visitor without an account gets it: no Markdown
-  version of a page that is not published or not open to visitors. `linkToMarkdown` makes a generated
-  llms.txt link to these versions.
+**API**
 
-* **Pages name their Markdown version and the llms.txt of their site** in their `<head>`
-  (`rel="alternate" type="text/markdown"`, `rel="describedby"`), and a Markdown version does so in a
-  `Link` header. This is how the proposal lets an agent find these files from a page.
-
-* **A section of the site can have its own llms.txt and llms-full.txt**, as the proposal (v2) defines a
-  file in a sub-path. In the panel, "Files of" switches between the whole site and a section; the files
-  are generated from the page of the section down and served under its path
-  (`/home/docs/llms.txt`). The link of a page to its llms.txt names the nearest one.
+* GraphQL `llms { generate, startGeneration, generationProgress, status, sections, rules, settings }`
+  and `llms { save, saveSettings }`, with the permission checks on the server.
 
 ### Security
+
+* Saving the settings of a site never writes or removes the configuration of another site, even when
+  a file is named after the first and holds the key of the second. The values of the server
+  (`renderBaseUrl`, threads, timeouts, sizes) cannot be set for a site.
+* The preview renders Markdown through a sanitizer: no script, style, form, image, id or tab stop.
 
 * The public files are served with an `ETag` and `304 Not Modified` (`Cache-Control: no-cache`, so a
   published change is still served at once), and the site of a host comes from Jahia's cache: an
@@ -69,6 +103,10 @@
   placeholder is never served.
 
 ### Fixed
+
+* The thread that generates llms-full.txt works as the guest user: Jahia logged a "Null thread user"
+  error for each page of a generation.
+* A text of a page that is only a tag left open (`<ul`) is no longer written in llms-full.txt.
 
 * **llms-full.txt no longer drops parts of a page.** The converter kept only `<main>` and removed every
   hidden element, form and button. It now takes the first usual place that holds a fair share of the
@@ -88,10 +126,6 @@
 * **A page marked No index is left out of both files.** The check looked for a node type that does not
   exist (`jmix:noindex`), so the mark never had any effect. It now reads the **No index** option the
   sitemap module adds to a page (`jseomix:noIndex`).
-* The node types that leave a page out are configurable (`excludedNodeTypes`, as many as needed), with
-  the "hidden in the menu" marks of the jahia.com and Academy templates among the defaults, and a
-  second list leaves out a page with all its sub-pages (`excludedTreeNodeTypes`).
-
 ### Panel
 
 * **Generate sits with what it needs.** The language, the public URL and the Generate button are one
@@ -103,15 +137,6 @@
   keeps a readable line length.
 * Accessibility: every field is named, an invalid URL is tied to its field, tabs are related to their
   panel, status changes are announced, the focus is never lost after an action.
-
-* **A generation of llms-full.txt shows the pages go by.** A progress bar with the count of pages, and
-  a log of each page as it is rendered, with what became of it (rendered, empty and left out, failed and
-  left out). The log stays after the generation, until the next action. The generation runs in the
-  background (`llms { startGeneration }`, read with `llms { generationProgress }`) instead of one request
-  that says nothing for a minute.
-
-* **The panel says which pages are left out**, from the rules in force on this Jahia: hidden from the
-  menu, not translated, marked No index, of a configured type, and how many pages and levels are listed.
 
 ### Performance
 
@@ -133,7 +158,8 @@
   published, and then through a publication that could include sub-nodes of the site.
 * The panel checks that the module is enabled and that the user may publish, on a direct URL or a site
   switch too, and reads the site from jContent rather than from the page load.
-* React 18, `@apollo/client` from the host, Node 22, Yarn 1, Jahia 8.2 parent, Java 17.
+* React 18, `@apollo/client` from the host, Node 22, Yarn 1, Jahia 8.2 parent, Java 17. New front-end
+  dependencies for the preview: `marked` and `dompurify`.
 * At the domain root, a host claimed by no site or by the system site only is served by the default
   site.
 

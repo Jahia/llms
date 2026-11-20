@@ -115,6 +115,22 @@ record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String
     }
 
     /**
+     * A checked value as it is written in a configuration: trimmed, and a list of types on one line with
+     * a comma between its names, however it was typed.
+     *
+     * @param definition the value
+     * @param typed      what was typed, already checked; null or blank for none
+     * @return what to write; empty to write nothing
+     */
+    static String written(Definition definition, String typed) {
+        String text = typed == null ? "" : typed.trim();
+        if (definition.kind() != Kind.TYPES || text.isEmpty() || NONE.equals(text)) {
+            return text;
+        }
+        return String.join(", ", SiteWalker.typeNames(text));
+    }
+
+    /**
      * @param key a key of {@link #DEFINITIONS}
      * @return the value of these settings for it, written as a configuration writes it
      */

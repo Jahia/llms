@@ -1,18 +1,20 @@
 # llms: end-to-end tests
 
 Cypress specs run against a real Jahia with the module deployed. They cover what unit tests cannot:
-the public URLs, the permission checks of the GraphQL fields, generation from a published site, and
-the panel in jContent.
+the public URLs, the permission checks of the GraphQL fields, generation from a published site, the
+configuration of a site, and the panel in jContent.
 
 | Spec | What it proves |
 |---|---|
 | `01-serving` | `/llms.txt` and `/llms-full.txt`: status codes, `text/plain`, `ETag` and 304, a published change served at once, the `# Title` placeholder never served, and a `j:llms` written by another module (geo-readiness) served as is |
 | `02-authorization` | generate, save and status are refused to a guest, to a user with no role on the site and to a publisher of another site, and allowed to a publisher of the site |
 | `03-generation` | only published pages are listed, links use the public URL, nothing is stored, invalid public URLs and languages are refused |
-| `04-panel` | the panel as a publisher: tabs, field names for assistive technology, the invalid URL error, generate then edit then save and publish |
+| `04-panel` | the panel as a publisher: tabs, field names for assistive technology, the rules in force, the invalid URL error, generate then edit then save and publish; a generation of llms-full.txt in one block that stays in place, its advice, and the preview of the file |
+| `05-exclusions` | a page marked **No index** (sitemap module) leaves both files once the mark is published, and comes back when it is removed; a published page closed to visitors is in no file |
 | `06-page-markdown` | `page.html.md`: a published page as Markdown, 404 for a page that is not published or closed to visitors, the short URL on the site's host, a visitor's query string ignored, the servlet unreachable directly, a `.md` media file left alone; the page names its Markdown version and the llms.txt of its site, and both links answer |
-| `07-sections` | the files of a section: generated from its page, served under its path and on the site's host, apart from the site's; unknown paths refused; a page names the nearest llms.txt; in the panel, choosing a scope, the refusal with unsaved changes, saving a section alone |
-| `05-exclusions` | a page marked **No index** (sitemap module) leaves both files once the mark is published, and comes back when it is removed |
+| `07-sections` | the files of a section: generated from its page, served under its path and on the site's host, apart from the site's; the pages below a menu group offered as sections; the llms.txt of the site ending with the links to the section files; unknown paths refused; a page names the nearest llms.txt; in the panel, choosing a scope, the refusal with unsaved changes, saving a section alone |
+| `08-contents` | a published content shown as a page (a news item) listed after the pages, written in llms-full.txt, served as Markdown and naming it in its head; the configuration of one site leaving the others alone; listing only marked pages; the option List in llms.txt shown only with its permission, checked as an editor |
+| `09-settings` | the settings of a site as a site administrator: what may be set and what is inherited, nothing answered to a publisher or a visitor, a wrong value refused and nothing saved, the values of the server refused, one site written and emptied without touching another, the configuration of another site never overwritten; the Settings tab with its labels, defaults, errors and focus, and its absence for a publisher |
 
 ## Run
 

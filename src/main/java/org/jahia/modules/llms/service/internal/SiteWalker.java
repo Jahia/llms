@@ -63,17 +63,24 @@ public final class SiteWalker {
         String urlOf(JCRNodeWrapper page) throws RepositoryException;
     }
 
-    /** Finds the contents shown as a page of their own below a node, the most recent first. */
+    /** Finds the nodes of a type below a node, the most recently modified first, a batch at a time. */
     @FunctionalInterface
     public interface ContentFinder {
         /**
-         * @param root  the site, or the page at the top of a section
-         * @param limit the most nodes to return
-         * @return the nodes, as the session of {@code root} reads them
+         * @param root   the site, or the page at the top of a section
+         * @param type   the node type to look for
+         * @param offset how many nodes to pass over
+         * @param limit  the most nodes to return
+         * @return the nodes, as the session of {@code root} reads them; fewer than the limit at the end
          * @throws RepositoryException when the repository cannot be searched
          */
-        List<JCRNodeWrapper> find(JCRNodeWrapper root, int limit) throws RepositoryException;
+        List<JCRNodeWrapper> find(JCRNodeWrapper root, String type, int offset, int limit) throws RepositoryException;
     }
+
+    /** A content that is shown as a page of its own. */
+    public static final String MAIN_RESOURCE = "jmix:mainResource";
+    /** Batches read to fill the list of contents: what is found is filtered, so one batch may not do. */
+    private static final int MAX_CONTENT_BATCHES = 10;
 
     private static final String PAGE = "jnt:page";
     private static final String CONTENT_FOLDER = "jnt:contentFolder";
@@ -112,6 +119,8 @@ public final class SiteWalker {
     private Set<String> admitted;
     /** Whether that choice left pages out. */
     private boolean cut;
+    /** The deepest level that choice took a page from: the walk reads no deeper. */
+    private int reach;
     private final Set<String> excluded;
     private final Set<String> excludedTrees;
     private final Set<String> included;
@@ -274,6 +283,7 @@ public final class SiteWalker {
                         break;
                     }
                     chosen.add(node.getPath());
+                    reach = depth;
                 }
             }
             List<JCRNodeWrapper> next = new ArrayList<>();
@@ -323,8 +333,8 @@ public final class SiteWalker {
      * @param depth    their level below the home page
      */
     private void descend(List<Page> pages, List<JCRNodeWrapper> children, int depth) throws RepositoryException {
-        // Once the page limit is reached nothing more is listed: the rest of the tree is not read.
-        if (depth > maxDepth || truncated) {
+        // No page was chosen below the level the limit reached: the rest of the tree is not read.
+        if (depth > maxDepth || depth > reach || truncated) {
             return;
         }
         for (JCRNodeWrapper child : children) {
@@ -333,7 +343,7 @@ public final class SiteWalker {
             }
             add(pages, child);
             // The children of a page at the last level are not listed: they are not read either.
-            if (depth < maxDepth) {
+            if (depth < maxDepth && depth < reach) {
                 descend(pages, pagesBelow(child), depth + 1);
             }
         }
@@ -386,19 +396,38 @@ public final class SiteWalker {
             return;
         }
         Map<String, Section> byHolder = new LinkedHashMap<>();
-        int kept = 0;
-        // More than the limit is asked for: some of what is found is left out below.
-        for (JCRNodeWrapper node : finder.find(root, maxContents * 2 + 20)) {
-            if (isPage(node) || !listableContent(node) || isBelowExcludedTree(node, root)) {
-                continue;
+        Set<String> seen = new HashSet<>();
+        int batch = maxContents * 2 + 20;
+        // When only marked contents are listed, the marks are what is looked for: marked contents are
+        // few among many, and would not be among the most recent of all.
+        for (String type : included.isEmpty() ? Set.of(MAIN_RESOURCE) : included) {
+            for (int round = 0; round < MAX_CONTENT_BATCHES && seen.size() < maxContents; round++) {
+                List<JCRNodeWrapper> found = finder.find(root, type, round * batch, batch);
+                for (JCRNodeWrapper node : found) {
+                    if (seen.size() >= maxContents) {
+                        truncated = true;
+                        break;
+                    }
+                    content(byHolder, seen, node, root);
+                }
+                if (found.size() < batch) {
+                    break;
+                }
             }
-            if (kept >= maxContents) {
-                truncated = true;
-                break;
+        }
+        sections.addAll(byHolder.values());
+    }
+
+    /** Lists one content, when it is one to list. A content that cannot be read up to the root is passed over. */
+    private void content(Map<String, Section> byHolder, Set<String> seen, JCRNodeWrapper node, JCRNodeWrapper root) {
+        try {
+            if (seen.contains(node.getPath()) || isPage(node) || !node.isNodeType(MAIN_RESOURCE) || !listableContent(node)
+                    || isBelowExcludedTree(node, root)) {
+                return;
             }
             String url = urls.urlOf(node);
             if (url == null || url.isEmpty()) {
-                continue;
+                return;
             }
             JCRNodeWrapper holder = holder(node, root);
             Section section = byHolder.get(holder.getPath());
@@ -407,9 +436,10 @@ public final class SiteWalker {
                 byHolder.put(holder.getPath(), section);
             }
             section.pages().add(new Page(title(node), url, oneLine(property(node, "jcr:description")), node.getUrl()));
-            kept++;
+            seen.add(node.getPath());
+        } catch (RepositoryException e) {
+            // A node above it that a visitor cannot read, or a node gone since it was found: not listed.
         }
-        sections.addAll(byHolder.values());
     }
 
     /** The nearest page or content folder above a content, no higher than the root of the walk. */

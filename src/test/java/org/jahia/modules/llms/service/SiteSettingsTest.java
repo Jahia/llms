@@ -77,6 +77,16 @@ class SiteSettingsTest {
     }
 
     @Test
+    void aListOfTypesIsWrittenOnOneLineHoweverItWasTyped() {
+        SiteSettings.Definition types = SiteSettings.DEFINITIONS.stream().filter(d -> d.key().equals("excludedNodeTypes")).findFirst().orElseThrow();
+        SiteSettings.Definition number = SiteSettings.DEFINITIONS.stream().filter(d -> d.key().equals("maxDepth")).findFirst().orElseThrow();
+        assertThat(SiteSettings.written(types, " jseomix:noIndex\n acme:internal ,jseomix:noIndex ")).isEqualTo("jseomix:noIndex, acme:internal");
+        assertThat(SiteSettings.written(types, "none")).isEqualTo("none");
+        assertThat(SiteSettings.written(types, null)).isEmpty();
+        assertThat(SiteSettings.written(number, " 8 ")).isEqualTo("8");
+    }
+
+    @Test
     void aFlagIsTrueOrFalseAndNothingElse() {
         SiteSettings on = MODULE.with(Map.of("keepImages", "TRUE"));
         assertThat(on.keepImages()).isTrue();

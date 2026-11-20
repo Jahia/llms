@@ -168,5 +168,12 @@ describe('contents shown as a page, and the configuration of one site', () => {
         });
         // The other site lists every page, as before.
         generated(false, OTHER).should('contain', '[About us]');
+
+        // A marked content is listed however many more recent ones are not marked: with room for one
+        // content only, the unmarked news published after it does not take its place.
+        news('later', 'Later news', 'Published after the launch.');
+        publishAndWaitJobEnding(`/sites/${SITE}/contents/later`, ['en']);
+        configureSite({includedNodeTypes: 'jmix:llmsListed', maxMainResources: '1'});
+        generated(false).should('contain', '[Product launch]').and('not.contain', '[Later news]');
     });
 });

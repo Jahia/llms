@@ -259,13 +259,8 @@ public class LlmsService {
      * @return the values the site may set, with what it sets and what it inherits
      */
     public List<Setting> siteSettings(String siteKey) {
-        Map<String, Object> site = Map.of();
-        for (SiteOverride override : overrides) {
-            if (override.siteKey().equals(siteKey)) {
-                site = override.properties();
-                break;
-            }
-        }
+        SiteOverride own = overrideOf(siteKey);
+        Map<String, Object> site = own == null ? Map.of() : own.properties();
         Map<String, String> values = new HashMap<>();
         for (SiteSettings.Definition definition : SiteSettings.DEFINITIONS) {
             Object value = site.get(definition.key());
@@ -305,34 +300,33 @@ public class LlmsService {
             return settingsOf(values, refused);
         }
         String identifier = siteKey;
-        for (SiteOverride override : overrides) {
-            if (override.siteKey().equals(siteKey)) {
-                identifier = override.identifier();
-                if (identifier == null) {
-                    throw new IllegalStateException("The configuration of this site was not made from a named file");
-                }
-                break;
+        SiteOverride own = overrideOf(siteKey);
+        if (own != null) {
+            identifier = own.identifier();
+            if (identifier == null) {
+                throw new IllegalStateException("The configuration of this site was not made from a named file");
             }
         }
         Config config = ownConfig(siteKey, identifier);
         Map<String, String> stored = config.getRawProperties();
-        boolean any = false;
+        Map<String, String> written = new HashMap<>();
         for (SiteSettings.Definition d : SiteSettings.DEFINITIONS) {
-            String value = values.get(d.key());
-            if (value == null || value.isBlank()) {
+            String value = SiteSettings.written(d, values.get(d.key()));
+            written.put(d.key(), value);
+            if (value.isEmpty()) {
                 stored.remove(d.key());
             } else {
-                stored.put(d.key(), value.trim());
-                any = true;
+                stored.put(d.key(), value);
             }
         }
-        if (any) {
+        // The file goes when it says nothing any more. A key an operator added to it keeps it.
+        if (stored.keySet().stream().allMatch("siteKey"::equals)) {
+            configService.deleteConfig(config);
+        } else {
             stored.put("siteKey", siteKey);
             configService.storeConfig(config);
-        } else {
-            configService.deleteConfig(config);
         }
-        return settingsOf(values, Map.of());
+        return settingsOf(written, Map.of());
     }
 
     /**
@@ -353,22 +347,37 @@ public class LlmsService {
         throw new IllegalStateException("The configuration of this site could not be written: its file names are taken");
     }
 
-    /** What a generation lists for a site: the module configuration, then what the site's own changes. */
-    private SiteSettings settingsOf(String siteKey) {
-        SiteSettings settings = defaults;
+    /**
+     * The configuration of a site. A site has one: when several files name the same site, the one whose
+     * name sorts first counts, here and in the panel alike, so what the panel shows is what applies.
+     */
+    private SiteOverride overrideOf(String siteKey) {
+        SiteOverride first = null;
         for (SiteOverride override : overrides) {
-            if (override.siteKey().equals(siteKey)) {
-                settings = settings.with(override.properties());
+            if (override.siteKey().equals(siteKey)
+                    && (first == null || String.valueOf(override.identifier()).compareTo(String.valueOf(first.identifier())) < 0)) {
+                first = override;
             }
         }
-        return settings;
+        return first;
     }
 
-    /** The contents shown as a page of their own below a node, the most recently modified first. */
-    private static List<JCRNodeWrapper> mainResources(JCRNodeWrapper root, int limit) throws RepositoryException {
+    /** What a generation lists for a site: the module configuration, then what the site's own changes. */
+    private SiteSettings settingsOf(String siteKey) {
+        SiteOverride override = overrideOf(siteKey);
+        return override == null ? defaults : defaults.with(override.properties());
+    }
+
+    /** The nodes of a type below a node, the most recently modified first. A type this Jahia does not know has none. */
+    private static List<JCRNodeWrapper> mainResources(JCRNodeWrapper root, String type, int offset, int limit) throws RepositoryException {
+        // The type is a name read by SiteWalker.typeNames, or the mixin of the contents shown as a page.
+        if (!NodeTypeRegistry.getInstance().hasNodeType(type) || SiteWalker.typeNames(type).isEmpty()) {
+            return List.of();
+        }
         Query query = root.getSession().getWorkspace().getQueryManager().createQuery(
-                "SELECT * FROM [jmix:mainResource] AS n WHERE ISDESCENDANTNODE(n, '" + root.getPath().replace("'", "''")
+                "SELECT * FROM [" + type + "] AS n WHERE ISDESCENDANTNODE(n, '" + root.getPath().replace("'", "''")
                         + "') ORDER BY n.[jcr:lastModified] DESC", Query.JCR_SQL2);
+        query.setOffset(offset);
         query.setLimit(limit);
         List<JCRNodeWrapper> out = new ArrayList<>();
         NodeIterator found = query.execute().getNodes();

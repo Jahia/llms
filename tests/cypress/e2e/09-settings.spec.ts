@@ -205,6 +205,13 @@ describe('the settings of a site', () => {
         // Still focused: the button is never disabled.
         cy.get('[data-llms-role="save-settings"]').should('have.focus');
 
+        // Left and come back to, without reloading: the tab shows what was saved, not what it first read.
+        cy.get('[data-llms-tab="llms"]').click();
+        cy.get('[data-llms-tab="settings"]').click();
+        cy.get('#llms-set-maxDepth').should('have.value', '5');
+        cy.get('#llms-set-linkToMarkdown-yes').should('be.checked');
+        cy.get('[data-llms-role="settings-unsaved"]').should('not.exist');
+
         applied();
         cy.reload();
         cy.get('[data-llms-tab="settings"]', {timeout: 60000}).click();

@@ -224,7 +224,12 @@ export const LlmsEditor = ({siteKey}) => {
     const live = useQuery(LLMS_STATUS, {variables: {siteKey, path: scoped.scope}, fetchPolicy: 'network-only', errorPolicy: 'all'});
     // Read on its own: the panel works without it, it only says less about what is left out.
     const rules = useQuery(LLMS_RULES, {variables: {siteKey}, errorPolicy: 'all'});
-    const settingFields = useSiteSettings(siteKey);
+    const readSettings = useSiteSettings(siteKey);
+    // What the Settings tab last stored for this site: the server tells of it a moment later only.
+    const [storedSettings, setStoredSettings] = useState(null);
+    const settingFields = storedSettings?.siteKey === siteKey ? storedSettings.fields : readSettings;
+    const applying = useRef(null);
+    useEffect(() => () => clearTimeout(applying.current), []);
     const [saveFiles, {loading: saving}] = useMutation(LLMS_SAVE);
 
     const node = data?.jcr?.nodeByPath;
@@ -434,7 +439,11 @@ export const LlmsEditor = ({siteKey}) => {
                                 <SiteSettingsPanel siteKey={siteKey}
                                                    fields={settingFields}
                                                    onAnnounce={setAnnouncement}
-                                                   onSaved={() => setTimeout(() => rules.refetch(), SETTINGS_APPLY_MS)}/>
+                                                   onSaved={fields => {
+                                                       setStoredSettings({siteKey, fields});
+                                                       clearTimeout(applying.current);
+                                                       applying.current = setTimeout(() => rules.refetch(), SETTINGS_APPLY_MS);
+                                                   }}/>
                             </div>
                         ) : (
                             <>

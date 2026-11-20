@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useMutation} from '@apollo/client';
 import {useTranslation} from 'react-i18next';
@@ -156,6 +156,8 @@ export const SiteSettingsPanel = ({siteKey, fields, onSaved, onAnnounce}) => {
     // Counts the saves that were refused: each one moves the focus to the first value to correct.
     const [refused, setRefused] = useState(0);
     const [saveSettings, {loading: saving}] = useMutation(LLMS_SAVE_SETTINGS);
+    // Set at once, where the state of the mutation is known a render later: two saves never run together.
+    const isBusy = useRef(false);
 
     useEffect(() => {
         if (refused > 0) {
@@ -181,7 +183,7 @@ export const SiteSettingsPanel = ({siteKey, fields, onSaved, onAnnounce}) => {
     };
 
     const save = async () => {
-        if (saving) {
+        if (isBusy.current) {
             return;
         }
 
@@ -193,6 +195,7 @@ export const SiteSettingsPanel = ({siteKey, fields, onSaved, onAnnounce}) => {
             return;
         }
 
+        isBusy.current = true;
         try {
             const {data} = await saveSettings({
                 variables: {siteKey, keys: current.map(field => field.key), values: current.map(field => values[field.key].trim())}
@@ -213,9 +216,12 @@ export const SiteSettingsPanel = ({siteKey, fields, onSaved, onAnnounce}) => {
             }
 
             onAnnounce(t('config.saved'));
-            onSaved();
+            // What was stored goes up: the tab shows it again when the editor comes back to it.
+            onSaved(stored);
         } catch (e) {
             setFailure(e?.graphQLErrors?.[0]?.message || e?.message || '');
+        } finally {
+            isBusy.current = false;
         }
     };
 
