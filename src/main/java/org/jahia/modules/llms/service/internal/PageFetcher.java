@@ -11,6 +11,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Locale;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,30 +21,34 @@ import java.util.regex.Pattern;
  *
  * <p>The target is never chosen by a caller: the base is this Jahia's own address (configuration, else
  * 127.0.0.1 on the request's local port) and the path is a page's render URL read from the repository.
- * Redirects are followed on that origin only. Thread-safe.</p>
+ * Redirects are followed on that origin only, and only to a path the caller allows. Thread-safe.</p>
  */
 public final class PageFetcher {
 
     private static final Pattern CHARSET = Pattern.compile("charset=\"?([A-Za-z0-9._-]+)");
 
+    /** One client for every generation: a client owns threads that are only freed when it is collected. */
+    private static final HttpClient CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build();
+
     private final String base;
     private final Duration timeout;
     private final int maxBytes;
-    private final HttpClient client;
+    private final Predicate<String> redirectPath;
 
     /**
      * @param base           scheme, host and port of this Jahia ({@code http://127.0.0.1:8080})
      * @param timeoutSeconds time allowed for one page
      * @param maxBytes       largest page read; a larger one is cut
+     * @param redirectPath   accepts the path of a redirect; a redirect to any other path is refused
      */
-    public PageFetcher(String base, int timeoutSeconds, int maxBytes) {
-        this.base = base.replaceAll("/+$", "");
+    public PageFetcher(String base, int timeoutSeconds, int maxBytes, Predicate<String> redirectPath) {
+        this.base = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
         this.timeout = Duration.ofSeconds(Math.max(1, timeoutSeconds));
         this.maxBytes = Math.max(1024, maxBytes);
-        this.client = HttpClient.newBuilder()
-                .connectTimeout(timeout)
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
+        this.redirectPath = redirectPath;
     }
 
     /**
@@ -62,11 +67,11 @@ public final class PageFetcher {
                     .header("Accept", "text/html")
                     .header("User-Agent", "Jahia-llms-generator")
                     .GET().build();
-            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<InputStream> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofInputStream());
             int status = response.statusCode();
             if (status >= 300 && status < 400) {
                 response.body().close();
-                uri = sameOrigin(uri, response.headers().firstValue("Location").orElse(null));
+                uri = redirect(uri, response.headers().firstValue("Location").orElse(null), redirectPath);
                 continue;
             }
             String type = response.headers().firstValue("Content-Type").orElse("").toLowerCase(Locale.ROOT);
@@ -81,14 +86,25 @@ public final class PageFetcher {
         throw new IOException("too many redirects");
     }
 
-    /** A redirect stays on this Jahia: an absolute Location on another origin is refused. */
-    private static URI sameOrigin(URI from, String location) throws IOException {
+    /**
+     * A redirect stays on this Jahia and on the paths the caller allows: an absolute Location on another
+     * origin is refused, and so is a path of another site or of a servlet.
+     */
+    static URI redirect(URI from, String location, Predicate<String> allowedPath) throws IOException {
         if (location == null || location.isEmpty()) {
             throw new IOException("redirect without location");
         }
-        URI to = from.resolve(location);
+        URI to;
+        try {
+            to = from.resolve(location).normalize();
+        } catch (IllegalArgumentException e) {
+            throw new IOException("redirect to an invalid location");
+        }
         if (!from.getScheme().equals(to.getScheme()) || !from.getAuthority().equals(to.getAuthority())) {
             throw new IOException("redirect off this server");
+        }
+        if (to.getPath() == null || !allowedPath.test(to.getPath())) {
+            throw new IOException("redirect off this site");
         }
         return to;
     }

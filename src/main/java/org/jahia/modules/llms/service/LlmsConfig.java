@@ -48,6 +48,12 @@ public @interface LlmsConfig {
     int maxFullKb() default 4096;
 
     /**
+     * @return seconds allowed for one generation of llms-full.txt, all pages together
+     */
+    @AttributeDefinition(name = "Generation timeout", description = "Seconds allowed for one generation of llms-full.txt; pages not rendered in time are left out")
+    int maxTotalSeconds() default 300;
+
+    /**
      * @return where this Jahia renders pages for llms-full.txt; blank for the port the request came in on, on 127.0.0.1
      */
     @AttributeDefinition(name = "Render base URL", description = "Scheme, host and port this Jahia answers on from inside its own container (http://127.0.0.1:8080). Blank: 127.0.0.1 on the port of the request.", required = false)

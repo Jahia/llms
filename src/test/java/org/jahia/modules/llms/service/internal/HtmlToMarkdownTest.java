@@ -90,4 +90,34 @@ class HtmlToMarkdownTest {
         String md = convert("<main><div>Line one<br>Line   two<p>Para</p>tail <em>end</em></div></main>", "x");
         assertThat(md).isEqualTo("Line one\nLine two\n\nPara\n\ntail *end*");
     }
+
+    @Test
+    void writesOnlyWebMailAndPhoneLinks() {
+        String md = convert("<main><p><a href='JavaScript:alert(1)'>run</a> <a href='data:text/html,x'>data</a> "
+                + "<a href='vbscript:x'>vb</a> <a href='MAILTO:a@example.com'>mail</a> <a href='/ok'>ok</a></p></main>", "T");
+        assertThat(md).isEqualTo("run data vb [mail](mailto:a@example.com) [ok](https://www.example.com/ok)");
+    }
+
+    @Test
+    void dropsImagesThatAreNotOnTheWeb() {
+        String md = convert("<main><p><img alt='a' src='data:image/png;base64,AAAA'><img alt='b' src='javascript:x'>"
+                + "<img alt='c' src='/c.png'></p></main>", "T");
+        assertThat(md).isEqualTo("![c](https://www.example.com/c.png)");
+    }
+
+    @Test
+    void aLinkTargetCannotCloseTheLinkOrBreakTheLine() {
+        String md = convert("<main><p><a href='/a(b) c'>x</a></p></main>", "T");
+        assertThat(md).isEqualTo("[x](https://www.example.com/a%28b%29%20c)");
+    }
+
+    @Test
+    void longRunsOfWhiteSpaceAreConvertedInLinearTime() {
+        String spaces = " ".repeat(300_000);
+        String html = "<main><pre>code" + spaces + "x</pre><ul><li><p>a" + spaces + "b</p></li></ul></main>";
+        org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(5), () -> {
+            String md = convert(html, "T");
+            assertThat(md).startsWith("```\ncode").endsWith("- a b");
+        });
+    }
 }

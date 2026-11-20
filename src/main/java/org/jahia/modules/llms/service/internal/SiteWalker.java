@@ -8,6 +8,7 @@ import javax.jcr.Value;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * Lists the pages llms.txt and llms-full.txt describe, in the order both files present them.
@@ -52,6 +53,16 @@ public final class SiteWalker {
     private static final String PAGE = "jnt:page";
     private static final String MENU_GROUP = "jnt:navMenuText";
     private static final int MAX_DESCRIPTION = 300;
+    /** A description is cut to MAX_DESCRIPTION: nothing past this many characters of the source is read. */
+    private static final int MAX_DESCRIPTION_SOURCE = 4000;
+    /** Menu groups nested deeper than this are not looked through. */
+    private static final int MAX_GROUP_DEPTH = 5;
+    private static final Pattern WHITE_SPACE = Pattern.compile("\\s+");
+    private static final Pattern TAG = Pattern.compile("<[^<>]*>");
+
+    /** A level-1 page with the pages below it, read once. */
+    private record Group(JCRNodeWrapper page, List<JCRNodeWrapper> below) {
+    }
 
     private final Locale locale;
     private final UrlResolver urls;
@@ -80,27 +91,40 @@ public final class SiteWalker {
      */
     public Walk walk(JCRSiteNode site) throws RepositoryException {
         List<Section> sections = new ArrayList<>();
-        JCRNodeWrapper home = home(site);
+        // Every list of children is a read of the repository: each one is read once and kept.
+        List<JCRNodeWrapper> top = new ArrayList<>();
+        site.getNodes().forEach(top::add);
+        JCRNodeWrapper home = home(top);
         if (home != null) {
             List<Page> main = new ArrayList<>();
             add(main, home);
-            List<JCRNodeWrapper> grouped = new ArrayList<>();
+            List<Group> grouped = new ArrayList<>();
             for (JCRNodeWrapper child : pagesBelow(home)) {
-                if (pagesBelow(child).isEmpty()) {
+                if (truncated) {
+                    break;
+                }
+                List<JCRNodeWrapper> below = pagesBelow(child);
+                if (below.isEmpty()) {
                     add(main, child);
                 } else {
-                    grouped.add(child);
+                    grouped.add(new Group(child, below));
                 }
             }
             section(sections, title(home), main);
-            for (JCRNodeWrapper group : grouped) {
+            for (Group group : grouped) {
+                if (truncated) {
+                    break;
+                }
                 List<Page> pages = new ArrayList<>();
-                add(pages, group);
-                descend(pages, group, 2);
-                section(sections, title(group), pages);
+                add(pages, group.page());
+                descend(pages, group.below(), 2);
+                section(sections, title(group.page()), pages);
             }
         }
-        for (JCRNodeWrapper other : site.getNodes()) {
+        for (JCRNodeWrapper other : top) {
+            if (truncated) {
+                break;
+            }
             if ((home != null && other.getPath().equals(home.getPath())) || !(isPage(other) || isGroup(other))) {
                 continue;
             }
@@ -108,33 +132,48 @@ public final class SiteWalker {
             if (isPage(other)) {
                 add(pages, other);
             }
-            descend(pages, other, 1);
+            descend(pages, pagesBelow(other), 1);
             section(sections, title(other), pages);
         }
         return new Walk(title(site), oneLine(property(site, "j:description")), sections, truncated);
     }
 
-    private void descend(List<Page> pages, JCRNodeWrapper parent, int depth) throws RepositoryException {
-        if (depth > maxDepth) {
+    /**
+     * @param children the pages at this depth
+     * @param depth    their level below the home page
+     */
+    private void descend(List<Page> pages, List<JCRNodeWrapper> children, int depth) throws RepositoryException {
+        // Once the page limit is reached nothing more is listed: the rest of the tree is not read.
+        if (depth > maxDepth || truncated) {
             return;
         }
-        for (JCRNodeWrapper child : pagesBelow(parent)) {
+        for (JCRNodeWrapper child : children) {
+            if (truncated) {
+                return;
+            }
             add(pages, child);
-            descend(pages, child, depth + 1);
+            // The children of a page at the last level are not listed: they are not read either.
+            if (depth < maxDepth) {
+                descend(pages, pagesBelow(child), depth + 1);
+            }
         }
     }
 
     /** Pages under a node, looking through menu groups, which are not pages themselves. */
     private static List<JCRNodeWrapper> pagesBelow(JCRNodeWrapper parent) throws RepositoryException {
         List<JCRNodeWrapper> out = new ArrayList<>();
+        collect(out, parent, 0);
+        return out;
+    }
+
+    private static void collect(List<JCRNodeWrapper> out, JCRNodeWrapper parent, int groupDepth) throws RepositoryException {
         for (JCRNodeWrapper child : parent.getNodes()) {
             if (isPage(child)) {
                 out.add(child);
-            } else if (isGroup(child)) {
-                out.addAll(pagesBelow(child));
+            } else if (isGroup(child) && groupDepth < MAX_GROUP_DEPTH) {
+                collect(out, child, groupDepth + 1);
             }
         }
-        return out;
     }
 
     private void add(List<Page> pages, JCRNodeWrapper page) throws RepositoryException {
@@ -174,9 +213,9 @@ public final class SiteWalker {
     }
 
     /** The home page: the page flagged {@code j:isHomePage}, else the page named {@code home}. */
-    private static JCRNodeWrapper home(JCRSiteNode site) throws RepositoryException {
+    private static JCRNodeWrapper home(List<JCRNodeWrapper> top) throws RepositoryException {
         JCRNodeWrapper named = null;
-        for (JCRNodeWrapper child : site.getNodes()) {
+        for (JCRNodeWrapper child : top) {
             if (isPage(child)) {
                 if (bool(child, "j:isHomePage")) {
                     return child;
@@ -213,7 +252,8 @@ public final class SiteWalker {
         for (String name : new String[]{"jcr:title", "j:title"}) {
             String title = property(node, name);
             if (title != null && !title.isBlank()) {
-                return title.trim();
+                // One line: a title is written after "# " and inside a link.
+                return WHITE_SPACE.matcher(title).replaceAll(" ").trim();
             }
         }
         String name = node.getName().replace('-', ' ').replace('_', ' ').trim();
@@ -225,7 +265,9 @@ public final class SiteWalker {
         if (text == null) {
             return null;
         }
-        String out = text.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+        // Cut first: the tag pattern below costs the square of the length on a text made of "<".
+        String source = text.length() <= MAX_DESCRIPTION_SOURCE ? text : text.substring(0, MAX_DESCRIPTION_SOURCE);
+        String out = WHITE_SPACE.matcher(TAG.matcher(source).replaceAll(" ")).replaceAll(" ").trim();
         if (out.isEmpty()) {
             return null;
         }

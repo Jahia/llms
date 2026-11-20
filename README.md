@@ -68,13 +68,35 @@ add `digital-factory-data/karaf/etc/org.jahia.modules.llms.cfg` to change a valu
 | `fetchThreads` | `4` | Pages rendered at the same time (8 at most) |
 | `maxPageKb` | `2048` | Largest rendered page read |
 | `maxFullKb` | `4096` | Largest llms-full.txt produced |
+| `maxTotalSeconds` | `300` | Time allowed for one generation of llms-full.txt, all pages together. Pages not rendered in time are named after generation and left out. |
 | `renderBaseUrl` | blank | Scheme, host and port this Jahia answers on from inside its own container. Blank: `http://127.0.0.1` on the port the editor's request came in on. Set it when Jahia sits behind a connector on another port. |
+
+A value out of range is brought back into it (for example `maxPages` between 1 and 2000, sizes up to
+64 MB), and a `renderBaseUrl` that is not a scheme, a host and an optional port is ignored. Two
+generations of llms-full.txt run at the same time on one Jahia at most, one per site.
+
+## Serving
+
+`/llms.txt` and `/llms-full.txt` answer with an `ETag`; a request with `If-None-Match` for an unchanged
+file gets `304 Not Modified`. `Cache-Control` is `public, no-cache` for a visitor without an account
+(`private, no-cache` for a signed-in user): a proxy or CDN may keep the file but revalidates it on each
+request, so a published change is served at once.
+
+## Other modules
+
+The storage is a contract other modules build on (geo-readiness writes `j:llms` from its dashboard, then
+reads `/llms.txt` back): the module key `llms`, the mixin `jmix:llms` and the string property `j:llms`
+on the site node, published to live and served as `text/plain` at `/llms.txt`. A file is served whether
+or not this module is enabled on the site. The autocreated `# Title` is not a file: its URL answers 404.
 
 ## API
 
-The panel uses two GraphQL fields, open to signed-in users with the right permissions on the site:
+The panel uses three GraphQL fields, open to signed-in users with the right permissions on the site:
 
 ```graphql
+# publish on the site: whether each file is served, and is the saved one
+query { llms { status(siteKey: "mySite") { llms { served current } llmsFull { served current } } } }
+
 # publish on the site
 query { llms { generate(siteKey: "mySite", language: "en", baseUrl: "https://www.example.com", full: false) {
     content pages failedPages truncated } } }

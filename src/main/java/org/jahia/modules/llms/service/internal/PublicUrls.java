@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
  * The public URL of a page as the site prints it on its public host: the page's default vanity URL when
  * it has one, else its render URL passed through Jahia's outbound rewriter as if the request came in on
  * that host. The host is never read from a request: it is the site's public base URL, set by an editor.
- * Thread-safe: each instance holds its own request stand-in, one instance per generation.
+ * Not thread-safe: one instance per generation, used by the thread that walks the site.
  */
 public final class PublicUrls {
 
@@ -36,6 +36,8 @@ public final class PublicUrls {
     private final String base;
     private final HttpServletRequest request;
     private final HttpServletResponse response;
+    /** Looked up at the first page and kept: one instance serves every page of a generation. */
+    private UrlRewriteService rewriter;
 
     /**
      * @param base the site's public base URL ({@code https://www.example.com}), checked against {@link #BASE_URL}
@@ -63,7 +65,9 @@ public final class PublicUrls {
         }
         String path = page.getUrl();
         try {
-            UrlRewriteService rewriter = (UrlRewriteService) SpringContextSingleton.getBean("UrlRewriteService");
+            if (rewriter == null) {
+                rewriter = (UrlRewriteService) SpringContextSingleton.getBean("UrlRewriteService");
+            }
             String rewritten = rewriter.rewriteOutbound(path, request, response);
             if (rewritten != null && !rewritten.isEmpty()) {
                 path = rewritten;

@@ -7,8 +7,10 @@ import org.jsoup.nodes.TextNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 
 /**
  * Turns the main content of a rendered page into Markdown for llms-full.txt.
@@ -26,6 +28,12 @@ public final class HtmlToMarkdown {
     private static final String BREADCRUMB = "[class*=breadcrumb], [aria-label~=(?i)breadcrumb|ariane|brotkr]";
     private static final String CHROME = "header, footer, nav, aside, [role=navigation], [role=banner], "
             + "[role=contentinfo], [role=complementary], [role=search]";
+    /** Compiled once: the converter runs these on every fragment of text of every page. */
+    private static final Pattern BLANK_LINES = Pattern.compile("\n{3,}");
+    private static final Pattern SPACES = Pattern.compile("[ \\t\\r\\f]+");
+    private static final String SENTENCE_END = ".:!?";
+    private static final Set<String> LINK_SCHEMES = Set.of("http", "https", "mailto", "tel");
+    private static final Set<String> IMAGE_SCHEMES = Set.of("http", "https");
     private static final Set<String> BLOCKS = Set.of("address", "article", "aside", "blockquote", "dd", "details",
             "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6",
             "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "summary", "table", "tbody", "td",
@@ -70,7 +78,7 @@ public final class HtmlToMarkdown {
         }
 
         String result() {
-            return String.join("\n\n", out).replaceAll("\n{3,}", "\n\n").trim();
+            return BLANK_LINES.matcher(String.join("\n\n", out)).replaceAll("\n\n").trim();
         }
 
         /** Writes the children of a container, gathering consecutive inline content into paragraphs. */
@@ -102,7 +110,7 @@ public final class HtmlToMarkdown {
                 case "p", "summary", "dt", "figcaption" -> add(tidy(inlineOf(el)));
                 case "ul", "ol" -> add(list(el, listDepth));
                 case "blockquote" -> add(quote(el));
-                case "pre" -> add("```\n" + el.wholeText().replaceAll("\\s+$", "") + "\n```");
+                case "pre" -> add("```\n" + el.wholeText().stripTrailing() + "\n```");
                 case "table" -> add(table(el));
                 case "hr" -> add("---");
                 default -> blocks(el, listDepth);
@@ -127,7 +135,7 @@ public final class HtmlToMarkdown {
             }
             if (flat) {
                 // A card title in a list item: "[Title](url): the text that follows".
-                out.add(text.matches(".*[.:!?]$") ? text : text + ":");
+                out.add(SENTENCE_END.indexOf(text.charAt(text.length() - 1)) >= 0 ? text : text + ":");
                 return;
             }
             out.add("#".repeat(Math.max(2, level)) + " " + text);
@@ -160,14 +168,14 @@ public final class HtmlToMarkdown {
                 sb.append(indent).append(ordered ? index++ + ". " : "- ").append(line).append('\n');
                 nested.forEach(n -> sb.append(n).append('\n'));
             }
-            return sb.toString().replaceAll("\n+$", "");
+            return sb.toString().stripTrailing();
         }
 
         /** A block inside a list item or a table cell, flattened to one line. */
         private String textOfBlock(Element el) {
             Writer inner = new Writer("", linkMap, true);
             inner.blocks(el, 0);
-            return inner.result().replaceAll("\\s*\n+\\s*", " ");
+            return oneLine(inner.result());
         }
 
         private String quote(Element el) {
@@ -243,7 +251,7 @@ public final class HtmlToMarkdown {
         private String link(Element a) {
             String text = tidy(inlineOf(a));
             String href = a.absUrl("href");
-            if (href.isEmpty() || href.startsWith("javascript:") || a.attr("href").startsWith("#")) {
+            if (!hasScheme(href, LINK_SCHEMES) || a.attr("href").startsWith("#")) {
                 return text;
             }
             if (text.isEmpty()) {
@@ -252,16 +260,59 @@ public final class HtmlToMarkdown {
             if (text.isEmpty()) {
                 return "";
             }
-            return "[" + text.replace("[", "\\[").replace("]", "\\]") + "](" + linkMap.apply(href).replace(" ", "%20") + ")";
+            return "[" + text.replace("[", "\\[").replace("]", "\\]") + "](" + target(linkMap.apply(href)) + ")";
         }
 
         private String image(Element img) {
             String alt = img.attr("alt").trim();
             String src = img.absUrl("src");
-            if (alt.isEmpty() || src.isEmpty() || src.startsWith("data:")) {
+            if (alt.isEmpty() || !hasScheme(src, IMAGE_SCHEMES)) {
                 return "";
             }
-            return "![" + alt.replace("[", "\\[").replace("]", "\\]") + "](" + src.replace(" ", "%20") + ")";
+            return "![" + alt.replace("[", "\\[").replace("]", "\\]") + "](" + target(src) + ")";
+        }
+
+        /** Only the listed schemes are written as a link: {@code javascript:}, {@code data:} and the like never are. */
+        private static boolean hasScheme(String url, Set<String> schemes) {
+            int colon = url.indexOf(':');
+            return colon > 0 && schemes.contains(url.substring(0, colon).toLowerCase(Locale.ROOT));
+        }
+
+        /** A URL as a Markdown link target: nothing in it may close the parenthesis or break the line. */
+        private static String target(String url) {
+            StringBuilder sb = new StringBuilder(url.length());
+            for (int i = 0; i < url.length(); i++) {
+                char c = url.charAt(i);
+                switch (c) {
+                    case '(' -> sb.append("%28");
+                    case ')' -> sb.append("%29");
+                    case '<' -> sb.append("%3C");
+                    case '>' -> sb.append("%3E");
+                    default -> {
+                        if (Character.isWhitespace(c)) {
+                            sb.append("%20");
+                        } else if (!Character.isISOControl(c)) {
+                            sb.append(c);
+                        }
+                    }
+                }
+            }
+            return sb.toString();
+        }
+
+        /** Joins lines with one space, without a pattern that backtracks on long runs of white space. */
+        private static String oneLine(String text) {
+            StringBuilder sb = new StringBuilder(text.length());
+            for (String line : text.split("\n", -1)) {
+                String l = line.strip();
+                if (!l.isEmpty()) {
+                    if (sb.length() > 0) {
+                        sb.append(' ');
+                    }
+                    sb.append(l);
+                }
+            }
+            return sb.toString();
         }
 
         private static String wrap(String text, String mark) {
@@ -278,7 +329,7 @@ public final class HtmlToMarkdown {
         private static String tidy(String text) {
             StringBuilder sb = new StringBuilder();
             for (String line : text.replace('\u00a0', ' ').split("\n", -1)) {
-                String l = line.replaceAll("[ \\t\\r\\f]+", " ").trim();
+                String l = SPACES.matcher(line).replaceAll(" ").trim();
                 if (!l.isEmpty()) {
                     if (sb.length() > 0) {
                         sb.append('\n');

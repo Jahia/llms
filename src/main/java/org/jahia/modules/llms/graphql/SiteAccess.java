@@ -57,11 +57,12 @@ final class SiteAccess {
     /**
      * @param site     the site
      * @param language a language code from the caller
-     * @return the language, when it is one of the site's languages
+     * @return the language, when it is one of the languages the site serves to visitors
      * @throws DataFetchingException otherwise
      */
     static String language(JCRSiteNode site, String language) {
-        if (language == null || !LANGUAGE.matcher(language).matches() || !site.getLanguages().contains(language)) {
+        // The files describe the public site: a language switched off in live has nothing to list.
+        if (language == null || !LANGUAGE.matcher(language).matches() || !site.getActiveLiveLanguages().contains(language)) {
             throw new DataFetchingException("Unknown language for this site");
         }
         return language;

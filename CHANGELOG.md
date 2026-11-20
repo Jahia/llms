@@ -17,6 +17,32 @@
 * OSGi configuration `org.jahia.modules.llms` for the generation limits.
 * German, French and English labels for the panel and the content type fields, with tooltips.
 
+### Security
+
+* The public files are served with an `ETag` and `304 Not Modified` (`Cache-Control: no-cache`, so a
+  published change is still served at once), and the site of a host comes from Jahia's cache: an
+  anonymous request no longer runs a repository query and re-sends the whole file each time.
+* Generation limits are kept in range (no size overflow), a generation of llms-full.txt has an overall
+  deadline (`maxTotalSeconds`), two run at most on one Jahia, and the walk stops reading the page tree
+  once the page limit is reached.
+* Converting a page no longer uses patterns whose cost grows with the square of a run of white space
+  or of `<`.
+* Generated links keep only `http`, `https`, `mailto` and `tel` targets (images: `http` and `https`),
+  and a link target can no longer close its own parenthesis.
+* A page that redirects is followed only to another URL of the same site.
+* Only the languages active in live are accepted for generation.
+* Saving llms-full.txt alone no longer publishes the autocreated `# Title` as llms.txt, and the
+  placeholder is never served.
+
+### Performance
+
+* The panel asks the server whether each file is served and current (`llms { status }`) instead of
+  downloading the published text a second time, and counts lines, links and size when the text
+  changes, not on every render.
+* A conditional request for an unchanged file answers 304 without reading or hashing it again while
+  the dates of the site node have not moved (checked again every minute at the latest).
+* The page tree is read once per level, and the conversion patterns are compiled once.
+
 ### Changed
 
 * **The panel follows Jahia's screen layout**, with Moonstone components only: header with the title

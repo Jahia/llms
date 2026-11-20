@@ -28,10 +28,31 @@ import javax.servlet.http.HttpServletRequest;
 public class GqlLlmsQuery {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GqlLlmsQuery.class);
+    private static final String PUBLISH = "publish";
 
     @Inject
     @GraphQLOsgiService
     private LlmsService service;
+
+    /**
+     * @param siteKey key of the site
+     * @return whether each file is served to visitors, and whether what is served is what is saved
+     */
+    @GraphQLField
+    @GraphQLName("status")
+    @GraphQLNonNull
+    @GraphQLDescription("Whether a site's llms.txt and llms-full.txt are served, and are the saved ones")
+    public GqlLlmsStatus status(
+            @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey) {
+        JCRSiteNode site = SiteAccess.site(siteKey, PUBLISH);
+        try {
+            return new GqlLlmsStatus(service.status(site));
+        } catch (RepositoryException e) {
+            LOGGER.warn("Could not read the status of the llms files of {}: {}", siteKey, e.getMessage());
+            LOGGER.debug("Full exception", e);
+            throw new DataFetchingException("The status of the files could not be read");
+        }
+    }
 
     /**
      * @param siteKey     key of the site
@@ -51,7 +72,7 @@ public class GqlLlmsQuery {
             @GraphQLName("baseUrl") @GraphQLNonNull @GraphQLDescription("Public base URL of the site, scheme, host and port") String baseUrl,
             @GraphQLName("full") @GraphQLNonNull @GraphQLDescription("True for llms-full.txt") boolean full,
             DataFetchingEnvironment environment) {
-        JCRSiteNode site = SiteAccess.site(siteKey, "publish");
+        JCRSiteNode site = SiteAccess.site(siteKey, PUBLISH);
         String lang = SiteAccess.language(site, language);
         if (!PublicUrls.BASE_URL.matcher(baseUrl).matches()) {
             throw new DataFetchingException("The public URL must be a scheme, a host and an optional port");
