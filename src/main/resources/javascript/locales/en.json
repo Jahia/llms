@@ -8,6 +8,10 @@
   "revert": "Discard changes",
   "view": "View published file",
   "editorLabel": "Content of {{file}}",
+  "loading": "Loading",
+  "tabsLabel": "Files",
+  "tabUnsaved": "{{file}}, unsaved changes",
+  "newTab": "opens in a new tab",
   "stats": "{{lines}} lines · {{links}} links · {{size}}",
   "settings": {
     "title": "Generation",

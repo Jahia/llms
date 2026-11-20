@@ -30,17 +30,21 @@ export const LLMS_SITE = gql`
     }
 `;
 
-/** What visitors are served. The site may not be published at all, so this query fails on its own. */
-export const LLMS_LIVE = gql`
-    query LlmsLive($path: String!) {
-        jcr(workspace: LIVE) {
-            nodeByPath(path: $path) {
-                uuid
-                llms: property(name: "j:llms") {
-                    value
+/**
+ * What visitors are served, compared with what is saved on the server: two booleans per file, where
+ * reading the live properties would download llms-full.txt a second time. Fails on its own.
+ */
+export const LLMS_STATUS = gql`
+    query LlmsStatus($siteKey: String!) {
+        llms {
+            status(siteKey: $siteKey) {
+                llms {
+                    served
+                    current
                 }
-                llmsFull: property(name: "j:llmsFull") {
-                    value
+                llmsFull {
+                    served
+                    current
                 }
             }
         }

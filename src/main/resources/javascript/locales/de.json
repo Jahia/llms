@@ -8,6 +8,10 @@
   "revert": "Änderungen verwerfen",
   "view": "Veröffentlichte Datei anzeigen",
   "editorLabel": "Inhalt von {{file}}",
+  "loading": "Wird geladen",
+  "tabsLabel": "Dateien",
+  "tabUnsaved": "{{file}}, ungespeicherte Änderungen",
+  "newTab": "wird in neuem Tab geöffnet",
   "stats": "{{lines}} Zeilen · {{links}} Links · {{size}}",
   "settings": {
     "title": "Generierung",

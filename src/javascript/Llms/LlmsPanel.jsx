@@ -20,7 +20,7 @@ export const LlmsPanel = () => {
     );
 
     if (loading) {
-        return <div className={styles.root}><Loader size="big"/></div>;
+        return <div className={styles.root}><Loader size="big" aria-label={t('loading')}/></div>;
     }
 
     if (!checksResult) {
@@ -31,7 +31,7 @@ export const LlmsPanel = () => {
                     header={<Header title={t('navLabel')}/>}
                     content={(
                         <div className={styles.content}>
-                            <div className={styles.card} role="status">
+                            <div className={styles.card}>
                                 <Typography variant="heading" component="h2">{t('disabled.title')}</Typography>
                                 <Typography>{t('disabled.text')}</Typography>
                             </div>

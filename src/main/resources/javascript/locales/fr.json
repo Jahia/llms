@@ -8,6 +8,10 @@
   "revert": "Annuler les modifications",
   "view": "Voir le fichier publié",
   "editorLabel": "Contenu de {{file}}",
+  "loading": "Chargement",
+  "tabsLabel": "Fichiers",
+  "tabUnsaved": "{{file}}, modifications non enregistrées",
+  "newTab": "s'ouvre dans un nouvel onglet",
   "stats": "{{lines}} lignes · {{links}} liens · {{size}}",
   "settings": {
     "title": "Génération",

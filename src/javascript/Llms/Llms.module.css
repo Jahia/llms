@@ -56,8 +56,22 @@
     gap: var(--spacing-medium, 16px);
 }
 
+/* Secondary text. --color-gray_dark60 is 60% transparent: about 3.8:1 on white, under the 4.5:1 of WCAG 1.4.3.
+   The opaque colour at 80% gives about 7:1, as Moonstone does for a Field helper. */
 .muted {
-    color: var(--color-gray_dark60);
+    color: var(--color-gray_dark);
+    opacity: 0.8;
+}
+
+/* The status region of a file. Empty, it must not add a gap between its neighbours in the card. */
+.live {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-medium, 16px);
+}
+
+.live:empty {
+    margin-top: calc(-1 * var(--spacing-medium, 16px));
 }
 
 /* Header tabs scroll rather than wrap under the content. */
@@ -77,6 +91,13 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 0.8125rem;
     line-height: 1.5;
+}
+
+/* Moonstone removes the outline of a read-only textarea: the editor is read-only while a file is generated,
+   and must still show where the focus is (WCAG 2.4.7). */
+textarea.editor:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
 }
 
 .failed {
