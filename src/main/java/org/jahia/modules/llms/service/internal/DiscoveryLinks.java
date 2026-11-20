@@ -10,6 +10,8 @@ import java.util.regex.Pattern;
  */
 public final class DiscoveryLinks {
 
+    private static final Pattern NOT_VISIBLE_ASCII = Pattern.compile("[^\\x21-\\x7E]");
+
     private static final Pattern HEAD = Pattern.compile("<head(?:\\s[^>]*)?>", Pattern.CASE_INSENSITIVE);
 
     private DiscoveryLinks() {
@@ -86,8 +88,12 @@ public final class DiscoveryLinks {
         return href.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
-    /** An address between the angle brackets of a Link header: nothing in it may close them or start a new line. */
+    /**
+     * An address between the angle brackets of a Link header. Only the visible characters of ASCII are
+     * kept, which is all a URL is made of: no line break can start a header of someone's making, no
+     * control character or space reaches the header. Then nothing in it may close the brackets.
+     */
     private static String uriReference(String href) {
-        return href.replace("<", "%3C").replace(">", "%3E").replace("\r", "").replace("\n", "");
+        return NOT_VISIBLE_ASCII.matcher(href).replaceAll("").replace("<", "%3C").replace(">", "%3E");
     }
 }

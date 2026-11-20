@@ -53,7 +53,10 @@ class DiscoveryLinksTest {
         assertThat(DiscoveryLinks.header("https://www.example.com/a.html", null))
                 .isEqualTo("<https://www.example.com/a.html>; rel=\"canonical\"");
         assertThat(DiscoveryLinks.header(null, null)).isNull();
-        assertThat(DiscoveryLinks.header("/a>\r\nSet-Cookie: x=1", null)).isEqualTo("</a%3ESet-Cookie: x=1>; rel=\"canonical\"");
+        // Nothing but the visible characters of ASCII reaches the header: no line break, tab, space or
+        // other control character, so no address can start a header of its own.
+        assertThat(DiscoveryLinks.header("/a>\r\nSet-Cookie: x=1", null)).isEqualTo("</a%3ESet-Cookie:x=1>; rel=\"canonical\"");
+        assertThat(DiscoveryLinks.header("/a\u0000\t\u000B\u0085\u2028b\u00e9.html", null)).isEqualTo("</ab.html>; rel=\"canonical\"");
     }
 
     @Test
