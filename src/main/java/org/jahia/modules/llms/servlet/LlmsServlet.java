@@ -65,7 +65,11 @@ public class LlmsServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         Target target = Target.of((String) request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI),
-                request.getParameter("site"), request.getParameter("file"));
+                request.getContextPath(), request.getParameter("site"), request.getParameter("file"));
+        if (target == null) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
         String property = target.full() ? LlmsService.LLMS_FULL : LlmsService.LLMS;
         String ifNoneMatch = request.getHeader("If-None-Match");
         String content = null;
@@ -125,16 +129,26 @@ public class LlmsServlet extends HttpServlet {
      */
     record Target(String siteKey, boolean full) {
 
-        private static final Pattern PUBLIC_URL = Pattern.compile("^(?:/[^/]+)?(?:/sites/([A-Za-z0-9_-]{1,64}))?/llms(-full)?\\.txt$");
+        /** The paths the rewrite rules of the module accept, written the same way. */
+        private static final Pattern PUBLIC_URL = Pattern.compile(
+                "^(?:/cms(?:/render/live)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?)?(?:/sites/([A-Za-z0-9_-]{1,64}))?/llms(-full)?\\.txt$");
 
-        static Target of(String forwardedUri, String siteParameter, String fileParameter) {
-            if (forwardedUri != null) {
-                Matcher m = PUBLIC_URL.matcher(forwardedUri);
-                if (m.matches()) {
-                    return new Target(m.group(1), m.group(2) != null);
-                }
+        /**
+         * @param forwardedUri  the URL the visitor asked for when a rewrite rule forwarded the request, else null
+         * @param contextPath   the context path of Jahia, which that URL starts with
+         * @param siteParameter the {@code site} parameter
+         * @param fileParameter the {@code file} parameter
+         * @return the target, or null when the request was forwarded from a URL that is not one of ours:
+         *         nothing is then guessed from parameters the visitor may have added
+         */
+        static Target of(String forwardedUri, String contextPath, String siteParameter, String fileParameter) {
+            if (forwardedUri == null) {
+                return new Target(siteParameter, "full".equals(fileParameter));
             }
-            return new Target(siteParameter, "full".equals(fileParameter));
+            String path = contextPath != null && !contextPath.isEmpty() && forwardedUri.startsWith(contextPath + "/")
+                    ? forwardedUri.substring(contextPath.length()) : forwardedUri;
+            Matcher m = PUBLIC_URL.matcher(path);
+            return m.matches() ? new Target(m.group(1), m.group(2) != null) : null;
         }
     }
 

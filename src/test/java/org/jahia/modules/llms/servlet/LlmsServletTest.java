@@ -42,23 +42,33 @@ class LlmsServletTest {
 
     @Test
     void theUrlAskedForNamesTheSiteAndTheFile() {
-        assertThat(LlmsServlet.Target.of("/llms.txt", null, null)).isEqualTo(new LlmsServlet.Target(null, false));
-        assertThat(LlmsServlet.Target.of("/llms-full.txt", null, null)).isEqualTo(new LlmsServlet.Target(null, true));
-        assertThat(LlmsServlet.Target.of("/sites/a/llms.txt", null, null)).isEqualTo(new LlmsServlet.Target("a", false));
-        assertThat(LlmsServlet.Target.of("/ctx/sites/a/llms-full.txt", null, null)).isEqualTo(new LlmsServlet.Target("a", true));
+        assertThat(LlmsServlet.Target.of("/llms.txt", "", null, null)).isEqualTo(new LlmsServlet.Target(null, false));
+        assertThat(LlmsServlet.Target.of("/llms-full.txt", "", null, null)).isEqualTo(new LlmsServlet.Target(null, true));
+        assertThat(LlmsServlet.Target.of("/sites/a/llms.txt", "", null, null)).isEqualTo(new LlmsServlet.Target("a", false));
+        assertThat(LlmsServlet.Target.of("/ctx/sites/a/llms-full.txt", "/ctx", null, null)).isEqualTo(new LlmsServlet.Target("a", true));
+        // The forms Jahia's own rules produce, which the rewrite rules of the module accept too.
+        assertThat(LlmsServlet.Target.of("/cms/render/live/en/sites/a/llms.txt", "", null, null)).isEqualTo(new LlmsServlet.Target("a", false));
+        assertThat(LlmsServlet.Target.of("/cms/fr_FR/sites/a/llms-full.txt", "", null, null)).isEqualTo(new LlmsServlet.Target("a", true));
     }
 
     @Test
     void aQueryStringCannotNameAnotherSiteOrFileThanThePath() {
-        assertThat(LlmsServlet.Target.of("/sites/a/llms.txt", "b", "full")).isEqualTo(new LlmsServlet.Target("a", false));
-        assertThat(LlmsServlet.Target.of("/llms.txt", "b", "full")).isEqualTo(new LlmsServlet.Target(null, false));
+        assertThat(LlmsServlet.Target.of("/sites/a/llms.txt", "", "b", "full")).isEqualTo(new LlmsServlet.Target("a", false));
+        assertThat(LlmsServlet.Target.of("/llms.txt", "", "b", "full")).isEqualTo(new LlmsServlet.Target(null, false));
+        assertThat(LlmsServlet.Target.of("/cms/render/live/en/sites/a/llms.txt", "", "b", "full")).isEqualTo(new LlmsServlet.Target("a", false));
+    }
+
+    @Test
+    void aForwardFromAnyOtherUrlIsNotAnswered() {
+        assertThat(LlmsServlet.Target.of("/modules/llms/llms", "", "a", null)).isNull();
+        assertThat(LlmsServlet.Target.of("/files/live/sites/a/files/llms.txt", "", "a", null)).isNull();
+        assertThat(LlmsServlet.Target.of("/other/sites/a/llms.txt", "", "a", null)).isNull();
+        assertThat(LlmsServlet.Target.of("/sites/a/../b/llms.txt", "", "a", null)).isNull();
     }
 
     @Test
     void aDirectCallIsReadFromItsParameters() {
-        assertThat(LlmsServlet.Target.of(null, "a", "full")).isEqualTo(new LlmsServlet.Target("a", true));
-        assertThat(LlmsServlet.Target.of(null, null, null)).isEqualTo(new LlmsServlet.Target(null, false));
-        // A forward from somewhere else than the public URLs keeps the parameters.
-        assertThat(LlmsServlet.Target.of("/modules/llms/llms", "a", null)).isEqualTo(new LlmsServlet.Target("a", false));
+        assertThat(LlmsServlet.Target.of(null, "", "a", "full")).isEqualTo(new LlmsServlet.Target("a", true));
+        assertThat(LlmsServlet.Target.of(null, "", null, null)).isEqualTo(new LlmsServlet.Target(null, false));
     }
 }
