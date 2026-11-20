@@ -125,7 +125,7 @@ public class LlmsServlet extends HttpServlet {
      */
     record Target(String siteKey, boolean full) {
 
-        private static final Pattern PUBLIC_URL = Pattern.compile("^.*?(?:/sites/([A-Za-z0-9_-]{1,64}))?/llms(-full)?\\.txt$");
+        private static final Pattern PUBLIC_URL = Pattern.compile("^(?:/[^/]+)?(?:/sites/([A-Za-z0-9_-]{1,64}))?/llms(-full)?\\.txt$");
 
         static Target of(String forwardedUri, String siteParameter, String fileParameter) {
             if (forwardedUri != null) {

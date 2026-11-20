@@ -38,7 +38,8 @@ class StorageContractTest {
     @Test
     void llmsTxtIsStillRoutedToTheServlet() throws IOException {
         assertThat(resource("META-INF/last-urlrewrite-llms.xml"))
-                .contains("llms\\.txt$</from>")
+                .contains("/llms\\.txt$</from>")
+                .contains("/sites/([A-Za-z0-9_-]+)/llms\\.txt$</from>")
                 .contains("<to last=\"true\">/modules/llms/llms</to>");
     }
 }

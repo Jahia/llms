@@ -1,4 +1,4 @@
-import {deleteSite} from '@jahia/cypress';
+import {deleteSite, publishAndWaitJobEnding, uploadFile} from '@jahia/cypress';
 import {createSiteWithPages} from '../support/fixtures';
 import {fetchFile, gql, ROOT, saveAsRoot, SERVLET, STATUS} from '../support/llms';
 
@@ -92,6 +92,28 @@ describe('serving llms.txt and llms-full.txt', () => {
 
     it('keeps the site named by the path when a query string names another', () => {
         cy.request({url: LLMS, qs: {site: 'systemsite', file: 'full'}, failOnStatusCode: false}).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.body).to.eq('# Site, second edition');
+        });
+    });
+
+    it('leaves alone a media file and other URLs that merely end in llms.txt', () => {
+        uploadFile('media-llms.txt', `/sites/${SITE}/files`, 'llms.txt', 'text/plain');
+        publishAndWaitJobEnding(`/sites/${SITE}/files`, ['en']);
+        fetchFile(`/files/live/sites/${SITE}/files/llms.txt`).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.body).to.contain('a media file that happens to be named llms.txt');
+        });
+        // Not ours to answer: whatever Jahia says for these paths, it is not a site's file.
+        ['/modules/some-module/llms.txt', '/some/folder/llms-full.txt'].forEach(url => {
+            fetchFile(url).its('status').should('be.oneOf', [400, 404]);
+        });
+    });
+
+    it('serves the files at the root of the site\'s own host', () => {
+        // The site's server name is <key>.test; the test instance is reached as another host.
+        const host = {Host: `${SITE}.test`.toLowerCase()};
+        fetchFile('/llms.txt', host).then(response => {
             expect(response.status).to.eq(200);
             expect(response.body).to.eq('# Site, second edition');
         });
