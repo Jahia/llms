@@ -66,6 +66,18 @@ public @interface LlmsConfig {
     String excludedTreeNodeTypes() default "";
 
     /**
+     * @return whether each page is also served as Markdown at its URL followed by .md
+     */
+    @AttributeDefinition(name = "Markdown version of pages", description = "Serve each published page as Markdown at its own URL followed by .md (page.html.md), as the llms.txt proposal asks.")
+    boolean servePageMarkdown() default true;
+
+    /**
+     * @return whether the links of a generated llms.txt point to the Markdown version of the pages
+     */
+    @AttributeDefinition(name = "Link llms.txt to Markdown", description = "In a generated llms.txt, link each page to its Markdown version (page.html.md) rather than to the page. Off by default: modules that compare the links of llms.txt with the pages of the site (geo-readiness, content-governance) expect the addresses of the pages.")
+    boolean linkToMarkdown() default false;
+
+    /**
      * @return whether the images of a page are written in llms-full.txt
      */
     @AttributeDefinition(name = "Keep images", description = "Write the images of a page that have a text alternative in llms-full.txt. Off: images are left out.")

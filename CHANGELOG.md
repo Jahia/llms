@@ -17,6 +17,11 @@
 * OSGi configuration `org.jahia.modules.llms` for the generation limits.
 * German, French and English labels for the panel and the content type fields, with tooltips.
 
+* **Each page has a Markdown version at its own URL followed by `.md`** (`page.html.md`), as the
+  llms.txt proposal (v2) asks. It is the page as a visitor without an account gets it: no Markdown
+  version of a page that is not published or not open to visitors. `linkToMarkdown` makes a generated
+  llms.txt link to these versions.
+
 ### Security
 
 * The public files are served with an `ETag` and `304 Not Modified` (`Cache-Control: no-cache`, so a

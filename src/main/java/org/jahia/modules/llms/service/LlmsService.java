@@ -3,6 +3,7 @@ package org.jahia.modules.llms.service;
 import org.jahia.bin.Jahia;
 import org.jahia.modules.llms.service.internal.HtmlToMarkdown;
 import org.jahia.modules.llms.service.internal.PageFetcher;
+import org.jahia.modules.llms.service.internal.PageMarkdown;
 import org.jahia.modules.llms.service.internal.PublicUrls;
 import org.jahia.modules.llms.service.internal.SiteWalker;
 import org.jahia.services.content.JCRCallback;
@@ -26,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.jcr.RepositoryException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -83,6 +85,10 @@ public class LlmsService {
     private final Semaphore walkSlots = new Semaphore(4);
     private volatile Limits limits;
     private volatile boolean keepImages;
+    private volatile boolean servePageMarkdown = true;
+    private volatile boolean linkToMarkdown;
+    /** Pages converted to Markdown at the same time for visitors: each one renders a page. */
+    private final Semaphore pageSlots = new Semaphore(8);
     private volatile Set<String> excluded = SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED);
     private volatile Set<String> excludedTrees = Set.of();
     /** The generations started from the panel, by identifier, kept a while after they end. */
@@ -160,6 +166,8 @@ public class LlmsService {
         }
         this.limits = Limits.of(config);
         this.keepImages = config.keepImages();
+        this.servePageMarkdown = config.servePageMarkdown();
+        this.linkToMarkdown = config.linkToMarkdown();
         this.excluded = SiteWalker.typeNames(config.excludedNodeTypes());
         this.excludedTrees = SiteWalker.typeNames(config.excludedTreeNodeTypes());
     }
@@ -188,7 +196,7 @@ public class LlmsService {
         for (SiteWalker.Section section : walk.sections()) {
             sb.append("\n## ").append(section.title()).append("\n\n");
             for (SiteWalker.Page page : section.pages()) {
-                sb.append("- [").append(escape(page.title())).append("](").append(page.url()).append(')');
+                sb.append("- [").append(escape(page.title())).append("](").append(linkOf(page.url())).append(')');
                 if (page.description() != null) {
                     sb.append(": ").append(page.description());
                 }
@@ -444,6 +452,50 @@ public class LlmsService {
             sb.append("\n> ").append(walk.summary()).append('\n');
         }
         return sb;
+    }
+
+    /**
+     * The address a line of llms.txt links to: the page, or its Markdown version when configured so and
+     * the page has one (an address that ends in {@code .html}; a vanity URL has none).
+     */
+    private String linkOf(String pageUrl) {
+        return linkToMarkdown && servePageMarkdown && pageUrl.endsWith(".html") ? pageUrl + ".md" : pageUrl;
+    }
+
+    /**
+     * The Markdown version of one page, as a visitor without an account gets the page: rendered by an
+     * anonymous request to this Jahia, in live, then converted like a page of llms-full.txt.
+     *
+     * @param rawPath    the path of the page from the root of the context, still encoded; must be a page
+     *                   of a site ({@link PageMarkdown#siteKeyOf})
+     * @param publicUrl  the address the visitor knows the page by, which its relative links resolve against
+     * @param renderBase scheme, host and port this Jahia answers on from inside its container
+     * @return the Markdown, or null when Markdown versions are switched off or the path is not a page
+     * @throws IOException           when the page does not answer 200 with HTML to a visitor
+     * @throws InterruptedException  when the thread is stopped
+     * @throws IllegalStateException when too many pages are being converted
+     */
+    public String pageMarkdown(String rawPath, String publicUrl, String renderBase) throws IOException, InterruptedException {
+        String siteKey = PageMarkdown.siteKeyOf(rawPath);
+        if (!servePageMarkdown || siteKey == null) {
+            return null;
+        }
+        if (!pageSlots.tryAcquire()) {
+            throw new IllegalStateException(BUSY);
+        }
+        try {
+            Limits c = limits;
+            String base = c.renderBaseUrl() == null ? renderBase : c.renderBaseUrl();
+            // A redirect is followed only to another page of the same site.
+            PageFetcher fetcher = new PageFetcher(base, c.fetchTimeoutSeconds(), c.maxPageBytes(),
+                    path -> siteKey.equals(PageMarkdown.siteKeyOf(path)));
+            Document doc = Jsoup.parse(fetcher.fetch(rawPath), publicUrl);
+            String title = PageMarkdown.titleOf(doc);
+            String body = HtmlToMarkdown.convert(doc, title, href -> href, keepImages);
+            return (title.isEmpty() ? "" : "# " + title + "\n\n") + body + "\n";
+        } finally {
+            pageSlots.release();
+        }
     }
 
     private static String escape(String text) {

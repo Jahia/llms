@@ -1,6 +1,7 @@
 package org.jahia.modules.llms.graphql;
 
 import org.jahia.modules.graphql.provider.dxm.DataFetchingException;
+import org.jahia.modules.llms.service.internal.LocalAddress;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.decorator.JCRSiteNode;
@@ -64,8 +65,7 @@ final class SiteAccess {
      * @return scheme, host and port
      */
     static String renderBase(HttpServletRequest request) {
-        int port = request == null || request.getLocalPort() <= 0 ? 8080 : request.getLocalPort();
-        return "http://127.0.0.1:" + port;
+        return LocalAddress.of(request);
     }
 
     /**

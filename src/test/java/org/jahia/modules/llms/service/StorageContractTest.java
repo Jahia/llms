@@ -56,4 +56,13 @@ class StorageContractTest {
                 .contains("/sites/([A-Za-z0-9_-]+)/llms\\.txt$</from>")
                 .contains("<to last=\"true\">/modules/llms/llms</to>");
     }
+
+    @Test
+    void theMarkdownVersionOfAPageIsRoutedToItsOwnServlet() throws IOException {
+        // Jahia mounts a servlet at /modules/<alias>, and everything under it: /modules/llms/<anything>
+        // is the servlet of llms.txt. The page servlet has its own alias for that reason.
+        assertThat(resource("META-INF/last-urlrewrite-llms.xml"))
+                .contains("\\.html)\\.md$</from>")
+                .contains("<to last=\"true\">/modules/llmspage?path=$1</to>");
+    }
 }

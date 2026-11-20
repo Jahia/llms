@@ -7,6 +7,13 @@
          each pattern accepts that prefix and nothing else, so a media file (/files/...) or a resource of
          another module that happens to be named llms.txt keeps its URL. -->
     <rule>
+        <name>Markdown version of a page</name>
+        <note>page.html.md is the page as Markdown. Only a page of a site, in the forms Jahia's own rules
+            produce: a Markdown file of the media library (/files/...) keeps its URL.</note>
+        <from>^((?:/cms(?:/render/live)?)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?/sites/[A-Za-z0-9_-]+/.*\.html)\.md$</from>
+        <to last="true">/modules/llmspage?path=$1</to>
+    </rule>
+    <rule>
         <name>Llms full of a site</name>
         <note>/sites/{siteKey}/llms-full.txt serves that site's llms-full.txt, whatever the host.</note>
         <from>^(?:/cms(?:/render/live)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?)?/sites/([A-Za-z0-9_-]+)/llms-full\.txt$</from>
