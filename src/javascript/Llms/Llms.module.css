@@ -154,6 +154,67 @@ textarea.editor:focus-visible {
     outline-offset: 2px;
 }
 
+/* A generation of llms-full.txt as it goes. */
+.progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-small, 8px);
+    min-width: 0;
+}
+
+.progressRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-small, 8px) var(--spacing-medium, 16px);
+    align-items: center;
+}
+
+/* The browser draws the bar; its colour is Moonstone's accent, dark enough against the track (WCAG 1.4.11). */
+.bar {
+    flex: 1 1 240px;
+    min-width: 0;
+    height: 8px;
+
+    accent-color: var(--color-accent_dark);
+}
+
+/* The log scrolls in a box, capped in rem so it grows with the text and never takes the whole screen. */
+.log {
+    max-height: min(12.5rem, 50vh);
+    padding: var(--spacing-small, 8px) var(--spacing-medium, 16px);
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    border: 1px solid var(--color-gray_light);
+    border-radius: 4px;
+}
+
+.log:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
+}
+
+.logList {
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.logLine {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--spacing-medium, 16px);
+    justify-content: space-between;
+    padding: var(--spacing-nano, 4px) 0;
+}
+
+.logTitle {
+    min-width: 0;
+
+    overflow-wrap: anywhere;
+}
+
 .failed {
     margin: var(--spacing-small, 8px) 0 0;
     padding-left: var(--spacing-large, 24px);

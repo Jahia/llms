@@ -99,7 +99,7 @@ reads: `j:llms` in live and both URLs, and it links to the panel.
 
 ## API
 
-The panel uses three GraphQL fields, open to signed-in users with the right permissions on the site:
+The panel uses five GraphQL fields, open to signed-in users with the right permissions on the site:
 
 ```graphql
 # publish on the site: whether each file is served, and is the saved one
@@ -108,6 +108,12 @@ query { llms { status(siteKey: "mySite") { llms { served current } llmsFull { se
 # publish on the site
 query { llms { generate(siteKey: "mySite", language: "en", baseUrl: "https://www.example.com", full: false) {
     content pages failedPages truncated } } }
+
+# publish on the site: llms-full.txt renders every page, so it runs in the background.
+# Start it, then read its progress until finished: each page and what became of it, then the file.
+mutation { llms { startGeneration(siteKey: "mySite", language: "en", baseUrl: "https://www.example.com") } }
+query { llms { generationProgress(siteKey: "mySite", id: "<id returned above>") {
+    started total done finished error pages { title url state } generation { content pages failedPages truncated } } } }
 
 # jcr:modifyProperties and publish on the site; an omitted file is left unchanged, a blank one removed
 mutation { llms { save(siteKey: "mySite", llms: "# My site ...", llmsFull: null, baseUrl: "https://www.example.com") } }

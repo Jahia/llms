@@ -8,6 +8,7 @@ import graphql.schema.DataFetchingEnvironment;
 import org.jahia.modules.graphql.provider.dxm.DataFetchingException;
 import org.jahia.modules.graphql.provider.dxm.osgi.annotations.GraphQLOsgiService;
 import org.jahia.modules.graphql.provider.dxm.util.ContextUtil;
+import org.jahia.modules.llms.service.GenerationJob;
 import org.jahia.modules.llms.service.LlmsService;
 import org.jahia.modules.llms.service.internal.PublicUrls;
 import org.jahia.services.content.decorator.JCRSiteNode;
@@ -33,6 +34,27 @@ public class GqlLlmsQuery {
     @Inject
     @GraphQLOsgiService
     private LlmsService service;
+
+    /**
+     * @param siteKey key of the site
+     * @param id      identifier returned by the startGeneration mutation
+     * @return how far that generation is, and the file once it is finished
+     */
+    @GraphQLField
+    @GraphQLName("generationProgress")
+    @GraphQLNonNull
+    @GraphQLDescription("How far a generation of llms-full.txt started with startGeneration is, and the file once finished")
+    public GqlLlmsProgress generationProgress(
+            @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey,
+            @GraphQLName("id") @GraphQLNonNull @GraphQLDescription("Identifier of the generation") String id) {
+        SiteAccess.site(siteKey, PUBLISH);
+        GenerationJob job = service.job(siteKey, id);
+        if (job == null) {
+            // One answer for an unknown identifier and for a generation of another site.
+            throw new DataFetchingException("Unknown generation");
+        }
+        return new GqlLlmsProgress(job.snapshot());
+    }
 
     /**
      * @param siteKey key of the site
@@ -82,8 +104,7 @@ public class GqlLlmsQuery {
                 return new GqlLlmsGeneration(service.generateLlms(siteKey, lang, baseUrl));
             }
             HttpServletRequest request = ContextUtil.getHttpServletRequest(environment.getGraphQlContext());
-            int port = request == null || request.getLocalPort() <= 0 ? 8080 : request.getLocalPort();
-            return new GqlLlmsGeneration(service.generateLlmsFull(siteKey, lang, baseUrl, "http://127.0.0.1:" + port));
+            return new GqlLlmsGeneration(service.generateLlmsFull(siteKey, lang, baseUrl, SiteAccess.renderBase(request)));
         } catch (IllegalStateException e) {
             throw new DataFetchingException(e.getMessage());
         } catch (RepositoryException | RuntimeException e) {

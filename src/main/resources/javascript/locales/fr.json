@@ -31,7 +31,7 @@
   },
   "llmsFull": {
     "description": "Le texte des pages listées dans llms.txt, converti en Markdown, pour qu'un assistant lise le site en un seul fichier.",
-    "placeholder": "# Nom du site\n\n---\n\n# Titre de la page\n\nSource : https://www.example.com/page.html\n\nContenu de la page en Markdown"
+    "placeholder": "# Nom du site\n\n---\n\n# Titre de la page\n\nSource: https://www.example.com/page.html\n\nContenu de la page en Markdown"
   },
   "status": {
     "none": "Non créé",
@@ -44,6 +44,20 @@
     "title": "Génération en cours",
     "index": "Lecture des pages publiées du site.",
     "full": "Rendu de chaque page publiée telle qu'un visiteur la voit. Un grand site peut prendre une minute."
+  },
+  "progress": {
+    "label": "Avancement de la génération",
+    "preparing": "Lecture du site",
+    "count": "{{done}} / {{total}} pages",
+    "logTitle": "Pages traitées",
+    "state": {
+      "RENDERED": "Rendue",
+      "EMPTY": "Vide, écartée",
+      "FAILED": "Échec, écartée"
+    },
+    "spokenStart": "Génération démarrée, {{total}} pages",
+    "spokenStep": "{{percent}} %, {{done}} pages sur {{total}}",
+    "spokenFailed": "{{count}} pages en échec"
   },
   "generated": {
     "title": "Généré à partir de {{pages}} pages en {{language}}",

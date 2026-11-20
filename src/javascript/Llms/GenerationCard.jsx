@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Banner, Button, Dropdown, Input, Loader, Paper, Reload, Typography} from '@jahia/moonstone';
+import {GenerationProgress} from './GenerationProgress';
 import {MODULE} from './module';
 import styles from './Llms.module.css';
 
@@ -14,7 +15,7 @@ const PLAIN = {interpolation: {escapeValue: false}};
  * the open tab.
  */
 export const GenerationCard = ({
-    file, languages, language, baseUrl, generation, failure,
+    file, languages, language, baseUrl, generation, progress, failure,
     isBaseUrlValid, isGenerating, isGenerateEnabled, hasSavedFile,
     onLanguageChange, onBaseUrlChange, onGenerate
 }) => {
@@ -83,6 +84,8 @@ export const GenerationCard = ({
                     {failure}
                 </Banner>
             )}
+            {/* Outside the status region below: read every second, it would be announced every second. */}
+            {progress && <GenerationProgress key={progress.runId} progress={progress}/>}
             {/* Always in the page, empty or not: a status region inserted with its text already in is often not announced. */}
             <div role="status" className={styles.live}>
                 {isGenerating && (
@@ -128,6 +131,9 @@ GenerationCard.propTypes = {
         failedPages: PropTypes.arrayOf(PropTypes.string),
         truncated: PropTypes.bool,
         language: PropTypes.string
+    }),
+    progress: PropTypes.shape({
+        runId: PropTypes.string.isRequired
     }),
     failure: PropTypes.string,
     isBaseUrlValid: PropTypes.bool.isRequired,

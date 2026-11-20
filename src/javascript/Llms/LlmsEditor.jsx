@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useApolloClient, useMutation, useQuery} from '@apollo/client';
 import {useTranslation} from 'react-i18next';
@@ -13,7 +13,7 @@ import {
     Tab,
     TabItem
 } from '@jahia/moonstone';
-import {LLMS_GENERATE, LLMS_SAVE, LLMS_SITE, LLMS_STATUS} from './Llms.gql';
+import {LLMS_GENERATE, LLMS_PROGRESS, LLMS_SAVE, LLMS_SITE, LLMS_START, LLMS_STATUS} from './Llms.gql';
 import {FileCard} from './FileCard';
 import {GenerationCard} from './GenerationCard';
 import {BASE_URL, FILES, MODULE} from './module';
@@ -28,7 +28,96 @@ const suggestedBaseUrl = serverName => (serverName && serverName !== 'localhost'
 
 const toast = (message, variant) => globalThis.jahia?.toastDispatcher?.add({message, variant});
 
+// How often the panel asks how far a generation of llms-full.txt is.
+const POLL_MS = 800;
+
+const wait = ms => new Promise(resolve => {
+    setTimeout(resolve, ms);
+});
+
+/** What went wrong in the given action, or undefined when the last failure is another action's or none. */
+const messageOf = (failure, action, fallback) => (failure && failure.action === action ? failure.message || fallback : undefined);
+
 const errorText = error => error?.graphQLErrors?.[0]?.message || error?.message || '';
+
+/** Asks the server how far a generation of llms-full.txt is until it is over, and returns the file. */
+const followGeneration = async ({client, siteKey, id, isMounted, onProgress}) => {
+    const {data: result} = await client.query({
+        query: LLMS_PROGRESS,
+        variables: {siteKey, id},
+        fetchPolicy: 'no-cache'
+    });
+    const state = result.llms.generationProgress;
+    if (!isMounted.current) {
+        throw new Error('');
+    }
+
+    onProgress({runId: id, isStarted: state.started, total: state.total, done: state.done, pages: state.pages});
+    if (state.finished) {
+        if (state.error || !state.generation) {
+            throw new Error(state.error || '');
+        }
+
+        return state.generation;
+    }
+
+    await wait(POLL_MS);
+    return followGeneration({client, siteKey, id, isMounted, onProgress});
+};
+
+/** The panel when the settings of the site could not be read: its title, and what went wrong. */
+const ReadFailure = ({title, message}) => {
+    const {t} = useTranslation(MODULE);
+    return (
+        <div className={styles.root}>
+            <LayoutContent
+                hasPadding
+                header={<Header title={title}/>}
+                content={(
+                    <div className={styles.content}>
+                        <Banner variant="danger" title={t('error.read')} role="alert">{message}</Banner>
+                    </div>
+                )}
+            />
+        </div>
+    );
+};
+
+ReadFailure.propTypes = {
+    title: PropTypes.string.isRequired,
+    message: PropTypes.string.isRequired
+};
+
+/** One tab per file. A file with unsaved changes says so in its name, not only with a mark. */
+const FileTabs = ({selected, changed, onSelect}) => {
+    const {t} = useTranslation(MODULE);
+    return (
+        <div className={styles.tabs}>
+            <Tab className={styles.tabBar} aria-label={t('tabsLabel')}>
+                {FILES.map(f => {
+                    const unsaved = changed[f.id] ? t('tabUnsaved', {file: f.fileName}) : undefined;
+                    return (
+                        <TabItem key={f.id}
+                                 id={`llms-tab-${f.id}`}
+                                 aria-controls="llms-tabpanel"
+                                 aria-label={unsaved}
+                                 title={unsaved}
+                                 data-llms-tab={f.id}
+                                 label={unsaved ? `${f.fileName} *` : f.fileName}
+                                 isSelected={selected === f.id}
+                                 onClick={() => onSelect(f.id)}/>
+                    );
+                })}
+            </Tab>
+        </div>
+    );
+};
+
+FileTabs.propTypes = {
+    selected: PropTypes.string.isRequired,
+    changed: PropTypes.objectOf(PropTypes.bool).isRequired,
+    onSelect: PropTypes.func.isRequired
+};
 
 export const LlmsEditor = ({siteKey}) => {
     const {t} = useTranslation(MODULE);
@@ -54,6 +143,12 @@ export const LlmsEditor = ({siteKey}) => {
     const [language, setLanguage] = useState('');
     const [generations, setGenerations] = useState({});
     const [generating, setGenerating] = useState(null);
+    // The generation of llms-full.txt as it goes, kept after it ends: {runId, isStarted, total, done, pages}.
+    const [progress, setProgress] = useState(null);
+    const isMounted = useRef(true);
+    useEffect(() => () => {
+        isMounted.current = false;
+    }, []);
     const [failure, setFailure] = useState(null);
     const [announcement, setAnnouncement] = useState('');
     const [refocus, setRefocus] = useState(0);
@@ -100,19 +195,7 @@ export const LlmsEditor = ({siteKey}) => {
 
     const title = t('header', {siteName: node?.displayName || siteKey});
     if (error || !node) {
-        return (
-            <div className={styles.root}>
-                <LayoutContent
-                    hasPadding
-                    header={<Header title={title}/>}
-                    content={(
-                        <div className={styles.content}>
-                            <Banner variant="danger" title={t('error.read')} role="alert">{errorText(error)}</Banner>
-                        </div>
-                    )}
-                />
-            </div>
-        );
+        return <ReadFailure title={title} message={errorText(error)}/>;
     }
 
     // Only the languages visitors are served: the server refuses the others.
@@ -120,17 +203,29 @@ export const LlmsEditor = ({siteKey}) => {
         .map(l => ({label: `${l.displayName} (${l.language})`, value: l.language}));
     const file = FILES.find(f => f.id === tab);
 
+    // The index is read in one request. llms-full.txt renders every page: it runs in the background
+    // and the panel follows it, so the editor sees the pages go by.
+    const run = async () => {
+        if (!file.full) {
+            const {data: result} = await client.query({
+                query: LLMS_GENERATE,
+                variables: {siteKey, language, baseUrl, full: false},
+                fetchPolicy: 'network-only'
+            });
+            return result.llms.generate;
+        }
+
+        setProgress(null);
+        const {data: started} = await client.mutate({mutation: LLMS_START, variables: {siteKey, language, baseUrl}});
+        return followGeneration({client, siteKey, id: started.llms.startGeneration, isMounted, onProgress: setProgress});
+    };
+
     const generate = async () => {
         setFailure(null);
         setAnnouncement('');
         setGenerating(file.id);
         try {
-            const {data: result} = await client.query({
-                query: LLMS_GENERATE,
-                variables: {siteKey, language, baseUrl, full: file.full},
-                fetchPolicy: 'network-only'
-            });
-            const generation = result.llms.generate;
+            const generation = await run();
             setDrafts(d => ({...d, [file.id]: generation.content}));
             const languageLabel = languages.find(l => l.value === language)?.label || language;
             setGenerations(g => ({...g, [file.id]: {...generation, language: languageLabel}}));
@@ -155,6 +250,7 @@ export const LlmsEditor = ({siteKey}) => {
                 }
             });
             setGenerations({});
+            setProgress(null);
             await Promise.all([refetch(), live.refetch()]);
             toast(t('notification.saved'), 'success');
             // The toast belongs to jContent and may not be announced: the status region says it too.
@@ -167,6 +263,7 @@ export const LlmsEditor = ({siteKey}) => {
         setRefocus(n => n + 1);
     };
 
+    const saveFailure = messageOf(failure, 'save', '');
     const fileUrl = name => `${globalThis.contextJsParameters?.contextPath || ''}/sites/${siteKey}/${name}`;
 
     return (
@@ -188,23 +285,7 @@ export const LlmsEditor = ({siteKey}) => {
                                     isLoading={saving}
                                     onClick={save}/>
                         ]}
-                        toolbarLeft={(
-                            <div className={styles.tabs}>
-                                <Tab className={styles.tabBar} aria-label={t('tabsLabel')}>
-                                    {FILES.map(f => (
-                                        <TabItem key={f.id}
-                                                 id={`llms-tab-${f.id}`}
-                                                 aria-controls="llms-tabpanel"
-                                                 aria-label={changed[f.id] ? t('tabUnsaved', {file: f.fileName}) : undefined}
-                                                 title={changed[f.id] ? t('tabUnsaved', {file: f.fileName}) : undefined}
-                                                 data-llms-tab={f.id}
-                                                 label={changed[f.id] ? `${f.fileName} *` : f.fileName}
-                                                 isSelected={tab === f.id}
-                                                 onClick={() => setTab(f.id)}/>
-                                    ))}
-                                </Tab>
-                            </div>
-                        )}
+                        toolbarLeft={<FileTabs selected={tab} changed={changed} onSelect={setTab}/>}
                         toolbarRight={[
                             <Button key="spec"
                                     variant="ghost"
@@ -219,9 +300,9 @@ export const LlmsEditor = ({siteKey}) => {
                     <div className={styles.content}>
                         {/* Always in the page: a status region inserted with its text already in is often not announced. */}
                         <div role="status" className={styles.srOnly}>{announcement}</div>
-                        {failure?.action === 'save' && (
+                        {saveFailure !== undefined && (
                             <Banner variant="danger" title={t('error.save')} role="alert">
-                                {failure.message}
+                                {saveFailure}
                             </Banner>
                         )}
                         {/* One panel per tab: what generates the file, then the file. */}
@@ -237,7 +318,8 @@ export const LlmsEditor = ({siteKey}) => {
                                 language={language}
                                 baseUrl={baseUrl}
                                 generation={generations[file.id]}
-                                failure={failure?.action === 'generate' ? failure.message || t('error.generate') : undefined}
+                                progress={file.full ? progress : null}
+                                failure={messageOf(failure, 'generate', t('error.generate'))}
                                 isBaseUrlValid={baseUrlValid}
                                 isGenerating={generating === file.id}
                                 isGenerateEnabled={baseUrlValid && Boolean(language) && !saving && (!generating || generating === file.id)}
@@ -258,6 +340,10 @@ export const LlmsEditor = ({siteKey}) => {
                                 onRevert={() => {
                                     setDrafts(d => ({...d, [file.id]: saved[file.id]}));
                                     setGenerations(g => ({...g, [file.id]: undefined}));
+                                    if (file.full) {
+                                        setProgress(null);
+                                    }
+
                                     setRefocus(n => n + 1);
                                 }}
                             />

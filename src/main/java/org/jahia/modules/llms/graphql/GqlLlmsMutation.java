@@ -4,8 +4,10 @@ import graphql.annotations.annotationTypes.GraphQLDescription;
 import graphql.annotations.annotationTypes.GraphQLField;
 import graphql.annotations.annotationTypes.GraphQLName;
 import graphql.annotations.annotationTypes.GraphQLNonNull;
+import graphql.schema.DataFetchingEnvironment;
 import org.jahia.modules.graphql.provider.dxm.DataFetchingException;
 import org.jahia.modules.graphql.provider.dxm.osgi.annotations.GraphQLOsgiService;
+import org.jahia.modules.graphql.provider.dxm.util.ContextUtil;
 import org.jahia.modules.llms.service.LlmsService;
 import org.jahia.modules.llms.service.internal.PublicUrls;
 import org.jahia.services.content.decorator.JCRSiteNode;
@@ -65,6 +67,35 @@ public class GqlLlmsMutation {
             LOGGER.warn("Could not save the llms files of {}: {}", siteKey, e.getMessage());
             LOGGER.debug("Full exception", e);
             throw new DataFetchingException("The files could not be saved");
+        }
+    }
+
+    /**
+     * @param siteKey     key of the site
+     * @param language    language of the file, one of the languages the site serves
+     * @param baseUrl     public base URL the links start with
+     * @param environment the GraphQL environment, for the port this Jahia answers on
+     * @return the identifier to read the progress with
+     */
+    @GraphQLField
+    @GraphQLName("startGeneration")
+    @GraphQLNonNull
+    @GraphQLDescription("Starts a generation of llms-full.txt in the background; read it with the generationProgress query. Saves nothing.")
+    public String startGeneration(
+            @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey,
+            @GraphQLName("language") @GraphQLNonNull @GraphQLDescription("Language of the file") String language,
+            @GraphQLName("baseUrl") @GraphQLNonNull @GraphQLDescription("Public base URL of the site, scheme, host and port") String baseUrl,
+            DataFetchingEnvironment environment) {
+        JCRSiteNode site = SiteAccess.site(siteKey, "publish");
+        String lang = SiteAccess.language(site, language);
+        if (!PublicUrls.BASE_URL.matcher(baseUrl).matches()) {
+            throw new DataFetchingException("The public URL must be a scheme, a host and an optional port");
+        }
+        try {
+            return service.startFullGeneration(siteKey, lang, baseUrl,
+                    SiteAccess.renderBase(ContextUtil.getHttpServletRequest(environment.getGraphQlContext())));
+        } catch (IllegalStateException e) {
+            throw new DataFetchingException(e.getMessage());
         }
     }
 

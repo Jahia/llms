@@ -64,6 +64,41 @@ export const LLMS_GENERATE = gql`
     }
 `;
 
+/** Starts llms-full.txt in the background: it renders every page, too long for one silent request. */
+export const LLMS_START = gql`
+    mutation LlmsStart($siteKey: String!, $language: String!, $baseUrl: String!) {
+        llms {
+            startGeneration(siteKey: $siteKey, language: $language, baseUrl: $baseUrl)
+        }
+    }
+`;
+
+/** How far that generation is, page by page, and the file once it is finished. */
+export const LLMS_PROGRESS = gql`
+    query LlmsProgress($siteKey: String!, $id: String!) {
+        llms {
+            generationProgress(siteKey: $siteKey, id: $id) {
+                started
+                total
+                done
+                finished
+                error
+                pages {
+                    title
+                    url
+                    state
+                }
+                generation {
+                    content
+                    pages
+                    failedPages
+                    truncated
+                }
+            }
+        }
+    }
+`;
+
 export const LLMS_SAVE = gql`
     mutation LlmsSave($siteKey: String!, $llms: String, $llmsFull: String, $baseUrl: String) {
         llms {

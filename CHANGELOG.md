@@ -48,6 +48,9 @@
   `copyright`) is dropped, so a page of such a template gives its content and not its login bar and
   footer.
 * A media file or a module resource named `llms.txt` is no longer captured by the module's URLs.
+* **Images are left out of llms-full.txt** unless `keepImages` is set: a text reader gains nothing from
+  an address it cannot open, and most images of a page are logos and decorations.
+* A page with nothing to read is left out of llms-full.txt instead of being written as a bare title.
 
 ### Panel
 
@@ -60,6 +63,12 @@
   keeps a readable line length.
 * Accessibility: every field is named, an invalid URL is tied to its field, tabs are related to their
   panel, status changes are announced, the focus is never lost after an action.
+
+* **A generation of llms-full.txt shows the pages go by.** A progress bar with the count of pages, and
+  a log of each page as it is rendered, with what became of it (rendered, empty and left out, failed and
+  left out). The log stays after the generation, until the next action. The generation runs in the
+  background (`llms { startGeneration }`, read with `llms { generationProgress }`) instead of one request
+  that says nothing for a minute.
 
 ### Performance
 

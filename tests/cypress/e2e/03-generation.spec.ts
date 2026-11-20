@@ -59,8 +59,24 @@ describe('generating llms.txt and llms-full.txt', () => {
             expect(errorOf(response)).to.eq(null);
             const {content, pages, failedPages} = response.body.data.llms.generate;
             expect(failedPages, 'pages that could not be rendered').to.deep.eq([]);
-            expect(pages).to.be.at.least(2);
-            expect(content).to.match(/\n---\n\n# About us\n\nSource: https:\/\/www\.example\.com\/\S+\n/);
+            expect(pages, 'pages written in the file').to.be.at.least(1);
+            expect(content).to.match(/\n---\n\n# [^\n]+\n\nSource: https:\/\/www\.example\.com\/\S+\n\n\S/);
+        });
+    });
+
+    it('leaves out of llms-full.txt a page with nothing to read, and still lists it in llms.txt', () => {
+        // "About us" is published and has no content: an index entry, but no empty block in the full file.
+        generate({full: true}).then(response => {
+            expect(response.body.data.llms.generate.content).to.not.contain('# About us');
+        });
+        generate({}).then(response => {
+            expect(response.body.data.llms.generate.content).to.contain('[About us]');
+        });
+    });
+
+    it('leaves images out of llms-full.txt', () => {
+        generate({full: true}).then(response => {
+            expect(response.body.data.llms.generate.content).to.not.match(/!\[[^\]]*\]\(/);
         });
     });
 

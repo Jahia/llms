@@ -45,6 +45,20 @@
     "index": "Reading the published pages of the site.",
     "full": "Rendering each published page as a visitor sees it. A large site can take a minute."
   },
+  "progress": {
+    "label": "Progress of the generation",
+    "preparing": "Reading the site",
+    "count": "{{done}} / {{total}} pages",
+    "logTitle": "Pages processed",
+    "state": {
+      "RENDERED": "Rendered",
+      "EMPTY": "Empty, left out",
+      "FAILED": "Failed, left out"
+    },
+    "spokenStart": "Generation started, {{total}} pages",
+    "spokenStep": "{{percent}}%, {{done}} of {{total}} pages",
+    "spokenFailed": "{{count}} pages failed"
+  },
   "generated": {
     "title": "Generated from {{pages}} pages in {{language}}",
     "review": "The text below was replaced by this proposal. Review and edit it, then select Save and publish. Discard changes restores the saved file.",

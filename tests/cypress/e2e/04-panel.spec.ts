@@ -89,6 +89,31 @@ describe('the llms.txt panel in jContent', () => {
         });
     });
 
+    it('shows the pages go by while llms-full.txt is generated, and keeps the log', () => {
+        openPanel();
+        cy.get('[data-llms-tab="llmsFull"]').click();
+        cy.get('#llms-baseurl').clear().type('https://www.example.com');
+        cy.get('[data-llms-role="generate"]').should('contain.text', 'Generate llms-full.txt').click();
+        cy.get('[data-llms-role="generated"]', {timeout: 120000}).should('be.visible');
+
+        // The bar is a real progress element, named and described: nothing to guess for a screen reader.
+        cy.get('[data-llms-role="progress"] progress').should('have.attr', 'aria-labelledby', 'llms-progress-label')
+            .and('have.attr', 'aria-describedby', 'llms-progress-count');
+        cy.get('[data-llms-role="progress-count"]').invoke('text').should('match', /^(\d+) \/ \1 pages$/);
+        // One line per page, with what became of it written out.
+        cy.get('[data-llms-role="log"]').should('have.attr', 'role', 'region').and('have.attr', 'tabindex', '0');
+        cy.get('[data-llms-role="log"] li').should('have.length.at.least', 2)
+            .each($line => expect($line.text()).to.match(/(Rendered|Empty, left out|Failed, left out)$/));
+        cy.get('[data-llms-role="log"] li[data-llms-state="RENDERED"]').should('contain.text', 'Rendered');
+        // The focus has not moved, and the proposal is in the editor.
+        cy.get('[data-llms-role="generate"]').should('have.focus');
+        cy.get('#llms-editor-llmsFull').invoke('val').should('contain', 'Source: https://www.example.com/');
+
+        // Discarding the proposal takes its log away with it.
+        cy.get('[data-llms-role="revert"]').click();
+        cy.get('[data-llms-role="progress"]').should('not.exist');
+    });
+
     it('keeps the two files apart: llms-full.txt is still not created', () => {
         openPanel();
         cy.get('[data-llms-status="published"]', {timeout: 30000}).should('exist');

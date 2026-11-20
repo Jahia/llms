@@ -43,6 +43,29 @@ describe('authorization of the llms GraphQL fields', () => {
         });
     });
 
+    it('refuses to start a generation, or to read one, to whoever may not publish on the site', () => {
+        const START = `mutation ($siteKey: String!) {
+            llms { startGeneration(siteKey: $siteKey, language: "en", baseUrl: "${BASE_URL}") }
+        }`;
+        const PROGRESS = `query ($siteKey: String!, $id: String!) {
+            llms { generationProgress(siteKey: $siteKey, id: $id) { finished } }
+        }`;
+        [GUEST, OUTSIDER].forEach(user => {
+            gql(user, START, {siteKey: SITE_A}).then(response => expect(errorOf(response)).to.eq('Permission denied'));
+        });
+        gql(PUBLISHER, START, {siteKey: SITE_B}).then(response => expect(errorOf(response)).to.eq('Permission denied'));
+
+        // A generation of site A is not readable through site B, nor by someone with no role on A.
+        gql(PUBLISHER, START, {siteKey: SITE_A}).then(response => {
+            expect(errorOf(response)).to.eq(null);
+            const id = response.body.data.llms.startGeneration;
+            gql(OUTSIDER, PROGRESS, {siteKey: SITE_A, id}).then(r => expect(errorOf(r)).to.eq('Permission denied'));
+            gql(PUBLISHER, PROGRESS, {siteKey: SITE_B, id}).then(r => expect(errorOf(r)).to.eq('Permission denied'));
+            gql(PUBLISHER, PROGRESS, {siteKey: SITE_A, id: 'no-such-generation'}).then(r => expect(errorOf(r)).to.eq('Unknown generation'));
+            gql(PUBLISHER, PROGRESS, {siteKey: SITE_A, id}).then(r => expect(errorOf(r)).to.eq(null));
+        });
+    });
+
     it('answers the same for a site that does not exist as for one the caller may not touch', () => {
         generate(PUBLISHER, 'noSuchSite').then(response => expect(errorOf(response)).to.eq('Permission denied'));
         generate(PUBLISHER, '../systemsite').then(response => expect(errorOf(response)).to.eq('Permission denied'));

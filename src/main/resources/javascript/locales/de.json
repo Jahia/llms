@@ -45,6 +45,20 @@
     "index": "Die veröffentlichten Seiten der Website werden gelesen.",
     "full": "Jede veröffentlichte Seite wird so gerendert, wie ein Besucher sie sieht. Eine große Website kann eine Minute dauern."
   },
+  "progress": {
+    "label": "Fortschritt der Generierung",
+    "preparing": "Die Website wird gelesen",
+    "count": "{{done}} / {{total}} Seiten",
+    "logTitle": "Verarbeitete Seiten",
+    "state": {
+      "RENDERED": "Gerendert",
+      "EMPTY": "Leer, ausgelassen",
+      "FAILED": "Fehlgeschlagen, ausgelassen"
+    },
+    "spokenStart": "Generierung gestartet, {{total}} Seiten",
+    "spokenStep": "{{percent}} %, {{done}} von {{total}} Seiten",
+    "spokenFailed": "{{count}} Seiten fehlgeschlagen"
+  },
   "generated": {
     "title": "Aus {{pages}} Seiten in {{language}} generiert",
     "review": "Der Text unten wurde durch diesen Vorschlag ersetzt. Prüfen und bearbeiten Sie ihn, dann wählen Sie Speichern und veröffentlichen. Änderungen verwerfen stellt die gespeicherte Datei wieder her.",

@@ -9,6 +9,7 @@ import org.jahia.services.usermanager.JahiaUserManagerService;
 
 import javax.jcr.PathNotFoundException;
 import javax.jcr.RepositoryException;
+import javax.servlet.http.HttpServletRequest;
 import java.util.regex.Pattern;
 
 /**
@@ -52,6 +53,19 @@ final class SiteAccess {
             throw new DataFetchingException("The site could not be read");
         }
         throw new DataFetchingException(DENIED);
+    }
+
+    /**
+     * Where this Jahia renders its own pages for llms-full.txt when the configuration names no address:
+     * the loopback, on the port the caller's request came in on. Never a host or a port taken from a
+     * header of the request.
+     *
+     * @param request the caller's request, or null
+     * @return scheme, host and port
+     */
+    static String renderBase(HttpServletRequest request) {
+        int port = request == null || request.getLocalPort() <= 0 ? 8080 : request.getLocalPort();
+        return "http://127.0.0.1:" + port;
     }
 
     /**
