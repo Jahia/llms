@@ -72,6 +72,7 @@ add `digital-factory-data/karaf/etc/org.jahia.modules.llms.cfg` to change a valu
 | `excludedNodeTypes` | `jseomix:noIndex, jcmix:hidePage, jacademix:hidePage` | Node types (mixins) of the pages left out of both files, separated by commas, as many as needed. Their sub-pages are still listed. The defaults are the **No index** option of the sitemap module and the "hidden in the menu" mark of the jahia.com and Academy templates. A type no installed module defines is ignored. Setting this key replaces the defaults: repeat the ones to keep. |
 | `excludedTreeNodeTypes` | empty | Node types (mixins) of the pages left out of both files **with all their sub-pages**: put one on the page at the top of a section to leave the section out. |
 | `servePageMarkdown` | `true` | Serve each published page as Markdown at its URL followed by `.md`. |
+| `discoveryLinks` | `true` | Write in the head of each published page the links to its Markdown version and to the llms.txt of the site. |
 | `linkToMarkdown` | `false` | In a generated llms.txt, link each page to its Markdown version rather than to the page. |
 | `keepImages` | `false` | Write the images of a page (those with a text alternative) in llms-full.txt. Off, images are left out: a text reader gains little from them, and most are logos and decorations. |
 | `renderBaseUrl` | blank | Scheme, host and port this Jahia answers on from inside its own container. Blank: `http://127.0.0.1` on the port the editor's request came in on. Set it when Jahia sits behind a connector on another port. |
@@ -104,6 +105,21 @@ https://www.example.com/home/about.html.md   the same page as Markdown
   a vanity URL that does not end in `.html` has no Markdown version yet.
 - Each request renders the page: eight are converted at the same time at most, beyond which the answer
   is `503` with `Retry-After`.
+
+### Discovery links
+
+So that an agent holding a page finds the rest without guessing, each published page of a site where the
+module is enabled carries two links in its `<head>`, as the proposal asks:
+
+```html
+<link rel="alternate" type="text/markdown" href="/home/about.html.md"/>
+<link rel="describedby" href="/sites/mySite/llms.txt"/>
+```
+
+The first is written when the page has a Markdown version, the second when the site serves an llms.txt.
+A Markdown version says the same in a `Link` header, with the page as `rel="canonical"`. The links are
+cached with the page: a site that gets its first llms.txt shows the second link on a page once the cache
+of that page is renewed. `discoveryLinks` (default `true`) switches them off.
 
 Two configuration keys: `servePageMarkdown` (default `true`) switches this off; `linkToMarkdown`
 (default `false`) makes a generated llms.txt link each page to its `.md` version, as the proposal

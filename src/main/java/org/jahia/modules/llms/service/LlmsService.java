@@ -87,6 +87,7 @@ public class LlmsService {
     private volatile boolean keepImages;
     private volatile boolean servePageMarkdown = true;
     private volatile boolean linkToMarkdown;
+    private volatile boolean discoveryLinks = true;
     /** Pages converted to Markdown at the same time for visitors: each one renders a page. */
     private final Semaphore pageSlots = new Semaphore(8);
     private volatile Set<String> excluded = SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED);
@@ -168,6 +169,7 @@ public class LlmsService {
         this.keepImages = config.keepImages();
         this.servePageMarkdown = config.servePageMarkdown();
         this.linkToMarkdown = config.linkToMarkdown();
+        this.discoveryLinks = config.discoveryLinks();
         this.excluded = SiteWalker.typeNames(config.excludedNodeTypes());
         this.excludedTrees = SiteWalker.typeNames(config.excludedTreeNodeTypes());
     }
@@ -455,6 +457,20 @@ public class LlmsService {
     }
 
     /**
+     * @return whether the published pages carry the links to their Markdown version and to llms.txt
+     */
+    public boolean discoveryLinks() {
+        return discoveryLinks;
+    }
+
+    /**
+     * @return whether each page is also served as Markdown at its URL followed by .md
+     */
+    public boolean servesPageMarkdown() {
+        return servePageMarkdown;
+    }
+
+    /**
      * The address a line of llms.txt links to: the page, or its Markdown version when configured so and
      * the page has one (an address that ends in {@code .html}; a vanity URL has none).
      */
@@ -486,10 +502,12 @@ public class LlmsService {
         try {
             Limits c = limits;
             String base = c.renderBaseUrl() == null ? renderBase : c.renderBaseUrl();
-            // A redirect is followed only to another page of the same site.
+            // The path comes from the rewrite rules, which work from the root of the context: Jahia's
+            // context path goes back in front of it. A redirect is followed only to another page of the site.
+            String context = Jahia.getContextPath();
             PageFetcher fetcher = new PageFetcher(base, c.fetchTimeoutSeconds(), c.maxPageBytes(),
-                    path -> siteKey.equals(PageMarkdown.siteKeyOf(path)));
-            Document doc = Jsoup.parse(fetcher.fetch(rawPath), publicUrl);
+                    path -> siteKey.equals(PageMarkdown.siteKeyOf(path.startsWith(context) ? path.substring(context.length()) : path)));
+            Document doc = Jsoup.parse(fetcher.fetch(context + rawPath), publicUrl);
             String title = PageMarkdown.titleOf(doc);
             String body = HtmlToMarkdown.convert(doc, title, href -> href, keepImages);
             return (title.isEmpty() ? "" : "# " + title + "\n\n") + body + "\n";

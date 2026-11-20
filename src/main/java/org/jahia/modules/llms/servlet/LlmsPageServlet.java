@@ -1,13 +1,17 @@
 package org.jahia.modules.llms.servlet;
 
+import org.jahia.bin.Jahia;
 import org.jahia.modules.llms.service.LlmsService;
+import org.jahia.modules.llms.service.internal.DiscoveryLinks;
 import org.jahia.modules.llms.service.internal.LocalAddress;
 import org.jahia.modules.llms.service.internal.PageMarkdown;
+import org.jahia.services.content.JCRSessionFactory;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.jcr.RepositoryException;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
@@ -26,7 +30,8 @@ import java.nio.charset.StandardCharsets;
  * account, answers 404 here as it does there.</p>
  *
  * <p>Only a request the rule forwarded is answered, for a path that is plainly a page of one site and
- * that is the page asked for: called directly, or with any other path, the servlet answers 404. It
+ * that is the page asked for (the context path is Jahia's own: inside a servlet of a module, the one of
+ * the request is {@code /modules}): called directly, or with any other path, the servlet answers 404. It
  * never fetches a path a visitor chose freely. Stateless and thread-safe.</p>
  */
 @Component(service = {HttpServlet.class, Servlet.class}, property = {"alias=/llmspage", "osgi.http.whiteboard.servlet.asyncSupported=true"})
@@ -42,7 +47,7 @@ public class LlmsPageServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String path = pagePath((String) request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI),
-                request.getContextPath(), request.getQueryString());
+                Jahia.getContextPath(), request.getQueryString());
         String markdown = null;
         String asked = null;
         if (path != null) {
@@ -69,8 +74,9 @@ public class LlmsPageServlet extends HttpServlet {
         response.setHeader("Cache-Control", "public, no-cache");
         response.setHeader("ETag", etag);
         response.setHeader("X-Content-Type-Options", "nosniff");
-        // The page itself is the reference: this is another form of it, not another page.
-        response.setHeader("Link", "<" + asked + ">; rel=\"canonical\"");
+        // The page itself is the reference: this is another form of it, not another page. And the
+        // llms.txt of the site describes it, said in a header since Markdown has no <head> to say it in.
+        response.setHeader("Link", DiscoveryLinks.header(asked, llmsHref(path)));
         if (LlmsServlet.matches(request.getHeader("If-None-Match"), etag)) {
             response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
             return;
@@ -101,6 +107,17 @@ public class LlmsPageServlet extends HttpServlet {
             asked = asked.substring(contextPath.length());
         }
         return PageMarkdown.siteKeyOf(path) != null && PageMarkdown.isSamePage(asked, path) ? path : null;
+    }
+
+    /** The llms.txt of the site of the page, when the visitor can read one. */
+    private static String llmsHref(String path) {
+        try {
+            String siteKey = PageMarkdown.siteKeyOf(path);
+            String file = LlmsService.read(JCRSessionFactory.getInstance().getCurrentUserSession("live"), siteKey, LlmsService.LLMS);
+            return file == null || file.isBlank() ? null : Jahia.getContextPath() + "/sites/" + siteKey + "/llms.txt";
+        } catch (RepositoryException e) {
+            return null;
+        }
     }
 
     /** The address the visitor knows the page by: the URL they asked for, without its {@code .md}. */

@@ -22,6 +22,10 @@
   version of a page that is not published or not open to visitors. `linkToMarkdown` makes a generated
   llms.txt link to these versions.
 
+* **Pages name their Markdown version and the llms.txt of their site** in their `<head>`
+  (`rel="alternate" type="text/markdown"`, `rel="describedby"`), and a Markdown version does so in a
+  `Link` header. This is how the proposal lets an agent find these files from a page.
+
 ### Security
 
 * The public files are served with an `ETag` and `304 Not Modified` (`Cache-Control: no-cache`, so a

@@ -1,6 +1,6 @@
 import {deleteSite, publishAndWaitJobEnding, uploadFile} from '@jahia/cypress';
 import {addUnpublishedPage, createSiteWithPages} from '../support/fixtures';
-import {fetchFile} from '../support/llms';
+import {fetchFile, saveAsRoot} from '../support/llms';
 
 /**
  * The Markdown version of a page, at the page's own URL followed by .md, as the llms.txt proposal asks.
@@ -13,6 +13,8 @@ describe('the Markdown version of a page (page.html.md)', () => {
     before(() => {
         createSiteWithPages(SITE);
         addUnpublishedPage(SITE, 'draft', 'Unpublished draft');
+        // Saved before any page is rendered: the links of a page are cached with the page.
+        saveAsRoot(SITE, {llms: '# Site\n\n## Home\n\n- [About us](https://www.example.com/home/about.html)'});
     });
 
     after(() => {
@@ -26,7 +28,35 @@ describe('the Markdown version of a page (page.html.md)', () => {
             expect(response.headers['x-content-type-options']).to.eq('nosniff');
             expect(response.body).to.match(/^# About us\n/);
             expect(response.body, 'no page chrome').to.not.match(/Login|All Rights Reserved/);
-            expect(response.headers.link).to.eq(`<${Cypress.config('baseUrl')}${ABOUT}>; rel="canonical"`);
+            // Markdown has no <head>: the page it is another form of, and the llms.txt that covers it, are a header.
+            expect(response.headers.link).to.eq(
+                `<${Cypress.config('baseUrl')}${ABOUT}>; rel="canonical", </sites/${SITE}/llms.txt>; rel="describedby"`);
+        });
+    });
+
+    /**
+     * What lets an agent holding a page find the rest without guessing: the page names its Markdown
+     * version and the llms.txt of its site. Each link is followed, not only read.
+     */
+    it('names in each page its Markdown version and the llms.txt of the site, and both answer', () => {
+        fetchFile(ABOUT).then(response => {
+            expect(response.status).to.eq(200);
+            const head = new DOMParser().parseFromString(response.body, 'text/html').head;
+            const markdown = head.querySelector('link[rel="alternate"][type="text/markdown"]');
+            const llms = head.querySelector('link[rel="describedby"]');
+            expect(markdown, 'link to the Markdown version').to.not.eq(null);
+            expect(llms, 'link to llms.txt').to.not.eq(null);
+            expect(markdown!.getAttribute('href')).to.eq(`${ABOUT}.md`);
+            expect(llms!.getAttribute('href')).to.eq(`/sites/${SITE}/llms.txt`);
+
+            fetchFile(markdown!.getAttribute('href') as string).then(md => {
+                expect(md.status).to.eq(200);
+                expect(md.headers['content-type']).to.match(/^text\/markdown/i);
+            });
+            fetchFile(llms!.getAttribute('href') as string).then(file => {
+                expect(file.status).to.eq(200);
+                expect(file.body).to.contain('# Site');
+            });
         });
     });
 

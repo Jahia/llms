@@ -72,6 +72,12 @@ public @interface LlmsConfig {
     boolean servePageMarkdown() default true;
 
     /**
+     * @return whether the published pages carry the links to their Markdown version and to llms.txt
+     */
+    @AttributeDefinition(name = "Discovery links", description = "Write in the head of each published page a link to its Markdown version (rel=alternate, type=text/markdown) and to the llms.txt of the site (rel=describedby), as the llms.txt proposal asks.")
+    boolean discoveryLinks() default true;
+
+    /**
      * @return whether the links of a generated llms.txt point to the Markdown version of the pages
      */
     @AttributeDefinition(name = "Link llms.txt to Markdown", description = "In a generated llms.txt, link each page to its Markdown version (page.html.md) rather than to the page. Off by default: modules that compare the links of llms.txt with the pages of the site (geo-readiness, content-governance) expect the addresses of the pages.")

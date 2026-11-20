@@ -1,5 +1,6 @@
 package org.jahia.modules.llms.servlet;
 
+import org.jahia.bin.Jahia;
 import org.jahia.exceptions.JahiaException;
 import org.jahia.modules.llms.service.LlmsService;
 import org.jahia.services.content.JCRNodeWrapper;
@@ -65,7 +66,7 @@ public class LlmsServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         Target target = Target.of((String) request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI),
-                request.getContextPath(), request.getParameter("site"), request.getParameter("file"));
+                Jahia.getContextPath(), request.getParameter("site"), request.getParameter("file"));
         if (target == null) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
