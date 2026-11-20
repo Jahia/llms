@@ -86,7 +86,7 @@
     "advice": " Dieser Text ist eine Aneinanderreihung der Seiten der Website, so wie sie veröffentlicht sind. Ihn vor dem Veröffentlichen gegenzulesen, schlecht Lesbares umzuschreiben und Überflüssiges zu entfernen, wird dringend empfohlen: Eine überarbeitete Datei dient KI-Assistenten, und damit Ihrer Sichtbarkeit in deren Antworten (GEO), weit besser als eine rohe.",
     "failed": " Seiten, die nicht gerendert werden konnten und ausgelassen wurden ({{count}}):",
     "cut": {
-      "pages": " Die Website hat mehr Seiten, als eine Datei aufführt: Die Seiten, die der Startseite am nächsten sind, wurden behalten.",
+      "pages": " Die Website hat mehr Seiten, als eine Datei aufführt: Die Seiten, die der Startseite am nächsten sind, wurden behalten. Um mehr davon zu beschreiben, den großen Bereichen eigene Dateien geben (Files of, oben): Diese Datei verweist dann auf sie.",
       "size": " Die Datei hat ihre Größengrenze erreicht: Die letzten {{count}} Seiten wurden ausgelassen. Um sie zu erhalten, die Dateien eines Bereichs generieren oder einen Administrator um eine höhere Grenze bitten (maxFullKb).",
       "time": " Die Zeit für eine Generierung ist abgelaufen: Die nicht rechtzeitig gerenderten Seiten wurden ausgelassen."
     }

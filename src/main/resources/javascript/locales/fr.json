@@ -86,7 +86,7 @@
     "advice": " Ce texte est une agrégation des pages du site, telles qu'elles sont publiées. Le relire, réécrire ce qui se lit mal et retirer ce qui n'apporte rien est fortement conseillé avant de publier : un fichier retravaillé sert bien mieux les assistants IA, donc votre visibilité dans leurs réponses (GEO), qu'un fichier brut.",
     "failed": " Pages dont le rendu a échoué, écartées du fichier ({{count}}) :",
     "cut": {
-      "pages": " Le site a plus de pages qu'un fichier n'en liste : les pages les plus proches de la page d'accueil ont été gardées.",
+      "pages": " Le site a plus de pages qu'un fichier n'en liste : les pages les plus proches de la page d'accueil ont été gardées. Pour en décrire davantage, donner aux grandes sections leurs propres fichiers (Files of, plus haut) : ce fichier pointe alors vers eux.",
       "size": " Le fichier a atteint sa taille maximale : les {{count}} dernières pages ont été laissées de côté. Pour les avoir, générer les fichiers d'une section, ou demander à un administrateur une limite plus haute (maxFullKb).",
       "time": " Le temps accordé à une génération est écoulé : les pages non rendues à temps ont été laissées de côté."
     }

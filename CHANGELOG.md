@@ -22,6 +22,8 @@
 * **List only marked pages**: `includedNodeTypes` lists only the pages and contents that carry a mixin,
   such as the new page option `jmix:llmsListed` (List in llms.txt). The content editor shows that
   option only to who holds the new permission `llmsListPages` on the site.
+* A generated llms.txt ends with the links to the llms.txt of the sections that have one, so the files
+  of a large site chain.
 * **Preview** of a file in the panel: its Markdown rendered and sanitized, in place of the editor.
 * A generated llms-full.txt says it is the pages put end to end, and that proofreading and cleaning it
   up before publishing is strongly advised.

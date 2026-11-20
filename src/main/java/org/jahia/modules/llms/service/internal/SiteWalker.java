@@ -522,7 +522,7 @@ public final class SiteWalker {
     }
 
     /** A Markdown list item is one line: tags dropped, white space collapsed, long text cut. */
-    static String oneLine(String text) {
+    public static String oneLine(String text) {
         if (text == null) {
             return null;
         }

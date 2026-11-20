@@ -55,6 +55,10 @@ What generation reads:
 Saving writes the files on the site node and publishes **the site node alone**, never its pages or
 content. An empty file is removed, and its URL then answers 404.
 
+A generated llms.txt ends with a `## llms.txt` list: one link per section that has a published llms.txt
+of its own. The proposal has no paging; this is how the files of a site too large for one file chain.
+Give the large sections their own files (**Files of**), then generate the file of the site again.
+
 The card of a file has a **Preview** button: the Markdown rendered as a person reads it, in place of the
 editor. The HTML is sanitized (no script, style, form or image), and a very large file is previewed up
 to its first 300 KB.

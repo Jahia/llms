@@ -86,7 +86,7 @@
     "advice": " This text is the pages of the site put end to end, as they are published. Proofreading it, rewriting what reads badly and removing what does not help is strongly advised before publishing: a file that was curated serves AI assistants, and so your visibility in their answers (GEO), far better than a raw one.",
     "failed": " Pages that could not be rendered, left out of the file ({{count}}):",
     "cut": {
-      "pages": " The site has more pages than one file lists: the pages nearest to the home page were kept.",
+      "pages": " The site has more pages than one file lists: the pages nearest to the home page were kept. To describe more of it, give its large sections files of their own (Files of, above): this file then links to them.",
       "size": " The file reached its size limit: the last {{count}} pages were left out. To have them, generate the files of a section, or ask an administrator for a higher limit (maxFullKb).",
       "time": " The time allowed for one generation ran out: the pages not rendered in time were left out."
     }

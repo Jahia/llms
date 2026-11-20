@@ -5,6 +5,7 @@ import org.jahia.modules.llms.service.internal.HtmlToMarkdown;
 import org.jahia.modules.llms.service.internal.PageFetcher;
 import org.jahia.modules.llms.service.internal.PageMarkdown;
 import org.jahia.modules.llms.service.internal.PublicUrls;
+import org.jahia.modules.llms.service.internal.SectionFile;
 import org.jahia.modules.llms.service.internal.SiteWalker;
 import org.jahia.services.content.JCRCallback;
 import org.jahia.services.content.JCRNodeWrapper;
@@ -102,6 +103,8 @@ public class LlmsService {
     /** What a generation lists when the site has no configuration of its own. */
     private volatile SiteSettings defaults = new SiteSettings(10, 200, 100, SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED),
             Set.of(), Set.of(), false, false);
+    /** The heading the files of the sections are listed under: the name of the file, the same in every language. */
+    static final String SECTION_FILES_HEADING = "llms.txt";
     private static final String MENU_GROUP = "jnt:navMenuText";
     /** Menu groups nested deeper than this are not looked through. */
     private static final int MAX_GROUP_DEPTH = 5;
@@ -409,6 +412,19 @@ public class LlmsService {
                 sb.append('\n');
             }
         }
+        // The sections that have a file of their own are named last: a reader that wants more of one
+        // follows the link, which is how the files of a large site chain, the proposal having no paging.
+        List<SiteWalker.Page> files = sectionFiles(siteKey, sectionPath, language, baseUrl);
+        if (!files.isEmpty()) {
+            sb.append("\n## ").append(SECTION_FILES_HEADING).append("\n\n");
+            for (SiteWalker.Page file : files) {
+                sb.append("- [").append(escape(file.title())).append("](").append(file.url()).append(')');
+                if (file.description() != null) {
+                    sb.append(": ").append(file.description());
+                }
+                sb.append('\n');
+            }
+        }
         return new Generation(sb.toString(), walk.pages().size(), List.of(), walk.truncated());
     }
 
@@ -653,6 +669,41 @@ public class LlmsService {
             }
         }
         return href;
+    }
+
+    /**
+     * The llms.txt of the sections below the site, or below a section: the pages that carry a published
+     * llms.txt a visitor without an account can read, each with the address of that file. The address is
+     * the one that answers on any host ({@code /sites/<key>/<path of the page>/llms.txt}).
+     */
+    private List<SiteWalker.Page> sectionFiles(String siteKey, String sectionPath, String language, String baseUrl)
+            throws RepositoryException {
+        Locale locale = Locale.forLanguageTag(language.replace('_', '-'));
+        String root = sectionPath == null ? "/sites/" + siteKey : sectionPath;
+        JCRUserNode guest = JahiaUserManagerService.getInstance().lookupUser(JahiaUserManagerService.GUEST_USERNAME);
+        if (guest == null) {
+            throw new RepositoryException("guest user not found");
+        }
+        return JCRTemplate.getInstance().doExecute(guest.getJahiaUser(), "live", locale,
+                (JCRCallback<List<SiteWalker.Page>>) session -> {
+                    Query query = session.getWorkspace().getQueryManager().createQuery(
+                            "select * from [" + MIXIN + "] as n where isdescendantnode(n, '" + root.replace("'", "''")
+                                    + "') order by n.[jcr:path]", Query.JCR_SQL2);
+                    query.setLimit(MAX_SECTIONS);
+                    List<SiteWalker.Page> out = new ArrayList<>();
+                    NodeIterator carrying = query.execute().getNodes();
+                    while (carrying.hasNext()) {
+                        JCRNodeWrapper page = (JCRNodeWrapper) carrying.nextNode();
+                        String href = SectionFile.hrefOf(page.getPath());
+                        if (href != null && page.isNodeType("jnt:page") && page.hasProperty(LLMS)
+                                && !page.getProperty(LLMS).getString().isBlank()) {
+                            out.add(new SiteWalker.Page(page.getDisplayableName(), baseUrl + Jahia.getContextPath() + href,
+                                    SiteWalker.oneLine(page.hasProperty("jcr:description") ? page.getProperty("jcr:description").getString() : null),
+                                    page.getUrl()));
+                        }
+                    }
+                    return out;
+                });
     }
 
     /** What a generation is about, for the one-at-a-time guard: the site, or one section of it. */

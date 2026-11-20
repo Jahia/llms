@@ -54,9 +54,10 @@ describe('llms.txt of a section of the site', () => {
             expect(content, 'a page outside the section').to.not.contain('About us');
             expect(pages).to.eq(3);
         });
-        // The site still lists everything.
+        // The site still lists everything. No section has a file yet: it links to none.
         generate(null).then(response => {
             expect(response.body.data.llms.generate.content).to.contain('[About us]').and.to.contain('[User guide]');
+            expect(response.body.data.llms.generate.content).to.not.contain('## llms.txt');
         });
     });
 
@@ -99,6 +100,22 @@ describe('llms.txt of a section of the site', () => {
                 {path: `/sites/${SITE}/home/products/tools`, title: 'Products / Tools', hasFiles: false});
             expect(response.body.data.llms.sections.map((section: {path: string}) => section.path))
                 .to.not.include(`/sites/${SITE}/home/products`);
+        });
+    });
+
+    it('ends the llms.txt of the site with a link to the llms.txt of each section that has one', () => {
+        generate(null).then(response => {
+            expect(errorOf(response)).to.eq(null);
+            const {content} = response.body.data.llms.generate;
+            // After the pages, under the name of the file, at the address that answers on any host.
+            expect(content).to.match(new RegExp(
+                `\\n## llms\\.txt\\n\\n- \\[Documentation\\]\\(https://www\\.example\\.com/sites/${SITE}/home/docs/llms\\.txt\\)\\n$`));
+            expect(content.indexOf('[About us]')).to.be.lessThan(content.indexOf('## llms.txt'));
+        });
+        fetchFile(`${DOCS}/llms.txt`).its('status').should('eq', 200);
+        // The file of a section links to the sections below it, never to itself.
+        generate(DOCS).then(response => {
+            expect(response.body.data.llms.generate.content).to.not.contain('## llms.txt');
         });
     });
 
