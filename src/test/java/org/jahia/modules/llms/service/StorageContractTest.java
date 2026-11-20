@@ -10,13 +10,27 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * What other modules rely on (geo-readiness writes {@code j:llms} on the site node and reads
- * {@code /llms.txt} back): these names and this routing are not ours alone to change.
+ * What other modules rely on: these names, this routing and this screen are not ours alone to change.
+ * geo-readiness writes {@code j:llms} on the site node and reads {@code /llms.txt} back.
+ * content-governance reads {@code j:llms} in live, fetches {@code /llms.txt} and {@code /llms-full.txt},
+ * tells the placeholder from a file, asks whether the module {@code llms} is enabled on the site, and
+ * links to the panel.
  */
 class StorageContractTest {
 
     private static String resource(String path) throws IOException {
         return Files.readString(Path.of("src/main/resources", path), StandardCharsets.UTF_8);
+    }
+
+    @Test
+    void thePanelKeepsItsRouteAndTheModuleItsKey() throws IOException {
+        // content-governance links to /jahia/jcontent/<site>/<lang>/apps/siteSettingsSeo/llms.
+        assertThat(Files.readString(Path.of("src/javascript/init.js"), StandardCharsets.UTF_8))
+                .contains("registry.add('adminRoute', 'siteSettingsSeo/llms'");
+        // The key other modules name in Jahia-Depends and look for in a site's installed modules.
+        assertThat(Files.readString(Path.of("pom.xml"), StandardCharsets.UTF_8)).contains("<artifactId>llms</artifactId>");
+        assertThat(Files.readString(Path.of("src/javascript/Llms/module.js"), StandardCharsets.UTF_8))
+                .contains("export const MODULE = 'llms';");
     }
 
     @Test

@@ -221,7 +221,9 @@ public class LlmsService {
                     break;
                 }
                 String body = body(markdown.get(i), page, Math.min(c.fetchTimeoutSeconds() * 2L, left), failed);
-                if (body == null) {
+                // A page with nothing to read (an empty page, a page that is only a form) adds no block:
+                // a title and an address with nothing under them tell a reader nothing.
+                if (body == null || body.isBlank()) {
                     continue;
                 }
                 String block = "\n---\n\n# " + page.title() + "\n\nSource: " + page.url() + "\n\n" + body + "\n";

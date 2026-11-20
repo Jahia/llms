@@ -84,10 +84,17 @@ request, so a published change is served at once.
 
 ## Other modules
 
-The storage is a contract other modules build on (geo-readiness writes `j:llms` from its dashboard, then
-reads `/llms.txt` back): the module key `llms`, the mixin `jmix:llms` and the string property `j:llms`
-on the site node, published to live and served as `text/plain` at `/llms.txt`. A file is served whether
-or not this module is enabled on the site. The autocreated `# Title` is not a file: its URL answers 404.
+Other modules build on this one, so the following is a contract:
+
+- the module key `llms`, the mixin `jmix:llms` and the string property `j:llms` on the site node,
+  published to live;
+- `/llms.txt` and `/llms-full.txt` served as `text/plain`, a published change served at once;
+- the autocreated `# Title` is not a file: its URL answers 404;
+- the panel at `/jahia/jcontent/<site>/<lang>/apps/siteSettingsSeo/llms`;
+- a file is served whether or not this module is enabled on the site.
+
+geo-readiness writes `j:llms` from its dashboard, then reads `/llms.txt` back. content-governance only
+reads: `j:llms` in live and both URLs, and it links to the panel.
 
 ## API
 
