@@ -204,8 +204,9 @@ https://www.example.com/home/about.html.md   the same page as Markdown
 - It is the page as a visitor without an account gets it, whoever asks. A page that is not published or
   not open to visitors has no Markdown version (404).
 - Served as `text/markdown`, with a `Link: <page>; rel="canonical"` header.
-- Works for pages and for contents shown as a page. A page reached only through a vanity URL that does
-  not end in `.html` has no Markdown version.
+- Works for pages and for contents shown as a page, at their address (`about.html.md`) and at their
+  vanity URL followed by `.md` (`/news/launch.md`). A vanity URL is answered on the host of its site,
+  as the page itself is.
 - Each request renders the page: eight are converted at the same time at most, beyond which the answer
   is `503` with `Retry-After`.
 

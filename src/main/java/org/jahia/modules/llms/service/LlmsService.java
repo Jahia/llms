@@ -791,11 +791,13 @@ public class LlmsService {
     }
 
     /**
-     * The address a line of llms.txt links to: the page, or its Markdown version when configured so and
-     * the page has one (an address that ends in {@code .html}; a vanity URL has none).
+     * The address a line of llms.txt links to: the page, or its Markdown version when configured so. An
+     * address has one when it is written plainly: no query, no fragment, and something after the last
+     * slash, be it a page ({@code about.html}) or a vanity URL ({@code /news/launch}).
      */
     private String linkOf(String pageUrl, boolean linkToMarkdown) {
-        return linkToMarkdown && servePageMarkdown && pageUrl.endsWith(".html") ? pageUrl + ".md" : pageUrl;
+        boolean plain = !pageUrl.endsWith("/") && pageUrl.indexOf('?') < 0 && pageUrl.indexOf('#') < 0;
+        return linkToMarkdown && servePageMarkdown && plain ? pageUrl + ".md" : pageUrl;
     }
 
     /**

@@ -43,7 +43,7 @@ describe('contents shown as a page, and the configuration of one site', () => {
             body: [{
                 editConfiguration: 'org.jahia.modules.llms.site',
                 configIdentifier: SITE,
-                properties: {siteKey: SITE, maxMainResources: '', includedNodeTypes: '', maxDepth: '', ...properties}
+                properties: {siteKey: SITE, maxMainResources: '', includedNodeTypes: '', maxDepth: '', linkToMarkdown: '', ...properties}
             }]
         }).its('status').should('eq', 200);
         cy.request({url: '/cms/logout', failOnStatusCode: false});
@@ -134,6 +134,38 @@ describe('contents shown as a page, and the configuration of one site', () => {
             expect(response.status).to.eq(200);
             expect(response.body).to.match(/<link rel="alternate" type="text\/markdown" href="[^"]*launch\.html\.md"/);
         });
+    });
+
+    /**
+     * A content is often known by a vanity URL, which has no .html: its Markdown version is at that
+     * vanity URL followed by .md, on the host of its site, as the page itself is.
+     */
+    it('serves the Markdown version of a content at its vanity URL followed by .md, on the host of its site', () => {
+        const host = {Host: `${SITE}.test`.toLowerCase()};
+        fetchFile('/news/product-launch', host).its('status').should('eq', 200);
+        fetchFile('/news/product-launch.md', host).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.headers['content-type']).to.match(/^text\/markdown;\s*charset=utf-8$/i);
+            expect(response.body).to.contain('The launch went well.');
+            // The vanity URL is the reference, not the address of the node.
+            expect(response.headers.link).to.contain('/news/product-launch>; rel="canonical"');
+        });
+        // Not a vanity URL of this site: nothing is served, on this host or on another.
+        fetchFile('/news/no-such-news.md', host).its('status').should('eq', 404);
+        fetchFile('/news/product-launch.md', {Host: `${OTHER}.test`.toLowerCase()}).its('status').should('eq', 404);
+        fetchFile('/news/product-launch.md').its('status').should('eq', 404);
+        // The news that was never published has a vanity URL in the editing workspace only.
+        fetchFile('/news/embargoed-news.md', host).its('status').should('eq', 404);
+    });
+
+    it('links llms.txt to the Markdown versions, vanity URLs included, when the site is configured so', () => {
+        configureSite({linkToMarkdown: 'true'});
+        generated(false).then(content => {
+            expect(content).to.match(/\[About us\]\(https:\/\/www\.example\.com\/[^)\s]*about\.html\.md\)/);
+            expect(content).to.match(/\[Product launch\]\(https:\/\/www\.example\.com\/news\/product-launch\.md\)/);
+        });
+        configureSite({});
+        generated(false).should('contain', '/news/product-launch)').and('not.contain', '.md)');
     });
 
     it('lets one site list no such content, without changing the other sites', () => {

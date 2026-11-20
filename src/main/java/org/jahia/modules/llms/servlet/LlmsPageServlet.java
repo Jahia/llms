@@ -5,7 +5,12 @@ import org.jahia.modules.llms.service.LlmsService;
 import org.jahia.modules.llms.service.internal.DiscoveryLinks;
 import org.jahia.modules.llms.service.internal.LocalAddress;
 import org.jahia.modules.llms.service.internal.PageMarkdown;
+import org.jahia.services.SpringContextSingleton;
+import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
+import org.jahia.services.seo.VanityUrl;
+import org.jahia.services.seo.jcr.VanityUrlService;
+import org.jahia.services.sites.JahiaSitesService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -19,6 +24,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 /**
  * Serves the Markdown version of a page at the page's own URL followed by {@code .md}
@@ -41,6 +47,8 @@ public class LlmsPageServlet extends HttpServlet {
     private static final Logger LOGGER = LoggerFactory.getLogger(LlmsPageServlet.class);
     private static final String SUFFIX = ".md";
     private static final String PATH_PARAMETER = "path=";
+    private static final String VANITY_PARAMETER = "vanity";
+    private static final String VANITY_NODE = "/vanityUrlMapping/";
 
     private transient LlmsService service;
 
@@ -48,6 +56,9 @@ public class LlmsPageServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String path = pagePath((String) request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI),
                 Jahia.getContextPath(), request.getQueryString());
+        if (path == null) {
+            path = vanityPagePath(request);
+        }
         String markdown = null;
         String asked = null;
         if (path != null) {
@@ -107,6 +118,51 @@ public class LlmsPageServlet extends HttpServlet {
             asked = asked.substring(contextPath.length());
         }
         return PageMarkdown.siteKeyOf(path) != null && PageMarkdown.isSamePage(asked, path) ? path : null;
+    }
+
+    /**
+     * The page a vanity URL followed by {@code .md} is about: the content the vanity URL names on the site
+     * of the host, as the visitor may read it. The path fetched is the one Jahia gives that content, never
+     * one written by the visitor.
+     *
+     * @return the path of the page from the root of the context, or null when the request is not for the
+     *         Markdown version of an active vanity URL of the site of this host
+     */
+    private static String vanityPagePath(HttpServletRequest request) {
+        String query = request.getQueryString();
+        String vanity = PageMarkdown.vanityOf((String) request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI), Jahia.getContextPath());
+        if (vanity == null || query == null || !query.startsWith(VANITY_PARAMETER)) {
+            return null;
+        }
+        try {
+            String host = request.getServerName();
+            String siteKey = host == null ? null : JahiaSitesService.getInstance().getSitenameByServerName(host.toLowerCase(Locale.ROOT));
+            if (siteKey == null || JahiaSitesService.SYSTEM_SITE_KEY.equals(siteKey)) {
+                // A vanity URL belongs to a site: on a host no site claims, Jahia does not answer one either.
+                return null;
+            }
+            VanityUrlService vanities = (VanityUrlService) SpringContextSingleton.getBean("org.jahia.services.seo.jcr.VanityUrlService");
+            for (VanityUrl found : vanities.findExistingVanityUrls(vanity, siteKey, "live")) {
+                int at = found.getPath() == null ? -1 : found.getPath().indexOf(VANITY_NODE);
+                if (at < 0 || !found.isActive() || found.isFile()) {
+                    continue;
+                }
+                // Read as the visitor: a content they cannot read is not there, and has no Markdown version.
+                JCRNodeWrapper node = JCRSessionFactory.getInstance()
+                        .getCurrentUserSession("live", Locale.forLanguageTag(found.getLanguage().replace('_', '-')))
+                        .getNode(found.getPath().substring(0, at));
+                String url = node.getUrl();
+                String context = Jahia.getContextPath();
+                String path = context != null && !context.isEmpty() && url.startsWith(context + "/") ? url.substring(context.length()) : url;
+                if (siteKey.equals(PageMarkdown.siteKeyOf(path))) {
+                    return path;
+                }
+            }
+        } catch (Exception e) {
+            // No such vanity URL, a content the visitor cannot read, or a service that is not there: no page.
+            LOGGER.debug("No Markdown version for the vanity URL {}", vanity, e);
+        }
+        return null;
     }
 
     /** The llms.txt of the site of the page, when the visitor can read one. */
