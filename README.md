@@ -111,7 +111,8 @@ the server (threads, timeouts, sizes) and what is served (`servePageMarkdown`, `
 set for the whole Jahia only.
 
 The same values can be set in the panel: its **Settings** tab, shown to who holds the permission
-`siteAdminLlmsSettings` on the site (under `site-admin`, so a site administrator holds it). The tab
+`siteAdminLlmsSettings` on the site. The module adds it to the role `site-administrator` when it is
+installed; add it to another role in Roles and permissions to open the tab to other people. The tab
 explains each value, shows what an empty one inherits, and refuses a value the module would have to
 correct: a number out of range, a name that is not a node type of this Jahia. Saving writes
 `org.jahia.modules.llms.site-<siteKey>.cfg` through Jahia's configuration service; a site that sets

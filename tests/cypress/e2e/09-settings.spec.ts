@@ -167,7 +167,12 @@ describe('the settings of a site', () => {
 
         // Each value is a labelled control whose help says the range and what an empty one inherits.
         cy.get('label[for="llms-set-maxDepth"]').should('contain.text', 'Page depth');
-        cy.get('#llms-set-maxDepth').should('have.attr', 'aria-describedby', 'llms-set-maxDepth-help').and('have.value', '');
+        cy.get('#llms-set-maxDepth').should('have.attr', 'aria-describedby', 'llms-set-maxDepth-help').and('have.value', '')
+            // The default shows in the empty field, without being a value of the site.
+            .and('have.attr', 'placeholder', '10');
+        cy.get('#llms-set-maxPages').should('have.attr', 'placeholder', '200');
+        cy.get('#llms-set-excludedNodeTypes').invoke('attr', 'placeholder').should('contain', 'jseomix:noIndex');
+        cy.get('#llms-set-includedNodeTypes').should('have.attr', 'placeholder', 'none');
         cy.get('#llms-set-maxDepth-help').should('contain.text', 'from 1 to 10').and('contain.text', 'Empty: the default of this Jahia (10).');
         cy.get('fieldset[data-llms-setting="linkToMarkdown"]').within(() => {
             cy.get('legend').should('contain.text', 'Links of llms.txt');

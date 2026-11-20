@@ -73,6 +73,8 @@ const TextSetting = ({field, value, error, onChange}) => {
                    size="big"
                    variant="outlined"
                    value={value}
+                   // What applies while the field is empty, shown in it; the help under the label says it too.
+                   placeholder={inheritedText(t, field)}
                    autoComplete="off"
                    spellCheck={false}
                    inputMode={field.kind === 'NUMBER' ? 'numeric' : 'text'}
