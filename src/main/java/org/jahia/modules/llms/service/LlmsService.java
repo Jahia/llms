@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -176,11 +177,13 @@ public class LlmsService {
     private Generation full(SiteWalker.Walk walk, String siteKey, String renderBase) {
         Limits c = limits;
         String base = c.renderBaseUrl() == null ? renderBase : c.renderBaseUrl();
-        // A page may redirect, but only to another URL of the same site: the file describes this site alone.
-        String sitePath = "/sites/" + siteKey + "/";
-        PageFetcher fetcher = new PageFetcher(base, c.fetchTimeoutSeconds(), c.maxPageBytes(), path -> path.contains(sitePath));
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(c.maxTotalSeconds());
         List<SiteWalker.Page> pages = walk.pages();
+        // A page may redirect, but only to a render URL of the same site: the file describes this site
+        // alone. The allowed paths start like the render URLs of the listed pages, up to the site key.
+        Set<String> sitePrefixes = sitePrefixes(pages, siteKey);
+        PageFetcher fetcher = new PageFetcher(base, c.fetchTimeoutSeconds(), c.maxPageBytes(),
+                path -> sitePrefixes.stream().anyMatch(path::startsWith));
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(c.maxTotalSeconds());
 
         // A link of one page to another listed page is written with that page's public URL. Rendered
         // from inside the container, links come as the render URL, or without its /cms/render/live prefix.
@@ -235,6 +238,19 @@ public class LlmsService {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    /** {@code /cms/render/live/en/sites/key/} for each language and context the listed pages render under. */
+    static Set<String> sitePrefixes(List<SiteWalker.Page> pages, String siteKey) {
+        String sitePath = "/sites/" + siteKey + "/";
+        Set<String> prefixes = new HashSet<>();
+        for (SiteWalker.Page page : pages) {
+            int at = page.renderPath().indexOf(sitePath);
+            if (at >= 0) {
+                prefixes.add(page.renderPath().substring(0, at + sitePath.length()));
+            }
+        }
+        return prefixes;
     }
 
     private static String body(Future<String> future, SiteWalker.Page page, long waitSeconds, List<String> failed) {

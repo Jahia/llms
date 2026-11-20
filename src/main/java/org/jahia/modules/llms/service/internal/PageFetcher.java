@@ -42,7 +42,7 @@ public final class PageFetcher {
      * @param base           scheme, host and port of this Jahia ({@code http://127.0.0.1:8080})
      * @param timeoutSeconds time allowed for one page
      * @param maxBytes       largest page read; a larger one is cut
-     * @param redirectPath   accepts the path of a redirect; a redirect to any other path is refused
+     * @param redirectPath   accepts the raw (still encoded) path of a redirect; any other path is refused
      */
     public PageFetcher(String base, int timeoutSeconds, int maxBytes, Predicate<String> redirectPath) {
         this.base = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
@@ -94,19 +94,31 @@ public final class PageFetcher {
         if (location == null || location.isEmpty()) {
             throw new IOException("redirect without location");
         }
-        URI to;
+        URI resolved;
         try {
-            to = from.resolve(location).normalize();
+            resolved = from.resolve(location);
         } catch (IllegalArgumentException e) {
             throw new IOException("redirect to an invalid location");
         }
+        URI to = resolved.normalize();
         if (!from.getScheme().equals(to.getScheme()) || !from.getAuthority().equals(to.getAuthority())) {
             throw new IOException("redirect off this server");
         }
-        if (to.getPath() == null || !allowedPath.test(to.getPath())) {
+        // The raw path, as the server will receive it: a decoded path could hide "../" behind %2e%2e, and
+        // the server may decode it after this check. Encoded separators and path parameters are refused
+        // outright, since no page URL of Jahia needs them.
+        // Tested before the dot segments are resolved, so nothing ambiguous is normalised away first.
+        String path = to.getRawPath();
+        if (path == null || resolved.getRawPath() == null || hasAmbiguousSegment(resolved.getRawPath()) || !allowedPath.test(path)) {
             throw new IOException("redirect off this site");
         }
         return to;
+    }
+
+    private static boolean hasAmbiguousSegment(String rawPath) {
+        String p = rawPath.toLowerCase(Locale.ROOT);
+        return p.contains("%2e") || p.contains("%2f") || p.contains("%5c") || p.contains("%25")
+                || p.indexOf(';') >= 0 || p.indexOf('\\') >= 0 || p.contains("//");
     }
 
     private byte[] read(InputStream in) throws IOException {
