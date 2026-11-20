@@ -13,6 +13,7 @@ import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.content.JCRTemplate;
 import org.jahia.services.content.decorator.JCRSiteNode;
 import org.jahia.services.content.decorator.JCRUserNode;
+import org.jahia.services.content.nodetypes.NodeTypeRegistry;
 import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -82,6 +83,8 @@ public class LlmsService {
     private final Semaphore walkSlots = new Semaphore(4);
     private volatile Limits limits;
     private volatile boolean keepImages;
+    private volatile Set<String> excluded = SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED);
+    private volatile Set<String> excludedTrees = Set.of();
     /** The generations started from the panel, by identifier, kept a while after they end. */
     private final Map<String, GenerationJob> jobs = new ConcurrentHashMap<>();
     private static final long JOB_LIFETIME_NANOS = TimeUnit.MINUTES.toNanos(15);
@@ -98,6 +101,18 @@ public class LlmsService {
      * @param current whether the file served is the file saved
      */
     public record FileStatus(boolean served, boolean current) {
+    }
+
+    /**
+     * Which pages generation leaves out and how many it lists, as configured.
+     *
+     * @param excludedTypes     node types of the pages left out, their sub-pages still listed
+     * @param excludedTreeTypes node types of the pages left out with everything below them
+     * @param maxPages          most pages one file lists
+     * @param maxDepth          levels of pages below the home page that are listed
+     * @param keepImages        whether images are written in llms-full.txt
+     */
+    public record Rules(List<String> excludedTypes, List<String> excludedTreeTypes, int maxPages, int maxDepth, boolean keepImages) {
     }
 
     /** Where the two files of a site stand in live. */
@@ -145,6 +160,8 @@ public class LlmsService {
         }
         this.limits = Limits.of(config);
         this.keepImages = config.keepImages();
+        this.excluded = SiteWalker.typeNames(config.excludedNodeTypes());
+        this.excludedTrees = SiteWalker.typeNames(config.excludedTreeNodeTypes());
     }
 
     /**
@@ -417,7 +434,7 @@ public class LlmsService {
                     if (!(node instanceof JCRSiteNode site)) {
                         throw new RepositoryException("not a site");
                     }
-                    return new SiteWalker(locale, urls::urlOf, c.maxDepth(), c.maxPages()).walk(site);
+                    return new SiteWalker(locale, urls::urlOf, c.maxDepth(), c.maxPages(), excluded, excludedTrees).walk(site);
                 });
     }
 
@@ -493,6 +510,23 @@ public class LlmsService {
         boolean isServed = served != null && !served.isBlank();
         String saved = site.hasProperty(property) ? site.getProperty(property).getString() : "";
         return new FileStatus(isServed, isServed && served.equals(saved));
+    }
+
+    /**
+     * @return which pages generation leaves out and how many it lists, as configured
+     */
+    public Rules rules() {
+        Limits c = limits;
+        return new Rules(known(excluded), known(excludedTrees), c.maxPages(), c.maxDepth(), keepImages);
+    }
+
+    /**
+     * The configured types this Jahia knows. The defaults name the marks of several template sets: an
+     * editor is told only of the ones a page of this Jahia can carry.
+     */
+    private static List<String> known(Set<String> types) {
+        NodeTypeRegistry registry = NodeTypeRegistry.getInstance();
+        return types.stream().filter(registry::hasNodeType).toList();
     }
 
     /**

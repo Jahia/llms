@@ -53,6 +53,20 @@ describe('the llms.txt panel in jContent', () => {
         cy.get('[role="group"][aria-label="Language"]').should('exist');
     });
 
+    it('says which pages are left out, from the rules in force on this Jahia', () => {
+        openPanel();
+        cy.get('[data-llms-role="rules"]').within(() => {
+            cy.contains('Left out of both files');
+            cy.contains('li', 'Pages hidden from the navigation menu');
+            cy.contains('li', 'Pages not translated in the chosen language');
+            // The default configuration: the No index option of the sitemap module.
+            cy.get('[data-llms-rule="noIndex"]').should('have.text', 'Pages marked No index in their SEO options');
+            // The marks of template sets this Jahia does not have are not shown: no page here can carry them.
+            cy.get('[data-llms-rule="types"]').should('not.exist');
+            cy.get('[data-llms-rule="limits"]').invoke('text').should('match', /^At most \d+ pages are listed, down to \d+ levels below the home page\.$/);
+        });
+    });
+
     it('ties an invalid public URL to its field and blocks saving', () => {
         openPanel();
         cy.get('#llms-baseurl').clear().type('https://www.example.com/path');

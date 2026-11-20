@@ -54,6 +54,18 @@ public @interface LlmsConfig {
     int maxTotalSeconds() default 300;
 
     /**
+     * @return node types of the pages left out of both files, separated by commas
+     */
+    @AttributeDefinition(name = "Excluded page types", description = "Node types (mixins) of the pages left out of llms.txt and llms-full.txt, separated by commas: as many as needed. Their sub-pages are still listed. Default: the No index option of the sitemap module, and the 'hidden in the menu' mark of the jahia.com and Academy templates. A type no installed module defines is ignored.")
+    String excludedNodeTypes() default "jseomix:noIndex, jcmix:hidePage, jacademix:hidePage";
+
+    /**
+     * @return node types of the pages left out with everything below them, separated by commas
+     */
+    @AttributeDefinition(name = "Excluded section types", description = "Node types (mixins) of the pages left out of both files together with all their sub-pages, separated by commas. Empty by default.", required = false)
+    String excludedTreeNodeTypes() default "";
+
+    /**
      * @return whether the images of a page are written in llms-full.txt
      */
     @AttributeDefinition(name = "Keep images", description = "Write the images of a page that have a text alternative in llms-full.txt. Off: images are left out.")

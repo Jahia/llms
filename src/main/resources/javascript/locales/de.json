@@ -18,12 +18,21 @@
   "stats": "{{lines}} Zeilen · {{links}} Links · {{size}}",
   "settings": {
     "title": "Aus der Website generieren",
-    "description": "Die Generierung liest die veröffentlichten Seiten der Website, die Besucher ohne Konto sehen. Seiten, die in der Navigation ausgeblendet, als noindex markiert oder in der gewählten Sprache nicht übersetzt sind, werden ausgelassen. Erst Speichern und veröffentlichen speichert etwas.",
+    "description": "Die Generierung liest die veröffentlichten Seiten der Website, die Besucher ohne Konto sehen. Erst Speichern und veröffentlichen speichert etwas.",
     "language": "Sprache",
     "languageHelp": "Sprache der Seitentitel, Beschreibungen und Inhalte. Die Website hat eine llms.txt und eine llms-full.txt.",
     "baseUrl": "Öffentliche URL der Website",
     "baseUrlHelp": "Schema, Host und optionaler Port, mit denen die Links beider Dateien beginnen, zum Beispiel https://www.example.com. Wird mit den Dateien gespeichert.",
     "baseUrlError": "Geben Sie Schema, Host und optionalen Port ohne Pfad ein: https://www.example.com"
+  },
+  "rules": {
+    "title": "In beiden Dateien ausgelassen",
+    "hidden": "Seiten, die im Navigationsmenü ausgeblendet sind",
+    "untranslated": "Seiten, die in der gewählten Sprache nicht übersetzt sind",
+    "noIndex": "Seiten, die in ihren SEO-Optionen als No index markiert sind",
+    "types": "Seiten vom Typ {{types}}",
+    "trees": "Seiten vom Typ {{types}}, mit allen Unterseiten",
+    "limits": "Höchstens {{pages}} Seiten werden aufgeführt, bis zu {{depth}} Ebenen unter der Startseite."
   },
   "llms": {
     "description": "Ein Verzeichnis der Website für KI-Assistenten: Name der Website, eine Zusammenfassung in einer Zeile, dann die Seiten nach Abschnitten, jeweils mit Link und Beschreibung.",

@@ -36,6 +36,21 @@ public class GqlLlmsQuery {
     private LlmsService service;
 
     /**
+     * @param siteKey key of a site the caller may publish on: the rules are the same for every site, but
+     *                they are told only to who can generate
+     * @return which pages generation leaves out and how many it lists
+     */
+    @GraphQLField
+    @GraphQLName("rules")
+    @GraphQLNonNull
+    @GraphQLDescription("Which pages generation leaves out and how many it lists, as configured on this Jahia")
+    public GqlLlmsRules rules(
+            @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey) {
+        SiteAccess.site(siteKey, PUBLISH);
+        return new GqlLlmsRules(service.rules());
+    }
+
+    /**
      * @param siteKey key of the site
      * @param id      identifier returned by the startGeneration mutation
      * @return how far that generation is, and the file once it is finished

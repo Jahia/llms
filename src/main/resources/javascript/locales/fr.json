@@ -18,12 +18,21 @@
   "stats": "{{lines}} lignes · {{links}} liens · {{size}}",
   "settings": {
     "title": "Générer à partir du site",
-    "description": "La génération lit les pages publiées du site et visibles des visiteurs sans compte. Les pages masquées de la navigation, marquées noindex ou non traduites dans la langue choisie sont écartées. Rien n'est enregistré avant Enregistrer et publier.",
+    "description": "La génération lit les pages publiées du site que voient les visiteurs sans compte. Rien n'est enregistré avant Enregistrer et publier.",
     "language": "Langue",
     "languageHelp": "Langue des titres, descriptions et contenus des pages. Le site a un seul llms.txt et un seul llms-full.txt.",
     "baseUrl": "URL publique du site",
     "baseUrlHelp": "Protocole, hôte et port facultatif par lesquels commencent les liens des deux fichiers, par exemple https://www.example.com. Enregistrée avec les fichiers.",
     "baseUrlError": "Saisissez un protocole, un hôte et un port facultatif, sans chemin : https://www.example.com"
+  },
+  "rules": {
+    "title": "Écartées des deux fichiers",
+    "hidden": "Les pages masquées du menu de navigation",
+    "untranslated": "Les pages non traduites dans la langue choisie",
+    "noIndex": "Les pages marquées No index dans leurs options SEO",
+    "types": "Les pages de type {{types}}",
+    "trees": "Les pages de type {{types}}, avec toutes leurs sous-pages",
+    "limits": "Au plus {{pages}} pages sont listées, jusqu'à {{depth}} niveaux sous la page d'accueil."
   },
   "llms": {
     "description": "Un index du site pour les assistants d'IA : le nom du site, un résumé d'une ligne, puis ses pages par section, chacune avec son lien et sa description.",

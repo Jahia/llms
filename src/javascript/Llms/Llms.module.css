@@ -154,6 +154,18 @@ textarea.editor:focus-visible {
     outline-offset: 2px;
 }
 
+/* Which pages are left out: a short list under the explanation of the block. */
+.rules {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-nano, 4px);
+}
+
+.rulesList {
+    margin: 0;
+    padding-left: var(--spacing-large, 24px);
+}
+
 /* A generation of llms-full.txt as it goes. */
 .progress {
     display: flex;

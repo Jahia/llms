@@ -64,6 +64,20 @@ export const LLMS_GENERATE = gql`
     }
 `;
 
+/** Which pages generation leaves out and how many it lists, as configured: the panel states them. */
+export const LLMS_RULES = gql`
+    query LlmsRules($siteKey: String!) {
+        llms {
+            rules(siteKey: $siteKey) {
+                excludedTypes
+                excludedTreeTypes
+                maxPages
+                maxDepth
+            }
+        }
+    }
+`;
+
 /** Starts llms-full.txt in the background: it renders every page, too long for one silent request. */
 export const LLMS_START = gql`
     mutation LlmsStart($siteKey: String!, $language: String!, $baseUrl: String!) {

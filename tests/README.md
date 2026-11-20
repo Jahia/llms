@@ -10,6 +10,7 @@ the panel in jContent.
 | `02-authorization` | generate, save and status are refused to a guest, to a user with no role on the site and to a publisher of another site, and allowed to a publisher of the site |
 | `03-generation` | only published pages are listed, links use the public URL, nothing is stored, invalid public URLs and languages are refused |
 | `04-panel` | the panel as a publisher: tabs, field names for assistive technology, the invalid URL error, generate then edit then save and publish |
+| `05-exclusions` | a page marked **No index** (sitemap module) leaves both files once the mark is published, and comes back when it is removed |
 
 ## Run
 

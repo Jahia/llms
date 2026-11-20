@@ -6,8 +6,10 @@ import org.jahia.services.content.decorator.JCRSiteNode;
 import javax.jcr.RepositoryException;
 import javax.jcr.Value;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -52,6 +54,18 @@ public final class SiteWalker {
 
     private static final String PAGE = "jnt:page";
     private static final String MENU_GROUP = "jnt:navMenuText";
+    /**
+     * The "No index" option of a page, from the sitemap module: the page asks search engines not to index
+     * it, and is left out of the sitemap. It is left out of these files for the same reason. Without that
+     * module the type does not exist and no page carries it. The default of the configuration.
+     */
+    public static final String NO_INDEX = "jseomix:noIndex";
+    /**
+     * What is left out when nothing is configured: No index, and the "hidden in the menu" mark of two
+     * template sets (jahia.com, Academy), which say of a page what j:hideFromNavigationMenu says.
+     */
+    public static final String DEFAULT_EXCLUDED = NO_INDEX + ", jcmix:hidePage, jacademix:hidePage";
+    private static final Pattern TYPE_NAME = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*:[A-Za-z][A-Za-z0-9_.-]*$");
     private static final int MAX_DESCRIPTION = 300;
     /** A description is cut to MAX_DESCRIPTION: nothing past this many characters of the source is read. */
     private static final int MAX_DESCRIPTION_SOURCE = 4000;
@@ -70,6 +84,8 @@ public final class SiteWalker {
     private final int maxPages;
     private int listed;
     private boolean truncated;
+    private final Set<String> excluded;
+    private final Set<String> excludedTrees;
 
     /**
      * @param locale   the language of the titles, descriptions and URLs
@@ -78,10 +94,57 @@ public final class SiteWalker {
      * @param maxPages most pages listed
      */
     public SiteWalker(Locale locale, UrlResolver urls, int maxDepth, int maxPages) {
+        this(locale, urls, maxDepth, maxPages, typeNames(DEFAULT_EXCLUDED), Set.of());
+    }
+
+    /**
+     * @param locale        the language of the titles, descriptions and URLs
+     * @param urls          resolves the public URL of a page
+     * @param maxDepth      levels of pages below the home page that are walked (1 lists the level-1 pages)
+     * @param maxPages      most pages listed
+     * @param excluded      node types (mixins) of a page that is left out; its sub-pages are still listed
+     * @param excludedTrees node types (mixins) of a page that is left out with everything below it
+     */
+    public SiteWalker(Locale locale, UrlResolver urls, int maxDepth, int maxPages, Set<String> excluded, Set<String> excludedTrees) {
         this.locale = locale;
         this.urls = urls;
         this.maxDepth = Math.max(1, maxDepth);
         this.maxPages = Math.max(1, maxPages);
+        this.excluded = Set.copyOf(excluded);
+        this.excludedTrees = Set.copyOf(excludedTrees);
+    }
+
+    /**
+     * Reads a list of node type names from the configuration: separated by commas or spaces, anything
+     * that is not a prefixed name ({@code jseomix:noIndex}) is dropped.
+     *
+     * @param configured the configured value, may be null
+     * @return the names, in order, without duplicates
+     */
+    public static Set<String> typeNames(String configured) {
+        Set<String> names = new LinkedHashSet<>();
+        if (configured != null) {
+            for (String name : configured.split("[,\\s]+")) {
+                if (TYPE_NAME.matcher(name).matches()) {
+                    names.add(name);
+                }
+            }
+        }
+        return names;
+    }
+
+    /** Whether a node is of one of the types. A type the repository does not know is carried by no node. */
+    private static boolean hasAny(JCRNodeWrapper node, Set<String> types) {
+        for (String type : types) {
+            try {
+                if (node.isNodeType(type)) {
+                    return true;
+                }
+            } catch (RepositoryException e) {
+                // an unknown type: the module that defines it is not installed
+            }
+        }
+        return false;
     }
 
     /**
@@ -93,7 +156,11 @@ public final class SiteWalker {
         List<Section> sections = new ArrayList<>();
         // Every list of children is a read of the repository: each one is read once and kept.
         List<JCRNodeWrapper> top = new ArrayList<>();
-        site.getNodes().forEach(top::add);
+        for (JCRNodeWrapper child : site.getNodes()) {
+            if (!hasAny(child, excludedTrees)) {
+                top.add(child);
+            }
+        }
         JCRNodeWrapper home = home(top);
         if (home != null) {
             List<Page> main = new ArrayList<>();
@@ -160,14 +227,18 @@ public final class SiteWalker {
     }
 
     /** Pages under a node, looking through menu groups, which are not pages themselves. */
-    private static List<JCRNodeWrapper> pagesBelow(JCRNodeWrapper parent) throws RepositoryException {
+    private List<JCRNodeWrapper> pagesBelow(JCRNodeWrapper parent) throws RepositoryException {
         List<JCRNodeWrapper> out = new ArrayList<>();
         collect(out, parent, 0);
         return out;
     }
 
-    private static void collect(List<JCRNodeWrapper> out, JCRNodeWrapper parent, int groupDepth) throws RepositoryException {
+    private void collect(List<JCRNodeWrapper> out, JCRNodeWrapper parent, int groupDepth) throws RepositoryException {
         for (JCRNodeWrapper child : parent.getNodes()) {
+            if (hasAny(child, excludedTrees)) {
+                // The page, or the menu group, and everything below it: not read at all.
+                continue;
+            }
             if (isPage(child)) {
                 out.add(child);
             } else if (isGroup(child) && groupDepth < MAX_GROUP_DEPTH) {
@@ -193,7 +264,7 @@ public final class SiteWalker {
     }
 
     private boolean listable(JCRNodeWrapper page) throws RepositoryException {
-        if (page.isNodeType("jmix:noindex") || bool(page, "j:hideFromNavigationMenu") || !page.hasI18N(locale)) {
+        if (hasAny(page, excluded) || bool(page, "j:hideFromNavigationMenu") || !page.hasI18N(locale)) {
             return false;
         }
         if (page.hasProperty("j:invalidLanguages")) {

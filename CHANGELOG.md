@@ -51,6 +51,12 @@
 * **Images are left out of llms-full.txt** unless `keepImages` is set: a text reader gains nothing from
   an address it cannot open, and most images of a page are logos and decorations.
 * A page with nothing to read is left out of llms-full.txt instead of being written as a bare title.
+* **A page marked No index is left out of both files.** The check looked for a node type that does not
+  exist (`jmix:noindex`), so the mark never had any effect. It now reads the **No index** option the
+  sitemap module adds to a page (`jseomix:noIndex`).
+* The node types that leave a page out are configurable (`excludedNodeTypes`, as many as needed), with
+  the "hidden in the menu" marks of the jahia.com and Academy templates among the defaults, and a
+  second list leaves out a page with all its sub-pages (`excludedTreeNodeTypes`).
 
 ### Panel
 
@@ -69,6 +75,9 @@
   left out). The log stays after the generation, until the next action. The generation runs in the
   background (`llms { startGeneration }`, read with `llms { generationProgress }`) instead of one request
   that says nothing for a minute.
+
+* **The panel says which pages are left out**, from the rules in force on this Jahia: hidden from the
+  menu, not translated, marked No index, of a configured type, and how many pages and levels are listed.
 
 ### Performance
 

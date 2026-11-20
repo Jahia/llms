@@ -18,12 +18,21 @@
   "stats": "{{lines}} lines · {{links}} links · {{size}}",
   "settings": {
     "title": "Generate from the site",
-    "description": "Generation reads the pages published on the site and visible to visitors without an account. Pages hidden from the navigation, marked noindex or not translated in the chosen language are left out. Nothing is saved until you select Save and publish.",
+    "description": "Generation reads the pages published on the site that visitors without an account can see. Nothing is saved until you select Save and publish.",
     "language": "Language",
     "languageHelp": "Language of the page titles, descriptions and content. The site has one llms.txt and one llms-full.txt.",
     "baseUrl": "Public site URL",
     "baseUrlHelp": "Scheme, host and optional port that the links in both files start with, for example https://www.example.com. Saved with the files.",
     "baseUrlError": "Enter a scheme, a host and an optional port, with no path: https://www.example.com"
+  },
+  "rules": {
+    "title": "Left out of both files",
+    "hidden": "Pages hidden from the navigation menu",
+    "untranslated": "Pages not translated in the chosen language",
+    "noIndex": "Pages marked No index in their SEO options",
+    "types": "Pages of type {{types}}",
+    "trees": "Pages of type {{types}}, with all their sub-pages",
+    "limits": "At most {{pages}} pages are listed, down to {{depth}} levels below the home page."
   },
   "llms": {
     "description": "An index of the site for AI assistants: the site's name, a one-line summary, then its pages by section, each with a link and its description.",

@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Banner, Button, Dropdown, Input, Loader, Paper, Reload, Typography} from '@jahia/moonstone';
 import {GenerationProgress} from './GenerationProgress';
+import {GenerationRules} from './GenerationRules';
 import {MODULE} from './module';
 import styles from './Llms.module.css';
 
@@ -15,7 +16,7 @@ const PLAIN = {interpolation: {escapeValue: false}};
  * the open tab.
  */
 export const GenerationCard = ({
-    file, languages, language, baseUrl, generation, progress, failure,
+    file, languages, language, baseUrl, generation, progress, rules, failure,
     isBaseUrlValid, isGenerating, isGenerateEnabled, hasSavedFile,
     onLanguageChange, onBaseUrlChange, onGenerate
 }) => {
@@ -27,6 +28,7 @@ export const GenerationCard = ({
             <Typography id="llms-generation-description" className={`${styles.muted} ${styles.prose}`}>
                 {t('settings.description')}
             </Typography>
+            <GenerationRules rules={rules}/>
             <div className={styles.settings}>
                 <div className={styles.field}>
                     <Typography id="llms-language-label" weight="bold">{t('settings.language')}</Typography>
@@ -135,6 +137,7 @@ GenerationCard.propTypes = {
     progress: PropTypes.shape({
         runId: PropTypes.string.isRequired
     }),
+    rules: PropTypes.object,
     failure: PropTypes.string,
     isBaseUrlValid: PropTypes.bool.isRequired,
     isGenerating: PropTypes.bool.isRequired,

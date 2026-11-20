@@ -13,7 +13,7 @@ import {
     Tab,
     TabItem
 } from '@jahia/moonstone';
-import {LLMS_GENERATE, LLMS_PROGRESS, LLMS_SAVE, LLMS_SITE, LLMS_START, LLMS_STATUS} from './Llms.gql';
+import {LLMS_GENERATE, LLMS_PROGRESS, LLMS_RULES, LLMS_SAVE, LLMS_SITE, LLMS_START, LLMS_STATUS} from './Llms.gql';
 import {FileCard} from './FileCard';
 import {GenerationCard} from './GenerationCard';
 import {BASE_URL, FILES, MODULE} from './module';
@@ -125,6 +125,8 @@ export const LlmsEditor = ({siteKey}) => {
     const sitePath = `/sites/${siteKey}`;
     const {data, loading, error, refetch} = useQuery(LLMS_SITE, {variables: {path: sitePath}, fetchPolicy: 'network-only'});
     const live = useQuery(LLMS_STATUS, {variables: {siteKey}, fetchPolicy: 'network-only', errorPolicy: 'all'});
+    // Read on its own: the panel works without it, it only says less about what is left out.
+    const rules = useQuery(LLMS_RULES, {variables: {siteKey}, errorPolicy: 'all'});
     const [saveFiles, {loading: saving}] = useMutation(LLMS_SAVE);
 
     const node = data?.jcr?.nodeByPath;
@@ -319,6 +321,7 @@ export const LlmsEditor = ({siteKey}) => {
                                 baseUrl={baseUrl}
                                 generation={generations[file.id]}
                                 progress={file.full ? progress : null}
+                                rules={rules.data?.llms?.rules}
                                 failure={messageOf(failure, 'generate', t('error.generate'))}
                                 isBaseUrlValid={baseUrlValid}
                                 isGenerating={generating === file.id}

@@ -10,6 +10,11 @@
 - addMavenRepository: 'https://store.jahia.com/nexus/content/repositories/jahia-public-app-store@id=JahiaStore'
 - addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@id=JahiaDevtools'
 
+# The sitemap module defines the "No index" option of a page (jseomix:noIndex), which the files honour.
+- installBundle: 'mvn:org.jahia.modules/sitemap/5.5.0'
+  autoStart: true
+  ignoreIfPresent: true
+
 - installBundle:
       - 'mvn:org.jahia.modules/bookmarks/3.1.0'
       - 'mvn:org.jahia.modules/bootstrap3-components/4.3.0'
