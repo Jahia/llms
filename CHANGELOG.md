@@ -22,6 +22,10 @@
 * **List only marked pages**: `includedNodeTypes` lists only the pages and contents that carry a mixin,
   such as the new page option `jmix:llmsListed` (List in llms.txt). The content editor shows that
   option only to who holds the new permission `llmsListPages` on the site.
+* **Preview** of a file in the panel: its Markdown rendered and sanitized, in place of the editor.
+* A generated llms-full.txt says it is the pages put end to end, and that proofreading and cleaning it
+  up before publishing is strongly advised.
+* The pages below a menu group can be chosen as a section, named after their group.
 * **Settings tab** in the panel, for who administers the site (permission `siteAdminLlmsSettings`): the
   values of the site, each explained and checked, written in the configuration of that site.
 * **Fair page selection**: when a site has more pages than one file lists, every page of a level is

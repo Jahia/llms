@@ -102,6 +102,10 @@ public class LlmsService {
     /** What a generation lists when the site has no configuration of its own. */
     private volatile SiteSettings defaults = new SiteSettings(10, 200, 100, SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED),
             Set.of(), Set.of(), false, false);
+    private static final String MENU_GROUP = "jnt:navMenuText";
+    /** Menu groups nested deeper than this are not looked through. */
+    private static final int MAX_GROUP_DEPTH = 5;
+    private static final int OWN_CONFIG_ATTEMPTS = 5;
     private static final String SITE_PID = "org.jahia.modules.llms.site";
     private volatile ConfigService configService;
     /** The site configurations, one for each org.jahia.modules.llms.site-*.cfg. */
@@ -307,7 +311,7 @@ public class LlmsService {
                 break;
             }
         }
-        Config config = configService.getConfig(SITE_PID, identifier);
+        Config config = ownConfig(siteKey, identifier);
         Map<String, String> stored = config.getRawProperties();
         boolean any = false;
         for (SiteSettings.Definition d : SiteSettings.DEFINITIONS) {
@@ -326,6 +330,24 @@ public class LlmsService {
             configService.deleteConfig(config);
         }
         return settingsOf(values, Map.of());
+    }
+
+    /**
+     * The configuration to write for a site: one that is this site's, or that is nobody's yet. A file may
+     * be named after one site and be for another (an operator named it so): the administrator of the
+     * first must never write, or remove, the configuration of the second. Such a name is passed over.
+     */
+    private Config ownConfig(String siteKey, String identifier) throws IOException {
+        String candidate = identifier;
+        for (int attempt = 0; attempt < OWN_CONFIG_ATTEMPTS; attempt++) {
+            Config config = configService.getConfig(SITE_PID, candidate);
+            String owner = config.getRawProperties().get("siteKey");
+            if (owner == null || owner.isBlank() || owner.trim().equals(siteKey)) {
+                return config;
+            }
+            candidate = siteKey + "-" + (attempt + 2);
+        }
+        throw new IllegalStateException("The configuration of this site could not be written: its file names are taken");
     }
 
     /** What a generation lists for a site: the module configuration, then what the site's own changes. */
@@ -847,19 +869,38 @@ public class LlmsService {
         }
         for (JCRNodeWrapper home : session.getNode(site.getPath()).getNodes()) {
             if (home.isNodeType("jnt:page")) {
-                for (JCRNodeWrapper page : home.getNodes()) {
-                    if (out.size() < MAX_SECTIONS && page.isNodeType("jnt:page") && hasSubPage(page)) {
-                        out.putIfAbsent(page.getPath(), new SectionRef(page.getPath(), page.getDisplayableName(), false));
-                    }
-                }
+                candidates(out, home, "", 0);
             }
         }
         return new ArrayList<>(out.values());
     }
 
-    private static boolean hasSubPage(JCRNodeWrapper page) throws RepositoryException {
-        for (JCRNodeWrapper child : page.getNodes()) {
+    /**
+     * The pages with sub-pages right below a node, looking through menu groups: a group is a label of
+     * the navigation, not a page, and the pages it gathers are sections of the site like the others.
+     * Such a page is named after its group too, which is how an editor knows it.
+     */
+    private static void candidates(Map<String, SectionRef> out, JCRNodeWrapper parent, String group, int groupDepth)
+            throws RepositoryException {
+        for (JCRNodeWrapper child : parent.getNodes()) {
+            if (out.size() >= MAX_SECTIONS) {
+                return;
+            }
             if (child.isNodeType("jnt:page")) {
+                if (hasSubPage(child, 0)) {
+                    out.putIfAbsent(child.getPath(), new SectionRef(child.getPath(), group + child.getDisplayableName(), false));
+                }
+            } else if (child.isNodeType(MENU_GROUP) && groupDepth < MAX_GROUP_DEPTH) {
+                candidates(out, child, group + child.getDisplayableName() + " / ", groupDepth + 1);
+            }
+        }
+    }
+
+    /** Whether a page has a sub-page, right below it or below a menu group. */
+    private static boolean hasSubPage(JCRNodeWrapper page, int groupDepth) throws RepositoryException {
+        for (JCRNodeWrapper child : page.getNodes()) {
+            if (child.isNodeType("jnt:page")
+                    || (child.isNodeType(MENU_GROUP) && groupDepth < MAX_GROUP_DEPTH && hasSubPage(child, groupDepth + 1))) {
                 return true;
             }
         }

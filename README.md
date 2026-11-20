@@ -55,6 +55,10 @@ What generation reads:
 Saving writes the files on the site node and publishes **the site node alone**, never its pages or
 content. An empty file is removed, and its URL then answers 404.
 
+The card of a file has a **Preview** button: the Markdown rendered as a person reads it, in place of the
+editor. The HTML is sanitized (no script, style, form or image), and a very large file is previewed up
+to its first 300 KB.
+
 ## Configuration
 
 Generation limits come from the OSGi configuration `org.jahia.modules.llms`. The module ships no file;

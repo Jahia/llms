@@ -83,6 +83,7 @@
   "generated": {
     "title": "Aus {{pages}} Seiten in {{language}} generiert",
     "review": "Der Text unten wurde durch diesen Vorschlag ersetzt. Prüfen und bearbeiten Sie ihn, dann wählen Sie Speichern und veröffentlichen. Änderungen verwerfen stellt die gespeicherte Datei wieder her.",
+    "advice": " Dieser Text ist eine Aneinanderreihung der Seiten der Website, so wie sie veröffentlicht sind. Ihn vor dem Veröffentlichen gegenzulesen, schlecht Lesbares umzuschreiben und Überflüssiges zu entfernen, wird dringend empfohlen: Eine überarbeitete Datei dient KI-Assistenten, und damit Ihrer Sichtbarkeit in deren Antworten (GEO), weit besser als eine rohe.",
     "failed": " Seiten, die nicht gerendert werden konnten und ausgelassen wurden ({{count}}):",
     "cut": {
       "pages": " Die Website hat mehr Seiten, als eine Datei aufführt: Die Seiten, die der Startseite am nächsten sind, wurden behalten.",
@@ -159,5 +160,13 @@
       "types": "Fehler: kein Knotentyp dieses Jahia: {{detail}}.",
       "flag": "Fehler: Ja, Nein oder den Standardwert wählen."
     }
+  },
+  "preview": {
+    "toggle": "Vorschau",
+    "label": "Vorschau von {{file}}",
+    "shown": "Vorschau angezeigt.",
+    "hidden": "Editor angezeigt.",
+    "cut": "Die Datei ist groß: Die Vorschau zeigt nur ihre ersten 300 KB. Der Editor enthält sie vollständig.",
+    "empty": "Die Datei ist leer."
   }
 }

@@ -83,6 +83,7 @@
   "generated": {
     "title": "Generated from {{pages}} pages in {{language}}",
     "review": "The text below was replaced by this proposal. Review and edit it, then select Save and publish. Discard changes restores the saved file.",
+    "advice": " This text is the pages of the site put end to end, as they are published. Proofreading it, rewriting what reads badly and removing what does not help is strongly advised before publishing: a file that was curated serves AI assistants, and so your visibility in their answers (GEO), far better than a raw one.",
     "failed": " Pages that could not be rendered, left out of the file ({{count}}):",
     "cut": {
       "pages": " The site has more pages than one file lists: the pages nearest to the home page were kept.",
@@ -159,5 +160,13 @@
       "types": "Error: not a node type of this Jahia: {{detail}}.",
       "flag": "Error: choose Yes, No or the default."
     }
+  },
+  "preview": {
+    "toggle": "Preview",
+    "label": "Preview of {{file}}",
+    "shown": "Preview shown.",
+    "hidden": "Editor shown.",
+    "cut": "The file is large: the preview shows its first 300 KB only. The editor holds all of it.",
+    "empty": "The file is empty."
   }
 }

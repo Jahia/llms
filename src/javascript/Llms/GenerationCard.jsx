@@ -13,6 +13,46 @@ const PLAIN = {interpolation: {escapeValue: false}};
 // Before the server has listed the pages: the site is being read, nothing is counted yet.
 const STARTING = {isStarted: false, total: 0, done: 0, pages: []};
 
+const generationShape = PropTypes.shape({
+    pages: PropTypes.number,
+    failedPages: PropTypes.arrayOf(PropTypes.string),
+    truncated: PropTypes.bool,
+    cutBy: PropTypes.string,
+    skipped: PropTypes.number,
+    language: PropTypes.string
+});
+
+/** What a generation gave: how many pages, what the editor is to do with it, what was left out and why. */
+const GeneratedBanner = ({generation, isFull}) => {
+    const {t} = useTranslation(MODULE);
+    return (
+        <Banner variant={generation.failedPages.length > 0 || generation.truncated ? 'warning' : 'info'}
+                title={t('generated.title', {pages: generation.pages, language: generation.language})}
+                data-llms-role="generated"
+        >
+            <span>{t('generated.review')}</span>
+            {/* llms-full.txt is the pages put end to end: said, so it is not published as it comes. */}
+            {isFull && <span data-llms-role="advice">{t('generated.advice')}</span>}
+            {generation.truncated && (
+                <span data-llms-role="cut">{t(`generated.cut.${generation.cutBy || 'pages'}`, {count: generation.skipped})}</span>
+            )}
+            {generation.failedPages.length > 0 && (
+                <span>
+                    {t('generated.failed', {count: generation.failedPages.length})}
+                    <ul className={styles.failed}>
+                        {generation.failedPages.map(url => <li key={url}>{url}</li>)}
+                    </ul>
+                </span>
+            )}
+        </Banner>
+    );
+};
+
+GeneratedBanner.propTypes = {
+    generation: generationShape.isRequired,
+    isFull: PropTypes.bool.isRequired
+};
+
 /**
  * What generation needs and the button that runs it, in one block: the language and the public URL sit
  * next to the action they feed. The two values are shared by both files; the button names the file of
@@ -97,25 +137,7 @@ export const GenerationCard = ({
                         {t('generating.index')}
                     </Banner>
                 )}
-                {!isGenerating && generation && (
-                    <Banner variant={generation.failedPages.length > 0 || generation.truncated ? 'warning' : 'info'}
-                            title={t('generated.title', {pages: generation.pages, language: generation.language})}
-                            data-llms-role="generated"
-                    >
-                        <span>{t('generated.review')}</span>
-                        {generation.truncated && (
-                            <span data-llms-role="cut">{t(`generated.cut.${generation.cutBy || 'pages'}`, {count: generation.skipped})}</span>
-                        )}
-                        {generation.failedPages.length > 0 && (
-                            <span>
-                                {t('generated.failed', {count: generation.failedPages.length})}
-                                <ul className={styles.failed}>
-                                    {generation.failedPages.map(url => <li key={url}>{url}</li>)}
-                                </ul>
-                            </span>
-                        )}
-                    </Banner>
-                )}
+                {!isGenerating && generation && <GeneratedBanner generation={generation} isFull={file.full}/>}
             </div>
             {/* llms-full.txt renders every page: while it runs this block says so and shows the pages go by, and
                 once it is over the pages stay listed under the result. One element at one place for both, so
@@ -139,14 +161,7 @@ GenerationCard.propTypes = {
     })).isRequired,
     language: PropTypes.string.isRequired,
     baseUrl: PropTypes.string.isRequired,
-    generation: PropTypes.shape({
-        pages: PropTypes.number,
-        failedPages: PropTypes.arrayOf(PropTypes.string),
-        truncated: PropTypes.bool,
-        cutBy: PropTypes.string,
-        skipped: PropTypes.number,
-        language: PropTypes.string
-    }),
+    generation: generationShape,
     progress: PropTypes.shape({
         runId: PropTypes.string.isRequired
     }),

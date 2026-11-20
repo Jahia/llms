@@ -1,7 +1,8 @@
-import React, {useDeferredValue, useMemo} from 'react';
+import React, {useDeferredValue, useMemo, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Button, Chip, OpenInNew, Paper, Textarea, Typography, Undo} from '@jahia/moonstone';
+import {MarkdownPreview, PREVIEW_LIMIT} from './MarkdownPreview';
 import {MODULE, PLACEHOLDER} from './module';
 import styles from './Llms.module.css';
 
@@ -57,7 +58,7 @@ const PLAIN = {interpolation: {escapeValue: false}};
  * One file: where it stands, where visitors get it, and its text. Generating it is the block above
  * ({@link GenerationCard}); saving it is the action of the page header.
  */
-export const FileCard = ({file, value, saved, isServed, isCurrent, isGenerating, liveUrl, rootUrl, onChange, onRevert}) => {
+export const FileCard = ({file, value, saved, isServed, isCurrent, isGenerating, liveUrl, rootUrl, onChange, onRevert, onAnnounce}) => {
     const {t} = useTranslation(MODULE);
     const state = status(value, saved, isCurrent);
     // Deferred: while the editor types in a large file, React keeps the keystroke ahead of the counts.
@@ -65,6 +66,15 @@ export const FileCard = ({file, value, saved, isServed, isCurrent, isGenerating,
     const stats = useMemo(() => statsOf(counted), [counted]);
     const textareaId = `llms-editor-${file.id}`;
     const descriptionId = `llms-file-description-${file.id}`;
+    // The file as a person reads it, in place of its editor. The text is the same either way.
+    const [isPreview, setIsPreview] = useState(false);
+    const togglePreview = () => {
+        const shown = !isPreview;
+        setIsPreview(shown);
+        // The editor is replaced without a word otherwise; the focus stays on the button.
+        const cut = shown && value.length > PREVIEW_LIMIT ? ` ${t('preview.cut')}` : '';
+        onAnnounce(t(shown ? 'preview.shown' : 'preview.hidden') + cut);
+    };
 
     return (
         <Paper hasPadding className={styles.block}>
@@ -74,6 +84,13 @@ export const FileCard = ({file, value, saved, isServed, isCurrent, isGenerating,
                     <Chip label={t(`status.${state.key}`)} color={state.color} data-llms-status={state.key}/>
                 </div>
                 <div className={styles.actions}>
+                    {/* One button that says whether it is on: its name does not change with its state. */}
+                    <Button data-llms-role="preview-toggle"
+                            variant="ghost"
+                            label={t('preview.toggle')}
+                            className={isPreview ? styles.pressed : undefined}
+                            aria-pressed={isPreview}
+                            onClick={togglePreview}/>
                     <Button data-llms-role="revert"
                             variant="ghost"
                             icon={<Undo aria-hidden="true"/>}
@@ -99,19 +116,25 @@ export const FileCard = ({file, value, saved, isServed, isCurrent, isGenerating,
                 ) : t('notServed', {path: liveUrl, ...PLAIN})}
             </Typography>
 
-            <label htmlFor={textareaId} className={styles.srOnly}>{t('editorLabel', {file: file.fileName, ...PLAIN})}</label>
+            {!isPreview && (
+                <label htmlFor={textareaId} className={styles.srOnly}>{t('editorLabel', {file: file.fileName, ...PLAIN})}</label>
+            )}
             {/* Busy here only: on an element that held the status region, it could silence its announcements. */}
             <div aria-busy={isGenerating}>
-                <Textarea isResizable
-                          id={textareaId}
-                          className={styles.editor}
-                          value={value}
-                          rows={file.full ? 28 : 20}
-                          spellCheck={false}
-                          aria-describedby={descriptionId}
-                          isReadOnly={isGenerating}
-                          placeholder={t(`${file.id}.placeholder`)}
-                          onChange={e => onChange(e.target.value)}/>
+                {isPreview ? (
+                    <MarkdownPreview id={`llms-preview-${file.id}`} fileName={file.fileName} text={value}/>
+                ) : (
+                    <Textarea isResizable
+                              id={textareaId}
+                              className={styles.editor}
+                              value={value}
+                              rows={file.full ? 28 : 20}
+                              spellCheck={false}
+                              aria-describedby={descriptionId}
+                              isReadOnly={isGenerating}
+                              placeholder={t(`${file.id}.placeholder`)}
+                              onChange={e => onChange(e.target.value)}/>
+                )}
             </div>
             <Typography variant="caption" className={styles.muted} data-llms-role="stats">
                 {t('stats', stats)}
@@ -134,5 +157,6 @@ FileCard.propTypes = {
     liveUrl: PropTypes.string.isRequired,
     rootUrl: PropTypes.string,
     onChange: PropTypes.func.isRequired,
-    onRevert: PropTypes.func.isRequired
+    onRevert: PropTypes.func.isRequired,
+    onAnnounce: PropTypes.func.isRequired
 };

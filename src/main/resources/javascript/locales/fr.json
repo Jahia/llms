@@ -83,6 +83,7 @@
   "generated": {
     "title": "Généré à partir de {{pages}} pages en {{language}}",
     "review": "Le texte ci-dessous a été remplacé par cette proposition. Relisez-le et modifiez-le, puis choisissez Enregistrer et publier. Annuler les modifications rétablit le fichier enregistré.",
+    "advice": " Ce texte est une agrégation des pages du site, telles qu'elles sont publiées. Le relire, réécrire ce qui se lit mal et retirer ce qui n'apporte rien est fortement conseillé avant de publier : un fichier retravaillé sert bien mieux les assistants IA, donc votre visibilité dans leurs réponses (GEO), qu'un fichier brut.",
     "failed": " Pages dont le rendu a échoué, écartées du fichier ({{count}}) :",
     "cut": {
       "pages": " Le site a plus de pages qu'un fichier n'en liste : les pages les plus proches de la page d'accueil ont été gardées.",
@@ -159,5 +160,13 @@
       "types": "Erreur : ce n'est pas un type de nœud de ce Jahia : {{detail}}.",
       "flag": "Erreur : choisir Oui, Non ou la valeur par défaut."
     }
+  },
+  "preview": {
+    "toggle": "Aperçu",
+    "label": "Aperçu de {{file}}",
+    "shown": "Aperçu affiché.",
+    "hidden": "Éditeur affiché.",
+    "cut": "Le fichier est volumineux : l'aperçu n'en montre que les 300 premiers Ko. L'éditeur le contient en entier.",
+    "empty": "Le fichier est vide."
   }
 }

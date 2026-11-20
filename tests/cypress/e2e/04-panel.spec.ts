@@ -134,6 +134,24 @@ describe('the llms.txt panel in jContent', () => {
         cy.get('[data-llms-role="generate"]').should('have.focus');
         cy.get('#llms-editor-llmsFull').invoke('val').should('contain', 'Source: https://www.example.com/');
 
+        // The file is the pages put end to end: the editor is told to work on it before publishing.
+        cy.get('[data-llms-role="advice"]').should('contain.text', 'strongly advised before publishing');
+
+        // The same text as a person reads it, in place of the editor, and back.
+        cy.get('[data-llms-role="preview-toggle"]').should('have.attr', 'aria-pressed', 'false').click();
+        cy.get('[data-llms-role="preview-toggle"]').should('have.attr', 'aria-pressed', 'true').and('have.focus');
+        cy.get('#llms-editor-llmsFull').should('not.exist');
+        cy.get('#llms-preview-llmsFull').should('have.attr', 'role', 'region').and('have.attr', 'tabindex', '0')
+            .and('have.attr', 'aria-label', 'Preview of llms-full.txt');
+        // Under the h2 of the card: the titles of the file start at h3, and no h1 or h2 comes from it.
+        cy.get('#llms-preview-llmsFull h3').should('have.length.at.least', 1);
+        cy.get('#llms-preview-llmsFull').find('h1, h2').should('not.exist');
+        cy.get('#llms-preview-llmsFull a[href^="https://www.example.com/"]').first()
+            .should('have.attr', 'target', '_blank').and('have.attr', 'rel', 'noopener noreferrer').and('contain.text', '(opens in a new tab)');
+        cy.get('[role="status"]').should('contain.text', 'Preview shown.');
+        cy.get('[data-llms-role="preview-toggle"]').click();
+        cy.get('#llms-editor-llmsFull').invoke('val').should('contain', 'Source: https://www.example.com/');
+
         // Discarding the proposal takes its log away with it.
         cy.get('[data-llms-role="revert"]').click();
         cy.get('[data-llms-role="progress"]').should('not.exist');

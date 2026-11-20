@@ -125,6 +125,36 @@ describe('the settings of a site', () => {
         rulesOf(SITE).should('deep.eq', {maxDepth: 10, maxPages: 200, maxMainResources: 100, includedTypes: []});
     });
 
+    it('never writes the configuration of another site, even one filed under the name of this site', () => {
+        // An operator named a file after this site, and wrote in it the key of the other one.
+        cy.request({
+            method: 'POST',
+            url: '/modules/api/provisioning',
+            auth: {user: 'root', pass: Cypress.env('SUPER_USER_PASSWORD')},
+            headers: {'Content-Type': 'application/json'},
+            body: [{editConfiguration: 'org.jahia.modules.llms.site', configIdentifier: SITE, properties: {siteKey: OTHER, maxDepth: '2'}}]
+        }).its('status').should('eq', 200);
+        cy.request({url: '/cms/logout', failOnStatusCode: false});
+        applied();
+        rulesOf(OTHER).its('maxDepth').should('eq', 2);
+
+        save(SITE_ADMIN, {maxDepth: '4'}).then(response => expect(errorOf(response)).to.eq(null));
+        applied();
+        rulesOf(SITE).its('maxDepth').should('eq', 4);
+        // The other site keeps its own value: its file was neither rewritten nor taken over.
+        rulesOf(OTHER).its('maxDepth').should('eq', 2);
+
+        save(SITE_ADMIN, {}).then(response => expect(errorOf(response)).to.eq(null));
+        applied();
+        rulesOf(SITE).its('maxDepth').should('eq', 10);
+        rulesOf(OTHER).its('maxDepth').should('eq', 2);
+
+        // The administrator of the other site removes its values: that file is theirs.
+        save(SITE_ADMIN, {}, OTHER).then(response => expect(errorOf(response)).to.eq(null));
+        applied();
+        rulesOf(OTHER).its('maxDepth').should('eq', 10);
+    });
+
     it('offers the Settings tab to who administers the site, with each value explained and checked', () => {
         cy.login(SITE_ADMIN!.name, SITE_ADMIN!.password);
         cy.visit(`/jahia/jcontent/${SITE}/en/apps/siteSettingsSeo/llms`);

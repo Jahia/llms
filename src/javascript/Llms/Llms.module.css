@@ -296,6 +296,123 @@ textarea.editor:focus-visible {
     overflow-wrap: anywhere;
 }
 
+/* A button that is on: said to the eye as aria-pressed says it to a screen reader. */
+.pressed {
+    background: var(--color-accent_light_plain20);
+    box-shadow: inset 0 0 0 1px var(--color-accent_dark);
+}
+
+/* A file as a person reads it. The one box that scrolls, both ways: a table or a block of code wider
+   than the box scrolls with it, and prose wraps. Capped so it never takes the whole screen. */
+.preview {
+    max-height: min(40rem, 70vh);
+    padding: var(--spacing-medium, 16px) var(--spacing-large, 24px);
+
+    color: var(--color-gray_dark);
+
+    border: 1px solid var(--color-gray_dark60);
+    border-radius: 4px;
+    background: var(--color-white);
+    overflow: auto;
+}
+
+.preview:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
+}
+
+.previewBody {
+    max-width: 48rem;
+
+    font-size: 0.875rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.previewBody :is(h3, h4, h5, h6) {
+    margin: 1.5em 0 0.5em;
+
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.previewBody h3 {
+    font-size: 1.375rem;
+}
+
+.previewBody h4 {
+    font-size: 1.125rem;
+}
+
+.previewBody :is(h5, h6) {
+    font-size: 1rem;
+}
+
+.previewBody :is(p, ul, ol, blockquote, pre, table) {
+    margin: 0 0 1em;
+}
+
+/* jContent resets lists: the marks are what makes these lines a list to the eye. */
+.previewBody ul {
+    padding-left: var(--spacing-large, 24px);
+
+    list-style: disc;
+}
+
+.previewBody ol {
+    padding-left: var(--spacing-large, 24px);
+
+    list-style: decimal;
+}
+
+.previewBody a {
+    color: var(--color-accent_dark);
+    text-decoration: underline;
+}
+
+.previewBody blockquote {
+    padding-left: var(--spacing-medium, 16px);
+
+    border-left: 1px solid var(--color-gray_dark60);
+}
+
+.previewBody hr {
+    margin: 2em 0;
+
+    border: 0;
+    border-top: 1px solid var(--color-gray_dark60);
+}
+
+.previewBody :is(code, pre) {
+    font-size: 0.8125rem;
+    font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+}
+
+/* Lines of code are not wrapped: the box scrolls sideways for them. */
+.previewBody pre {
+    padding: var(--spacing-small, 8px) var(--spacing-medium, 16px);
+
+    white-space: pre;
+    overflow-wrap: normal;
+
+    background: var(--color-gray_light40);
+}
+
+.previewBody table {
+    overflow-wrap: normal;
+
+    border-collapse: collapse;
+}
+
+.previewBody :is(th, td) {
+    padding: var(--spacing-nano, 4px) var(--spacing-small, 8px);
+
+    text-align: left;
+    vertical-align: top;
+
+    border: 1px solid var(--color-gray_dark60);
+}
+
 .srOnly {
     position: absolute;
 

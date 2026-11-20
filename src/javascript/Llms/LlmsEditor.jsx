@@ -283,7 +283,8 @@ export const LlmsEditor = ({siteKey}) => {
     useEffect(() => {
         if (refocus > 0) {
             const active = document.activeElement;
-            const editor = document.getElementById(`llms-editor-${tab}`);
+            // The editor of the file, or its preview when that is what is shown.
+            const editor = document.getElementById(`llms-editor-${tab}`) || document.getElementById(`llms-preview-${tab}`);
             if (editor && (!active || active === document.body || active.disabled)) {
                 editor.focus();
             }
@@ -481,6 +482,7 @@ export const LlmsEditor = ({siteKey}) => {
                                 isGenerating={generating === file.id}
                                 liveUrl={fileUrl(file.fileName)}
                                 rootUrl={scoped.scope ? null : `/${file.fileName}`}
+                                onAnnounce={setAnnouncement}
                                 onChange={value => setDrafts(d => ({...d, [file.id]: value}))}
                                 onRevert={() => {
                                     setDrafts(d => ({...d, [file.id]: saved[file.id]}));

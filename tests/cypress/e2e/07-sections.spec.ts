@@ -28,6 +28,15 @@ describe('llms.txt of a section of the site', () => {
         page(`/sites/${SITE}/home`, 'docs', 'Documentation');
         page(DOCS, 'guide', 'User guide');
         page(DOCS, 'api', 'API reference');
+        // A menu group is a label of the navigation, not a page: the pages it gathers are sections too.
+        addNode({
+            parentPathOrId: `/sites/${SITE}/home`,
+            primaryNodeType: 'jnt:navMenuText',
+            name: 'products',
+            properties: [{name: 'jcr:title', value: 'Products', language: 'en'}]
+        });
+        page(`/sites/${SITE}/home/products`, 'tools', 'Tools');
+        page(`/sites/${SITE}/home/products/tools`, 'hammer', 'Hammer');
         publishAndWaitJobEnding(`/sites/${SITE}/home`, ['en']);
         saveAsRoot(SITE, {llms: '# The whole site'});
     });
@@ -85,6 +94,11 @@ describe('llms.txt of a section of the site', () => {
         gql(ROOT(), 'query ($siteKey: String!) { llms { sections(siteKey: $siteKey) { path title hasFiles } } }', {siteKey: SITE}).then(response => {
             expect(errorOf(response)).to.eq(null);
             expect(response.body.data.llms.sections).to.deep.include({path: DOCS, title: 'Documentation', hasFiles: true});
+            // A page below a menu group is offered, named after its group; the group itself is not.
+            expect(response.body.data.llms.sections).to.deep.include(
+                {path: `/sites/${SITE}/home/products/tools`, title: 'Products / Tools', hasFiles: false});
+            expect(response.body.data.llms.sections.map((section: {path: string}) => section.path))
+                .to.not.include(`/sites/${SITE}/home/products`);
         });
     });
 
