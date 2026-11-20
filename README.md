@@ -205,8 +205,9 @@ https://www.example.com/home/about.html.md   the same page as Markdown
   not open to visitors has no Markdown version (404).
 - Served as `text/markdown`, with a `Link: <page>; rel="canonical"` header.
 - Works for pages and for contents shown as a page, at their address (`about.html.md`) and at their
-  vanity URL followed by `.md` (`/news/launch.md`). A vanity URL is answered on the host of its site,
-  as the page itself is.
+  vanity URL followed by `.md` (`/news/launch.md`). A vanity URL is answered wherever Jahia answers it:
+  on the host of its site, and on a host several sites share. On a shared host, a vanity URL that two
+  sites use is not answered, since nothing says which one is meant.
 - Each request renders the page: eight are converted at the same time at most, beyond which the answer
   is `503` with `Retry-After`.
 

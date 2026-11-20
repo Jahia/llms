@@ -73,7 +73,7 @@ describe('the Markdown version of a page (page.html.md)', () => {
         });
     });
 
-    it('serves a page at its vanity URL followed by .md, on the host of its site', () => {
+    it('serves a page at its vanity URL followed by .md, on the hosts that serve the vanity URL', () => {
         const host = {Host: `${SITE}.test`.toLowerCase()};
         addVanityUrl(`/sites/${SITE}/home/about`, 'en', '/who-we-are');
         // A vanity URL counts for visitors once it is published.
@@ -87,9 +87,15 @@ describe('the Markdown version of a page (page.html.md)', () => {
         });
         // The address of the page keeps its own Markdown version.
         fetchFile('/home/about.html.md', host).its('status').should('eq', 200);
-        // A vanity URL is a whole address: nothing is guessed from a part of one, or from another host.
+        // A vanity URL is a whole address: nothing is guessed from a part of one.
         fetchFile('/who-we.md', host).its('status').should('eq', 404);
-        fetchFile('/who-we-are.md').its('status').should('eq', 404);
+        // Jahia answers a vanity URL on a host that is not its site's (a host several sites share, as an
+        // authoring one): its Markdown version is there too.
+        fetchFile('/who-we-are', {Host: 'shared-host.test'}).its('status').should('eq', 200);
+        fetchFile('/who-we-are.md', {Host: 'shared-host.test'}).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.body).to.match(/^# About us\n/);
+        });
     });
 
     it('has no Markdown version of a page that does not exist or is not published', () => {

@@ -36,8 +36,8 @@ A major version: the module asks for more of the platform and does more by defau
 * **Each page has a Markdown version at its own URL followed by `.md`** (`page.html.md`). It is the page
   as a visitor without an account gets it: no Markdown version of a page that is not published or not
   open to visitors. `linkToMarkdown` makes a generated llms.txt link to these versions.
-* **A vanity URL has a Markdown version too**: the vanity URL followed by `.md`, on the host of its
-  site. `linkToMarkdown` links to it, so the contents known by a vanity URL (news, articles) are linked
+* **A vanity URL has a Markdown version too**: the vanity URL followed by `.md`, on the hosts where
+  Jahia answers that vanity URL. `linkToMarkdown` links to it, so the contents known by a vanity URL (news, articles) are linked
   as Markdown like the pages.
 * **Pages name their Markdown version and the llms.txt of their site** in their `<head>`
   (`rel="alternate" type="text/markdown"`, `rel="describedby"`), and a Markdown version does so in a

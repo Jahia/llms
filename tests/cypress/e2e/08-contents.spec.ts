@@ -1,4 +1,4 @@
-import {addMixins, addNode, createUser, deleteNode, deleteSite, deleteUser, grantRoles, publishAndWaitJobEnding} from '@jahia/cypress';
+import {addMixins, addNode, addVanityUrl, createUser, deleteNode, deleteSite, deleteUser, grantRoles, publishAndWaitJobEnding} from '@jahia/cypress';
 import {createSiteWithPages} from '../support/fixtures';
 import {errorOf, fetchFile, GENERATE, gql, ROOT, User} from '../support/llms';
 
@@ -140,7 +140,7 @@ describe('contents shown as a page, and the configuration of one site', () => {
      * A content is often known by a vanity URL, which has no .html: its Markdown version is at that
      * vanity URL followed by .md, on the host of its site, as the page itself is.
      */
-    it('serves the Markdown version of a content at its vanity URL followed by .md, on the host of its site', () => {
+    it('serves the Markdown version of a content at its vanity URL followed by .md', () => {
         const host = {Host: `${SITE}.test`.toLowerCase()};
         fetchFile('/news/product-launch', host).its('status').should('eq', 200);
         fetchFile('/news/product-launch.md', host).then(response => {
@@ -150,18 +150,35 @@ describe('contents shown as a page, and the configuration of one site', () => {
             // The vanity URL is the reference, not the address of the node.
             expect(response.headers.link).to.contain('/news/product-launch>; rel="canonical"');
         });
-        // Not a vanity URL of this site: nothing is served, on this host or on another.
+        // Not a vanity URL: nothing is served.
         fetchFile('/news/no-such-news.md', host).its('status').should('eq', 404);
-        fetchFile('/news/product-launch.md', {Host: `${OTHER}.test`.toLowerCase()}).its('status').should('eq', 404);
-        fetchFile('/news/product-launch.md').its('status').should('eq', 404);
         // The news that was never published has a vanity URL in the editing workspace only.
         fetchFile('/news/embargoed-news.md', host).its('status').should('eq', 404);
+        // On a host that is no site's, Jahia still answers the vanity URL: so does its Markdown version.
+        fetchFile('/news/product-launch.md', {Host: 'shared-host.test'}).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.body).to.contain('The launch went well.');
+        });
+    });
+
+    it('does not choose between two sites that use the same vanity URL when the host does not say which', () => {
+        [SITE, OTHER].forEach(site => {
+            addVanityUrl(`/sites/${site}/home/about`, 'en', '/about-us');
+            publishAndWaitJobEnding(`/sites/${site}/home/about`, ['en']);
+        });
+        // The host of a site names the site: its own page is served.
+        fetchFile('/about-us.md', {Host: `${SITE}.test`.toLowerCase()}).its('status').should('eq', 200);
+        fetchFile('/about-us.md', {Host: `${OTHER}.test`.toLowerCase()}).its('status').should('eq', 200);
+        // A host that is no site's does not: two pages answer to that address, none is picked.
+        fetchFile('/about-us.md', {Host: 'shared-host.test'}).its('status').should('eq', 404);
     });
 
     it('links llms.txt to the Markdown versions, vanity URLs included, when the site is configured so', () => {
         configureSite({linkToMarkdown: 'true'});
         generated(false).then(content => {
-            expect(content).to.match(/\[About us\]\(https:\/\/www\.example\.com\/[^)\s]*about\.html\.md\)/);
+            // A page is linked by its address followed by .md, or by its vanity URL followed by .md.
+            expect(content).to.match(/\[Home\]\(https:\/\/www\.example\.com\/[^)\s]*home\.html\.md\)/);
+            expect(content).to.match(/\[About us\]\(https:\/\/www\.example\.com\/[^)\s]+\.md\)/);
             expect(content).to.match(/\[Product launch\]\(https:\/\/www\.example\.com\/news\/product-launch\.md\)/);
         });
         configureSite({});
