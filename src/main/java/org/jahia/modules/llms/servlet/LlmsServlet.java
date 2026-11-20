@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.jcr.RepositoryException;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -27,6 +28,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -62,14 +64,16 @@ public class LlmsServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String property = "full".equals(request.getParameter("file")) ? LlmsService.LLMS_FULL : LlmsService.LLMS;
+        Target target = Target.of((String) request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI),
+                request.getParameter("site"), request.getParameter("file"));
+        String property = target.full() ? LlmsService.LLMS_FULL : LlmsService.LLMS;
         String ifNoneMatch = request.getHeader("If-None-Match");
         String content = null;
         String cacheKey = null;
         String stamp = null;
         try {
             JCRSessionWrapper live = JCRSessionFactory.getInstance().getCurrentUserSession("live");
-            String siteKey = request.getParameter("site");
+            String siteKey = target.siteKey();
             if (siteKey == null || siteKey.isEmpty()) {
                 siteKey = siteOfHost(request.getServerName(), live);
             }
@@ -109,6 +113,29 @@ public class LlmsServlet extends HttpServlet {
         response.setContentType("text/plain;charset=UTF-8");
         response.setContentLength(body.length);
         response.getOutputStream().write(body);
+    }
+
+    /**
+     * Which file of which site a request is for. A request the rewrite rules forwarded here is read from
+     * the URL the visitor asked for, so a query string cannot name another site or file than the path
+     * does; only a direct call to the servlet is read from its parameters.
+     *
+     * @param siteKey the site named by the URL, or null for the site of the request's host
+     * @param full    true for llms-full.txt
+     */
+    record Target(String siteKey, boolean full) {
+
+        private static final Pattern PUBLIC_URL = Pattern.compile("^.*?(?:/sites/([A-Za-z0-9_-]{1,64}))?/llms(-full)?\\.txt$");
+
+        static Target of(String forwardedUri, String siteParameter, String fileParameter) {
+            if (forwardedUri != null) {
+                Matcher m = PUBLIC_URL.matcher(forwardedUri);
+                if (m.matches()) {
+                    return new Target(m.group(1), m.group(2) != null);
+                }
+            }
+            return new Target(siteParameter, "full".equals(fileParameter));
+        }
     }
 
     private static void headers(HttpServletResponse response, String etag) {

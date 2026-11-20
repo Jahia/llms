@@ -39,4 +39,26 @@ class LlmsServletTest {
         // A site node without dates is never trusted.
         assertThat(validator.isFor(null, soon)).isFalse();
     }
+
+    @Test
+    void theUrlAskedForNamesTheSiteAndTheFile() {
+        assertThat(LlmsServlet.Target.of("/llms.txt", null, null)).isEqualTo(new LlmsServlet.Target(null, false));
+        assertThat(LlmsServlet.Target.of("/llms-full.txt", null, null)).isEqualTo(new LlmsServlet.Target(null, true));
+        assertThat(LlmsServlet.Target.of("/sites/a/llms.txt", null, null)).isEqualTo(new LlmsServlet.Target("a", false));
+        assertThat(LlmsServlet.Target.of("/ctx/sites/a/llms-full.txt", null, null)).isEqualTo(new LlmsServlet.Target("a", true));
+    }
+
+    @Test
+    void aQueryStringCannotNameAnotherSiteOrFileThanThePath() {
+        assertThat(LlmsServlet.Target.of("/sites/a/llms.txt", "b", "full")).isEqualTo(new LlmsServlet.Target("a", false));
+        assertThat(LlmsServlet.Target.of("/llms.txt", "b", "full")).isEqualTo(new LlmsServlet.Target(null, false));
+    }
+
+    @Test
+    void aDirectCallIsReadFromItsParameters() {
+        assertThat(LlmsServlet.Target.of(null, "a", "full")).isEqualTo(new LlmsServlet.Target("a", true));
+        assertThat(LlmsServlet.Target.of(null, null, null)).isEqualTo(new LlmsServlet.Target(null, false));
+        // A forward from somewhere else than the public URLs keeps the parameters.
+        assertThat(LlmsServlet.Target.of("/modules/llms/llms", "a", null)).isEqualTo(new LlmsServlet.Target("a", false));
+    }
 }
