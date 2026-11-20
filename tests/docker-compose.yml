@@ -1,0 +1,66 @@
+# The stack for the llms e2e suite: one Jahia, and the Cypress container behind
+# the `test` profile, as Jahia/jahia-modules-action's integration-tests expects.
+#
+# Locally:
+#   cp .env.example .env        # then set JAHIA_IMAGE, and JAHIA_HOST_PORT if 8080 is taken
+#   docker compose up -d
+#   yarn install && source set-env.sh && yarn e2e:ci
+#
+# The module under test is NOT installed by this file. See tests/README.md.
+name: llms-tests
+
+services:
+    jahia:
+        image: '${JAHIA_IMAGE}'
+        container_name: llms-jahia
+        deploy:
+            resources:
+                limits:
+                    memory: 6gb
+                reservations:
+                    memory: 4gb
+        environment:
+            JAHIA_LICENSE: ${JAHIA_LICENSE}
+            SUPER_USER_PASSWORD: ${SUPER_USER_PASSWORD}
+            PROCESSING_SERVER: 'true'
+            MAX_RAM_PERCENTAGE: 80
+            RESTORE_MODULE_STATES: 'false'
+            NEXUS_USERNAME: ${NEXUS_USERNAME}
+            NEXUS_PASSWORD: ${NEXUS_PASSWORD}
+            TZ: ${TIMEZONE}
+        ports:
+            - '${JAHIA_HOST_PORT:-8080}:8080'
+        # Generating llms-full.txt renders the site's pages from inside this
+        # container, and the tests container names this host `jahia`.
+        extra_hosts:
+            - jahia:127.0.0.1
+        networks:
+            stack:
+                aliases:
+                    - jahia
+
+    cypress:
+        profiles: ["test"]
+        image: '${TESTS_IMAGE}'
+        container_name: llms-cypress
+        depends_on:
+            - jahia
+        environment:
+            JAHIA_LICENSE: ${JAHIA_LICENSE}
+            MANIFEST: ${MANIFEST}
+            MODULE_ID: ${MODULE_ID}
+            JAHIA_USERNAME: ${JAHIA_USERNAME}
+            JAHIA_PASSWORD: ${JAHIA_PASSWORD}
+            JAHIA_URL: ${JAHIA_URL}
+            JAHIA_HOST: ${JAHIA_HOST}
+            JAHIA_PORT: ${JAHIA_PORT}
+            NEXUS_USERNAME: ${NEXUS_USERNAME}
+            NEXUS_PASSWORD: ${NEXUS_PASSWORD}
+            SUPER_USER_PASSWORD: ${SUPER_USER_PASSWORD}
+            SKIP_TESTS: ${SKIP_TESTS:-false}
+            TESTS_PROFILE: ${TESTS_PROFILE:-}
+        networks:
+            - stack
+
+networks:
+    stack:
