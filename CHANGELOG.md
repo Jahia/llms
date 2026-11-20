@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (unreleased)
+## 2.0.0 (2026-11-20)
 
 A major version: the module asks for more of the platform and does more by default than 1.0.0.
 
