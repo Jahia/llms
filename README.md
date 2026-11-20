@@ -102,6 +102,15 @@ the list for that site. The panel of the site states the rules in force for it. 
 the server (threads, timeouts, sizes) and what is served (`servePageMarkdown`, `discoveryLinks`) are
 set for the whole Jahia only.
 
+### The option List in llms.txt
+
+`jmix:llmsListed` is an option of a page, and of a content shown as a page, in the SEO section of the
+content editor. It counts only on a site that lists marked pages (`includedNodeTypes = jmix:llmsListed`),
+so the editor shows it only to who holds the permission `llmsListPages` on the site (Roles and
+permissions, under jContent > engineTabs). On such a site, add that permission to the role of the
+people who decide what the files list. A role that holds every permission is always shown the option.
+The permission hides a field of the editor; it does not forbid setting the mixin through the API.
+
 ## Serving
 
 `/llms.txt` and `/llms-full.txt` answer with an `ETag`; a request with `If-None-Match` for an unchanged

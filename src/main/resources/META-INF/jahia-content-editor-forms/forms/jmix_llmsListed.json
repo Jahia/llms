@@ -1,0 +1,15 @@
+{
+  "nodeType": "jmix:llmsListed",
+  "priority": 2.0,
+  "sections": [
+    {
+      "name": "seo",
+      "fieldSets": [
+        {
+          "name": "jmix:llmsListed",
+          "requiredPermission": "llmsListPages"
+        }
+      ]
+    }
+  ]
+}

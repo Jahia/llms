@@ -1,10 +1,20 @@
-import {addMixins, addNode, deleteSite, publishAndWaitJobEnding} from '@jahia/cypress';
+import {addMixins, addNode, createUser, deleteNode, deleteSite, deleteUser, grantRoles, publishAndWaitJobEnding} from '@jahia/cypress';
 import {createSiteWithPages} from '../support/fixtures';
-import {errorOf, fetchFile, GENERATE, gql, ROOT} from '../support/llms';
+import {errorOf, fetchFile, GENERATE, gql, ROOT, User} from '../support/llms';
 
 const RULES = `query ($siteKey: String!) {
     llms { rules(siteKey: $siteKey) { includedTypes maxMainResources maxDepth } }
 }`;
+
+// What the content editor shows for a node: its sections and the groups of fields in each.
+const EDIT_FORM = `query ($path: String!) {
+    forms { editForm(uuidOrPath: $path, uiLocale: "en", locale: "en") { sections { name fieldSets { name } } } }
+}`;
+
+/** An ordinary editor: every assertion on what the editor shows is made with this account, not with root. */
+const EDITOR: User = {name: 'llms-editor', password: 'Llms-editor-1'};
+/** A role that carries the permission of the module and nothing else. */
+const LISTER_ROLE = 'llms-lister';
 
 /**
  * Two things a site may need beyond its page tree: the contents that are shown as a page of their own
@@ -62,8 +72,41 @@ describe('contents shown as a page, and the configuration of one site', () => {
 
     after(() => {
         configureSite({});
+        deleteUser(EDITOR!.name);
+        deleteNode(`/roles/${LISTER_ROLE}`);
         deleteSite(SITE);
         deleteSite(OTHER);
+    });
+
+    /** Whether the content editor offers the option List in llms.txt on a page, to that user. */
+    const optionShownTo = (user: User, path: string) => gql(user, EDIT_FORM, {path}).then(response => {
+        expect(errorOf(response)).to.eq(null);
+        const sections = response.body.data.forms.editForm.sections as {fieldSets: {name: string}[]}[];
+        return sections.some(section => section.fieldSets.some(fieldSet => fieldSet.name === 'jmix:llmsListed'));
+    });
+
+    it('offers the option List in llms.txt only to who holds its permission on the site', () => {
+        deleteUser(EDITOR!.name);
+        createUser(EDITOR!.name, EDITOR!.password);
+        grantRoles(`/sites/${SITE}`, ['editor'], EDITOR!.name, 'USER');
+        grantRoles(`/sites/${OTHER}`, ['editor'], EDITOR!.name, 'USER');
+        // An editor of the site, without the permission: the option would do nothing, and is not shown.
+        optionShownTo(EDITOR, ABOUT).should('eq', false);
+
+        addNode({
+            parentPathOrId: '/roles',
+            name: LISTER_ROLE,
+            primaryNodeType: 'jnt:role',
+            properties: [
+                {name: 'j:permissionNames', values: ['llmsListPages']},
+                {name: 'j:roleGroup', value: 'edit-role'},
+                {name: 'j:privilegedAccess', value: 'true'}
+            ]
+        });
+        grantRoles(`/sites/${SITE}`, [LISTER_ROLE], EDITOR!.name, 'USER');
+        optionShownTo(EDITOR, ABOUT).should('eq', true);
+        // The permission is held on one site: the same editor is not offered the option on the other.
+        optionShownTo(EDITOR, `/sites/${OTHER}/home/about`).should('eq', false);
     });
 
     it('lists a published content shown as a page after the pages, under the folder that holds it', () => {

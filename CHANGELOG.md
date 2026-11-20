@@ -20,7 +20,8 @@
   pages, the most recent first (`maxMainResources`, 100 by default), get a Markdown version and name it
   in their head.
 * **List only marked pages**: `includedNodeTypes` lists only the pages and contents that carry a mixin,
-  such as the new page option `jmix:llmsListed` (List in llms.txt).
+  such as the new page option `jmix:llmsListed` (List in llms.txt). The content editor shows that
+  option only to who holds the new permission `llmsListPages` on the site.
 * **A configuration per site**: `org.jahia.modules.llms.site-<name>.cfg` changes, for one site, what is
   listed (depth, numbers, excluded and listed types, links to Markdown, images).
 
