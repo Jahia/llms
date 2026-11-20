@@ -1,7 +1,7 @@
 import React, {useDeferredValue, useMemo} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Loader, OpenInNew, Reload, Textarea, Typography, Undo} from '@jahia/moonstone';
+import {Button, Chip, OpenInNew, Paper, Textarea, Typography, Undo} from '@jahia/moonstone';
 import {MODULE, PLACEHOLDER} from './module';
 import styles from './Llms.module.css';
 
@@ -50,7 +50,14 @@ const status = (value, saved, isCurrent) => {
     return isCurrent ? {key: 'published', color: 'success'} : {key: 'notPublished', color: 'warning'};
 };
 
-export const FileCard = ({file, value, saved, isServed, isCurrent, generation, isGenerating, isGenerateEnabled, liveUrl, onChange, onGenerate, onRevert}) => {
+// A path is written as it is: nothing here is inserted as HTML.
+const PLAIN = {interpolation: {escapeValue: false}};
+
+/**
+ * One file: where it stands, where visitors get it, and its text. Generating it is the block above
+ * ({@link GenerationCard}); saving it is the action of the page header.
+ */
+export const FileCard = ({file, value, saved, isServed, isCurrent, isGenerating, liveUrl, onChange, onRevert}) => {
     const {t} = useTranslation(MODULE);
     const state = status(value, saved, isCurrent);
     // Deferred: while the editor types in a large file, React keeps the keystroke ahead of the counts.
@@ -60,82 +67,55 @@ export const FileCard = ({file, value, saved, isServed, isCurrent, generation, i
     const descriptionId = `llms-file-description-${file.id}`;
 
     return (
-        <section className={styles.card}
-                 role="tabpanel"
-                 id="llms-tabpanel"
-                 aria-labelledby={`llms-tab-${file.id}`}
-                 aria-busy={isGenerating}
-                 data-llms-file={file.id}
-        >
+        <Paper hasPadding className={styles.block}>
             <div className={styles.cardHead}>
                 <div className={styles.cardTitle}>
                     <Typography variant="heading" component="h2">{file.fileName}</Typography>
                     <Chip label={t(`status.${state.key}`)} color={state.color} data-llms-status={state.key}/>
                 </div>
                 <div className={styles.actions}>
-                    <Button data-llms-role="generate"
-                            icon={<Reload aria-hidden="true"/>}
-                            label={t(saved.trim() ? 'regenerate' : 'generate')}
-                            isDisabled={!isGenerateEnabled}
-                            onClick={onGenerate}/>
                     <Button data-llms-role="revert"
                             variant="ghost"
                             icon={<Undo aria-hidden="true"/>}
                             label={t('revert')}
                             isDisabled={value === saved || isGenerating}
                             onClick={onRevert}/>
-                    <Button data-llms-role="view"
-                            variant="ghost"
-                            icon={<OpenInNew aria-hidden="true"/>}
-                            label={t('view')}
-                            aria-label={`${t('view')} (${t('newTab')})`}
-                            isDisabled={!isServed}
-                            onClick={() => globalThis.open(liveUrl, '_blank', 'noopener')}/>
                 </div>
             </div>
-            <Typography id={descriptionId} variant="body" className={styles.muted}>{t(`${file.id}.description`)}</Typography>
+            <Typography id={descriptionId} className={`${styles.muted} ${styles.prose}`}>{t(`${file.id}.description`)}</Typography>
+            {/* What visitors get, said in words: the address when the file is served, and that it is not when it is not. */}
+            <Typography data-llms-role="served" className={styles.served}>
+                {isServed ? (
+                    <>
+                        {t('servedAt')}{' '}
+                        <a className={styles.link} data-llms-role="view" href={liveUrl} target="_blank" rel="noopener noreferrer">
+                            {liveUrl}
+                            <span className={styles.srOnly}> ({t('view')}, {t('newTab')})</span>
+                            <OpenInNew aria-hidden="true" size="small"/>
+                        </a>
+                        {t('servedRoot', {path: `/${file.fileName}`, ...PLAIN})}
+                    </>
+                ) : t('notServed', {path: liveUrl, ...PLAIN})}
+            </Typography>
 
-            {/* Always in the page, empty or not: a status region inserted with its text already in is often not announced. */}
-            <div role="status" className={styles.live}>
-                {isGenerating && (
-                    <Banner variant="info" title={t('generating.title')} iconStart={<Loader size="small" aria-hidden="true"/>}>
-                        {t(file.full ? 'generating.full' : 'generating.index')}
-                    </Banner>
-                )}
-                {!isGenerating && generation && (
-                    <Banner variant={generation.failedPages.length || generation.truncated ? 'warning' : 'info'}
-                            title={t('generated.title', {pages: generation.pages, language: generation.language})}
-                            data-llms-role="generated"
-                    >
-                        <span>{t('generated.review')}</span>
-                        {generation.truncated && <span>{t('generated.truncated')}</span>}
-                        {generation.failedPages.length > 0 && (
-                            <span>
-                                {t('generated.failed', {count: generation.failedPages.length})}
-                                <ul className={styles.failed}>
-                                    {generation.failedPages.map(url => <li key={url}>{url}</li>)}
-                                </ul>
-                            </span>
-                        )}
-                    </Banner>
-                )}
+            <label htmlFor={textareaId} className={styles.srOnly}>{t('editorLabel', {file: file.fileName, ...PLAIN})}</label>
+            {/* Busy here only: on an element that held the status region, it could silence its announcements. */}
+            <div aria-busy={isGenerating}>
+                <Textarea isResizable
+                          id={textareaId}
+                          className={styles.editor}
+                          value={value}
+                          rows={file.full ? 28 : 20}
+                          spellCheck={false}
+                          aria-describedby={descriptionId}
+                          isReadOnly={isGenerating}
+                          placeholder={t(`${file.id}.placeholder`)}
+                          onChange={e => onChange(e.target.value)}/>
             </div>
-
-            <label htmlFor={textareaId} className={styles.srOnly}>{t('editorLabel', {file: file.fileName})}</label>
-            <Textarea isResizable
-                      id={textareaId}
-                      className={styles.editor}
-                      value={value}
-                      rows={file.full ? 28 : 20}
-                      spellCheck={false}
-                      aria-describedby={descriptionId}
-                      isReadOnly={isGenerating}
-                      placeholder={t(`${file.id}.placeholder`)}
-                      onChange={e => onChange(e.target.value)}/>
             <Typography variant="caption" className={styles.muted} data-llms-role="stats">
                 {t('stats', stats)}
             </Typography>
-        </section>
+        </Paper>
     );
 };
 
@@ -149,16 +129,8 @@ FileCard.propTypes = {
     saved: PropTypes.string.isRequired,
     isServed: PropTypes.bool.isRequired,
     isCurrent: PropTypes.bool.isRequired,
-    generation: PropTypes.shape({
-        pages: PropTypes.number,
-        failedPages: PropTypes.arrayOf(PropTypes.string),
-        truncated: PropTypes.bool,
-        language: PropTypes.string
-    }),
     isGenerating: PropTypes.bool.isRequired,
-    isGenerateEnabled: PropTypes.bool.isRequired,
     liveUrl: PropTypes.string.isRequired,
     onChange: PropTypes.func.isRequired,
-    onGenerate: PropTypes.func.isRequired,
     onRevert: PropTypes.func.isRequired
 };

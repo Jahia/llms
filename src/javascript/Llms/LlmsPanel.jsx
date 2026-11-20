@@ -2,7 +2,7 @@ import React from 'react';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {useNodeChecks} from '@jahia/data-helper';
-import {Header, LayoutContent, Loader, Typography} from '@jahia/moonstone';
+import {Header, LayoutContent, Loader, Paper, Typography} from '@jahia/moonstone';
 import {LlmsEditor} from './LlmsEditor';
 import {MODULE} from './module';
 import styles from './Llms.module.css';
@@ -31,10 +31,10 @@ export const LlmsPanel = () => {
                     header={<Header title={t('navLabel')}/>}
                     content={(
                         <div className={styles.content}>
-                            <div className={styles.card}>
+                            <Paper hasPadding className={styles.block}>
                                 <Typography variant="heading" component="h2">{t('disabled.title')}</Typography>
                                 <Typography>{t('disabled.text')}</Typography>
-                            </div>
+                            </Paper>
                         </div>
                     )}
                 />

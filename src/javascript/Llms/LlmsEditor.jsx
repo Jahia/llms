@@ -5,20 +5,17 @@ import {useTranslation} from 'react-i18next';
 import {
     Banner,
     Button,
-    Dropdown,
-    Field,
     Header,
-    Input,
     LayoutContent,
     Loader,
     OpenInNew,
     Publish,
     Tab,
-    TabItem,
-    Typography
+    TabItem
 } from '@jahia/moonstone';
 import {LLMS_GENERATE, LLMS_SAVE, LLMS_SITE, LLMS_STATUS} from './Llms.gql';
 import {FileCard} from './FileCard';
+import {GenerationCard} from './GenerationCard';
 import {BASE_URL, FILES, MODULE} from './module';
 import styles from './Llms.module.css';
 
@@ -75,7 +72,7 @@ export const LlmsEditor = ({siteKey}) => {
         }
     }, [site, language]);
 
-    // Generate, Discard changes and Save disable themselves once used, and a disabled button drops the
+    // Discard changes and Save disable themselves once used, and a disabled button drops the
     // focus: after each of them, a focus left nowhere goes to the editor of the file.
     useEffect(() => {
         if (refocus > 0) {
@@ -140,8 +137,8 @@ export const LlmsEditor = ({siteKey}) => {
         } catch (e) {
             setFailure({action: 'generate', message: errorText(e)});
         } finally {
+            // The focus stays on Generate, which is never disabled while it runs: the result shows below it.
             setGenerating(null);
-            setRefocus(n => n + 1);
         }
     };
 
@@ -188,6 +185,7 @@ export const LlmsEditor = ({siteKey}) => {
                                     icon={<Publish aria-hidden="true"/>}
                                     label={t('save')}
                                     isDisabled={!dirty || saving || !baseUrlValid || Boolean(generating)}
+                                    isLoading={saving}
                                     onClick={save}/>
                         ]}
                         toolbarLeft={(
@@ -221,65 +219,49 @@ export const LlmsEditor = ({siteKey}) => {
                     <div className={styles.content}>
                         {/* Always in the page: a status region inserted with its text already in is often not announced. */}
                         <div role="status" className={styles.srOnly}>{announcement}</div>
-                        {failure && (
-                            <Banner variant="danger" title={t(`error.${failure.action}`)} role="alert">
+                        {failure?.action === 'save' && (
+                            <Banner variant="danger" title={t('error.save')} role="alert">
                                 {failure.message}
                             </Banner>
                         )}
-                        <section className={styles.card} aria-labelledby="llms-settings-title">
-                            <Typography id="llms-settings-title" variant="heading" component="h2">{t('settings.title')}</Typography>
-                            <Typography variant="body" className={styles.muted}>{t('settings.description')}</Typography>
-                            <div className={styles.settings}>
-                                {/* Moonstone's Field does not tie its label, helper or error to the control: done here. */}
-                                <Field id="llms-language-field"
-                                       label={t('settings.language')}
-                                       helper={<span id="llms-language-help">{t('settings.languageHelp')}</span>}
-                                >
-                                    <Dropdown data={languages}
-                                              value={language}
-                                              variant="outlined"
-                                              role="group"
-                                              aria-label={t('settings.language')}
-                                              aria-describedby="llms-language-help"
-                                              onChange={(e, item) => setLanguage(item.value)}/>
-                                </Field>
-                                <Field id="llms-baseurl-field"
-                                       label={t('settings.baseUrl')}
-                                       helper={<span id="llms-baseurl-help">{t('settings.baseUrlHelp')}</span>}
-                                       hasError={!baseUrlValid}
-                                       errorMessage={baseUrlValid ? undefined : <span id="llms-baseurl-error">{t('settings.baseUrlError')}</span>}
-                                >
-                                    <Input id="llms-baseurl"
-                                           value={baseUrl}
-                                           placeholder="https://www.example.com"
-                                           autoComplete="url"
-                                           inputMode="url"
-                                           spellCheck={false}
-                                           aria-label={t('settings.baseUrl')}
-                                           aria-invalid={!baseUrlValid}
-                                           aria-describedby={baseUrlValid ? 'llms-baseurl-help' : 'llms-baseurl-help llms-baseurl-error'}
-                                           onChange={e => setBaseUrl(e.target.value.trim())}/>
-                                </Field>
-                            </div>
-                        </section>
-                        <FileCard
-                            file={file}
-                            value={drafts[file.id]}
-                            saved={saved[file.id]}
-                            isServed={Boolean(published[file.id]?.served)}
-                            isCurrent={Boolean(published[file.id]?.current)}
-                            generation={generations[file.id]}
-                            isGenerating={generating === file.id}
-                            isGenerateEnabled={baseUrlValid && Boolean(language) && !generating && !saving}
-                            liveUrl={fileUrl(file.fileName)}
-                            onChange={value => setDrafts(d => ({...d, [file.id]: value}))}
-                            onGenerate={generate}
-                            onRevert={() => {
-                                setDrafts(d => ({...d, [file.id]: saved[file.id]}));
-                                setGenerations(g => ({...g, [file.id]: undefined}));
-                                setRefocus(n => n + 1);
-                            }}
-                        />
+                        {/* One panel per tab: what generates the file, then the file. */}
+                        <div role="tabpanel"
+                             id="llms-tabpanel"
+                             aria-labelledby={`llms-tab-${file.id}`}
+                             className={styles.panel}
+                             data-llms-file={file.id}
+                        >
+                            <GenerationCard
+                                file={file}
+                                languages={languages}
+                                language={language}
+                                baseUrl={baseUrl}
+                                generation={generations[file.id]}
+                                failure={failure?.action === 'generate' ? failure.message || t('error.generate') : undefined}
+                                isBaseUrlValid={baseUrlValid}
+                                isGenerating={generating === file.id}
+                                isGenerateEnabled={baseUrlValid && Boolean(language) && !saving && (!generating || generating === file.id)}
+                                hasSavedFile={Boolean(saved[file.id].trim())}
+                                onLanguageChange={setLanguage}
+                                onBaseUrlChange={setBaseUrl}
+                                onGenerate={generate}
+                            />
+                            <FileCard
+                                file={file}
+                                value={drafts[file.id]}
+                                saved={saved[file.id]}
+                                isServed={Boolean(published[file.id]?.served)}
+                                isCurrent={Boolean(published[file.id]?.current)}
+                                isGenerating={generating === file.id}
+                                liveUrl={fileUrl(file.fileName)}
+                                onChange={value => setDrafts(d => ({...d, [file.id]: value}))}
+                                onRevert={() => {
+                                    setDrafts(d => ({...d, [file.id]: saved[file.id]}));
+                                    setGenerations(g => ({...g, [file.id]: undefined}));
+                                    setRefocus(n => n + 1);
+                                }}
+                            />
+                        </div>
                     </div>
                 )}
             />

@@ -44,7 +44,8 @@ describe('the llms.txt panel in jContent', () => {
 
     it('names its fields for assistive technology', () => {
         openPanel();
-        cy.get('#llms-baseurl').should('have.attr', 'aria-label', 'Public site URL').and('have.attr', 'aria-invalid', 'false');
+        cy.get('label[for="llms-baseurl"]').should('have.text', 'Public site URL');
+        cy.get('#llms-baseurl').should('have.attr', 'aria-invalid', 'false').and('have.attr', 'aria-describedby', 'llms-baseurl-help');
         cy.get('#llms-editor-llms').then($editor => {
             const label = Cypress.$(`label[for="${$editor.attr('id')}"]`);
             expect(label.text()).to.eq('Content of llms.txt');
@@ -65,8 +66,10 @@ describe('the llms.txt panel in jContent', () => {
     it('generates a proposal, lets the editor change it, then saves and publishes it', () => {
         openPanel();
         cy.get('#llms-baseurl').clear().type('https://www.example.com');
-        cy.get('[data-llms-role="generate"]').click();
+        cy.get('[data-llms-role="generate"]').should('contain.text', 'Generate llms.txt').click();
         cy.get('[data-llms-role="generated"]', {timeout: 60000}).should('be.visible');
+        // Generate is never disabled by its own run: the focus stays on it, the proposal shows below.
+        cy.get('[data-llms-role="generate"]').should('be.enabled').and('have.focus');
         cy.get('#llms-editor-llms').invoke('val').should('contain', 'https://www.example.com/');
         // A proposal is not a publication.
         cy.get('[data-llms-status]').should('have.attr', 'data-llms-status', 'unsaved');
@@ -77,6 +80,9 @@ describe('the llms.txt panel in jContent', () => {
         cy.get('[data-llms-role="save"]').should('be.enabled').click();
         cy.get('[data-llms-status="published"]', {timeout: 30000}).should('exist');
         cy.get('[data-llms-role="save"]').should('be.disabled');
+        // The address is shown once the file is served, as a link that says where it leads.
+        cy.get('[data-llms-role="view"]').should('have.attr', 'href', `/sites/${SITE}/llms.txt`)
+            .and('have.attr', 'target', '_blank').and('contain.text', `/sites/${SITE}/llms.txt`);
         fetchFile(`/sites/${SITE}/llms.txt`).then(response => {
             expect(response.status).to.eq(200);
             expect(response.body).to.contain('Edited by hand.');
@@ -89,6 +95,8 @@ describe('the llms.txt panel in jContent', () => {
         cy.get('[data-llms-tab="llmsFull"]').click();
         cy.get('#llms-tabpanel').should('have.attr', 'aria-labelledby', 'llms-tab-llmsFull');
         cy.get('[data-llms-status]').should('have.attr', 'data-llms-status', 'none');
-        cy.get('[data-llms-role="view"]').should('be.disabled');
+        // Not served: said in words, with no link to a file that is not there.
+        cy.get('[data-llms-role="view"]').should('not.exist');
+        cy.get('[data-llms-role="served"]').should('contain.text', 'Not served yet').and('contain.text', `/sites/${SITE}/llms-full.txt`);
     });
 });

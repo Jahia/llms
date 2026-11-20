@@ -3,10 +3,13 @@
   "header": "{{siteName}}: llms.txt und llms-full.txt",
   "about": "Über llms.txt",
   "save": "Speichern und veröffentlichen",
-  "generate": "Generieren",
-  "regenerate": "Erneut generieren",
   "revert": "Änderungen verwerfen",
   "view": "Veröffentlichte Datei anzeigen",
+  "generateFile": "{{file}} generieren",
+  "regenerateFile": "{{file}} erneut generieren",
+  "servedAt": "Ausgeliefert unter",
+  "servedRoot": " und unter {{path}} auf der Domain der Website.",
+  "notServed": "Noch nicht ausgeliefert. Nach der Veröffentlichung lautet die Adresse {{path}}.",
   "editorLabel": "Inhalt von {{file}}",
   "loading": "Wird geladen",
   "tabsLabel": "Dateien",
@@ -14,7 +17,7 @@
   "newTab": "wird in neuem Tab geöffnet",
   "stats": "{{lines}} Zeilen · {{links}} Links · {{size}}",
   "settings": {
-    "title": "Generierung",
+    "title": "Aus der Website generieren",
     "description": "Die Generierung liest die veröffentlichten Seiten der Website, die Besucher ohne Konto sehen. Seiten, die in der Navigation ausgeblendet, als noindex markiert oder in der gewählten Sprache nicht übersetzt sind, werden ausgelassen. Erst Speichern und veröffentlichen speichert etwas.",
     "language": "Sprache",
     "languageHelp": "Sprache der Seitentitel, Beschreibungen und Inhalte. Die Website hat eine llms.txt und eine llms-full.txt.",
@@ -23,11 +26,11 @@
     "baseUrlError": "Geben Sie Schema, Host und optionalen Port ohne Pfad ein: https://www.example.com"
   },
   "llms": {
-    "description": "Ein Verzeichnis der Website für KI-Assistenten: Name der Website, eine Zusammenfassung in einer Zeile, dann die Seiten nach Abschnitten, jeweils mit Link und Beschreibung. Unter /llms.txt ausgeliefert.",
+    "description": "Ein Verzeichnis der Website für KI-Assistenten: Name der Website, eine Zusammenfassung in einer Zeile, dann die Seiten nach Abschnitten, jeweils mit Link und Beschreibung.",
     "placeholder": "# Name der Website\n\n> Zusammenfassung in einer Zeile\n\n## Abschnitt\n\n- [Seite](https://www.example.com/page.html): Thema der Seite"
   },
   "llmsFull": {
-    "description": "Der Text der in llms.txt aufgeführten Seiten, in Markdown umgewandelt, damit ein Assistent die Website in einer Datei lesen kann. Unter /llms-full.txt ausgeliefert.",
+    "description": "Der Text der in llms.txt aufgeführten Seiten, in Markdown umgewandelt, damit ein Assistent die Website in einer Datei lesen kann.",
     "placeholder": "# Name der Website\n\n---\n\n# Seitentitel\n\nSource: https://www.example.com/page.html\n\nSeiteninhalt in Markdown"
   },
   "status": {
@@ -44,7 +47,7 @@
   },
   "generated": {
     "title": "Aus {{pages}} Seiten in {{language}} generiert",
-    "review": "Prüfen und bearbeiten Sie den Text, dann wählen Sie Speichern und veröffentlichen. Änderungen verwerfen stellt die gespeicherte Datei wieder her.",
+    "review": "Der Text unten wurde durch diesen Vorschlag ersetzt. Prüfen und bearbeiten Sie ihn, dann wählen Sie Speichern und veröffentlichen. Änderungen verwerfen stellt die gespeicherte Datei wieder her.",
     "truncated": " Das Seiten- oder Größenlimit der Modulkonfiguration hat die Datei gekürzt.",
     "failed": " Seiten, die nicht gerendert werden konnten und ausgelassen wurden ({{count}}):"
   },

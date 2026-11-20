@@ -19,20 +19,26 @@
     contain: inline-size;
 }
 
-/* Content card, as jContent draws it. */
-.card {
+/* One tab panel: its blocks are Moonstone Papers, which space themselves. */
+.panel {
+    width: 100%;
+    min-width: 0;
+}
+
+/* The inside of a Paper: one column, one rhythm. */
+.block {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-medium, 16px);
-    padding: var(--spacing-large, 24px);
-
-    border-radius: 4px;
-    background: var(--color-white);
-    box-shadow: 0 4px 8px 0 rgba(19, 28, 33, 0.2);
 }
 
-.card > * {
+.block > * {
     flex-shrink: 0;
+}
+
+/* Running text keeps a readable line, whatever the width of the pane. */
+.prose {
+    max-width: 75ch;
 }
 
 .cardHead {
@@ -54,7 +60,52 @@
 .settings {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-    gap: var(--spacing-medium, 16px);
+    gap: var(--spacing-large, 24px);
+    align-items: start;
+}
+
+/* A label, its help, its control and its error, aligned with the titles of the block. Moonstone's Field
+   is not used: it indents by 35px for the content editor, and does not tie its texts to the control. */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-nano, 4px);
+    min-width: 0;
+}
+
+.field > label {
+    cursor: pointer;
+}
+
+/* The colour Moonstone gives a Field error. */
+.error {
+    color: var(--color-warning_dark);
+}
+
+/* Where the file is served. The address can be long: it wraps rather than widen the pane. */
+.served {
+    overflow-wrap: anywhere;
+}
+
+/* A link in running text: underlined, so colour is not its only cue (WCAG 1.4.1). */
+.link {
+    display: inline-flex;
+    gap: var(--spacing-nano, 4px);
+    align-items: center;
+    min-height: 24px;
+
+    color: var(--color-accent_dark);
+    text-decoration: underline;
+    overflow-wrap: anywhere;
+}
+
+.link:hover {
+    text-decoration-thickness: 2px;
+}
+
+.link:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
 }
 
 /* Secondary text. --color-gray_dark60 is 60% transparent: about 3.8:1 on white, under the 4.5:1 of WCAG 1.4.3.

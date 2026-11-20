@@ -44,6 +44,18 @@
   header and asides, embedded videos as a link, and lazy-loaded images. Dialogs stay out.
 * A media file or a module resource named `llms.txt` is no longer captured by the module's URLs.
 
+### Panel
+
+* **Generate sits with what it needs.** The language, the public URL and the Generate button are one
+  block, at the top of each tab; the button names the file it generates and keeps the focus while it
+  runs, so the proposal appears right below it.
+* **Each file says where it is served**: its address, as a link, once it is published, and "not served
+  yet" in words until then.
+* Blocks are Moonstone `Paper`s, fields line up with their titles and carry a real label, running text
+  keeps a readable line length.
+* Accessibility: every field is named, an invalid URL is tied to its field, tabs are related to their
+  panel, status changes are announced, the focus is never lost after an action.
+
 ### Performance
 
 * The panel asks the server whether each file is served and current (`llms { status }`) instead of
