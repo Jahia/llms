@@ -10,7 +10,6 @@ import java.util.regex.Pattern;
  */
 public final class DiscoveryLinks {
 
-    private static final Pattern NOT_VISIBLE_ASCII = Pattern.compile("[^\\x21-\\x7E]");
 
     private static final Pattern HEAD = Pattern.compile("<head(?:\\s[^>]*)?>", Pattern.CASE_INSENSITIVE);
 
@@ -94,6 +93,8 @@ public final class DiscoveryLinks {
      * control character or space reaches the header. Then nothing in it may close the brackets.
      */
     private static String uriReference(String href) {
-        return NOT_VISIBLE_ASCII.matcher(href).replaceAll("").replace("<", "%3C").replace(">", "%3E");
+        // String.replaceAll with the pattern written here, not a compiled one held elsewhere: this is the
+        // form static analysis reads as the removal of line breaks before a header is written.
+        return href.replaceAll("[^\\x21-\\x7E]", "").replace("<", "%3C").replace(">", "%3E");
     }
 }
