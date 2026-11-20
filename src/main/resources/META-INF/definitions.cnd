@@ -9,3 +9,9 @@
 - j:llmsFull (string, textarea)
 // Scheme, host and port the generated links start with (https://www.example.com)
 - j:llmsBaseUrl (string) < '^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$'
+
+// An option of a page, or of a content shown as a page of its own, in its SEO options: "List in llms.txt".
+// It counts only where the configuration lists marked pages alone (includedNodeTypes = jmix:llmsListed).
+[jmix:llmsListed] mixin
+ extends = jnt:page, jmix:mainResource
+ itemtype = seo

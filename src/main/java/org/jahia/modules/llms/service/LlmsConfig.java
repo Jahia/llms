@@ -66,6 +66,18 @@ public @interface LlmsConfig {
     String excludedTreeNodeTypes() default "";
 
     /**
+     * @return node types a page must carry to be listed, separated by commas; empty to list every page
+     */
+    @AttributeDefinition(name = "Listed page types", description = "When set, only the pages and contents that carry one of these node types (mixins) are listed in llms.txt and llms-full.txt; their sub-pages are still looked through. The module defines jmix:llmsListed for this, an option an editor sets on a page. Empty by default: every page is listed.", required = false)
+    String includedNodeTypes() default "";
+
+    /**
+     * @return the most contents shown as a page of their own one file lists; 0 lists none
+     */
+    @AttributeDefinition(name = "Contents shown as a page", description = "Most contents shown as a page of their own (jmix:mainResource: a news item, an article) one file lists after the pages, the most recently modified first. 0 lists none.")
+    int maxMainResources() default 100;
+
+    /**
      * @return whether each page is also served as Markdown at its URL followed by .md
      */
     @AttributeDefinition(name = "Markdown version of pages", description = "Serve each published page as Markdown at its own URL followed by .md (page.html.md), as the llms.txt proposal asks.")

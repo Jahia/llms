@@ -103,6 +103,8 @@ export const LLMS_RULES = gql`
             rules(siteKey: $siteKey) {
                 excludedTypes
                 excludedTreeTypes
+                includedTypes
+                maxMainResources
                 maxPages
                 maxDepth
             }

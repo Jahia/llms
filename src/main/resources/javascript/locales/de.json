@@ -41,7 +41,9 @@
     "noIndex": "Seiten, die in ihren SEO-Optionen als No index markiert sind",
     "types": "Seiten vom Typ {{types}}",
     "trees": "Seiten vom Typ {{types}}, mit allen Unterseiten",
-    "limits": "Höchstens {{pages}} Seiten werden aufgeführt, bis zu {{depth}} Ebenen unter der Startseite."
+    "marks": "Seiten ohne die Markierung {{types}} (Option In llms.txt aufführen einer Seite)",
+    "limits": "Höchstens {{pages}} Seiten werden aufgeführt, bis zu {{depth}} Ebenen unter der Startseite.",
+    "limitsWithContents": "Höchstens {{pages}} Seiten werden aufgeführt, bis zu {{depth}} Ebenen unter der Startseite. Inhalte, die als eigene Seite angezeigt werden (Nachrichten, Artikel), werden ebenfalls aufgeführt, höchstens die {{contents}} neuesten."
   },
   "llms": {
     "description": "Ein Verzeichnis der Website für KI-Assistenten: Name der Website, eine Zusammenfassung in einer Zeile, dann die Seiten nach Abschnitten, jeweils mit Link und Beschreibung.",

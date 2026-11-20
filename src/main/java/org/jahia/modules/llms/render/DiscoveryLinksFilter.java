@@ -40,7 +40,8 @@ public class DiscoveryLinksFilter extends AbstractFilter {
     public void activate() {
         // The same place in the chain as the filter of the sitemap module that writes the robots meta tag.
         setPriority(17);
-        setApplyOnNodeTypes("jnt:page");
+        // Pages, and the contents shown as a page of their own.
+        setApplyOnNodeTypes("jnt:page,jmix:mainResource");
         setApplyOnConfigurations("page");
         setApplyOnModes("live");
         setDescription("Adds the llms.txt discovery links (rel=alternate text/markdown, rel=describedby) to the head of a page.");

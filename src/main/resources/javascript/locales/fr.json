@@ -41,7 +41,9 @@
     "noIndex": "Les pages marquées No index dans leurs options SEO",
     "types": "Les pages de type {{types}}",
     "trees": "Les pages de type {{types}}, avec toutes leurs sous-pages",
-    "limits": "Au plus {{pages}} pages sont listées, jusqu'à {{depth}} niveaux sous la page d'accueil."
+    "marks": "Les pages qui ne portent pas la marque {{types}} (option Lister dans llms.txt d'une page)",
+    "limits": "Au plus {{pages}} pages sont listées, jusqu'à {{depth}} niveaux sous la page d'accueil.",
+    "limitsWithContents": "Au plus {{pages}} pages sont listées, jusqu'à {{depth}} niveaux sous la page d'accueil. Les contenus affichés comme une page à part entière (actualités, articles) sont listés aussi, les {{contents}} plus récents au plus."
   },
   "llms": {
     "description": "Un index du site pour les assistants d'IA : le nom du site, un résumé d'une ligne, puis ses pages par section, chacune avec son lien et sa description.",

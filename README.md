@@ -64,6 +64,7 @@ add `digital-factory-data/karaf/etc/org.jahia.modules.llms.cfg` to change a valu
 |---|---|---|
 | `maxDepth` | `3` | Levels of pages below the home page that are listed |
 | `maxPages` | `200` | Most pages one file lists |
+| `maxMainResources` | `100` | Most contents shown as a page of their own (`jmix:mainResource`: a news item, an article) one file lists after the pages, the most recently modified first, under the title of the page or folder that holds them. `0` lists none. |
 | `fetchTimeoutSeconds` | `20` | Time allowed to render one page for llms-full.txt |
 | `fetchThreads` | `4` | Pages rendered at the same time (8 at most) |
 | `maxPageKb` | `2048` | Largest rendered page read |
@@ -71,6 +72,7 @@ add `digital-factory-data/karaf/etc/org.jahia.modules.llms.cfg` to change a valu
 | `maxTotalSeconds` | `300` | Time allowed for one generation of llms-full.txt, all pages together. Pages not rendered in time are named after generation and left out. |
 | `excludedNodeTypes` | `jseomix:noIndex, jcmix:hidePage, jacademix:hidePage` | Node types (mixins) of the pages left out of both files, separated by commas, as many as needed. Their sub-pages are still listed. The defaults are the **No index** option of the sitemap module and the "hidden in the menu" mark of the jahia.com and Academy templates. A type no installed module defines is ignored. Setting this key replaces the defaults: repeat the ones to keep. |
 | `excludedTreeNodeTypes` | empty | Node types (mixins) of the pages left out of both files **with all their sub-pages**: put one on the page at the top of a section to leave the section out. |
+| `includedNodeTypes` | empty | When set, only the pages and contents that carry one of these node types (mixins) are listed; their sub-pages are still looked through. The module defines `jmix:llmsListed` for this: the option **List in llms.txt** of a page. Empty: every page is listed. |
 | `servePageMarkdown` | `true` | Serve each published page as Markdown at its URL followed by `.md`. |
 | `discoveryLinks` | `true` | Write in the head of each published page the links to its Markdown version and to the llms.txt of the site. |
 | `linkToMarkdown` | `false` | In a generated llms.txt, link each page to its Markdown version rather than to the page. |
@@ -80,6 +82,25 @@ add `digital-factory-data/karaf/etc/org.jahia.modules.llms.cfg` to change a valu
 A value out of range is brought back into it (for example `maxPages` between 1 and 2000, sizes up to
 64 MB), and a `renderBaseUrl` that is not a scheme, a host and an optional port is ignored. Two
 generations of llms-full.txt run at the same time on one Jahia at most, one per site.
+
+### One site at a time
+
+A site can list differently from the others. Add one factory configuration per site,
+`digital-factory-data/karaf/etc/org.jahia.modules.llms.site-<name>.cfg`:
+
+```
+siteKey = academy
+maxDepth = 8
+includedNodeTypes = jmix:llmsListed
+linkToMarkdown = true
+```
+
+`siteKey` is required. The other keys are `maxDepth`, `maxPages`, `maxMainResources`,
+`excludedNodeTypes`, `excludedTreeNodeTypes`, `includedNodeTypes`, `linkToMarkdown` and `keepImages`. A
+key left out or blank keeps the value of the module configuration. For a list of types, `none` empties
+the list for that site. The panel of the site states the rules in force for it. The limits that protect
+the server (threads, timeouts, sizes) and what is served (`servePageMarkdown`, `discoveryLinks`) are
+set for the whole Jahia only.
 
 ## Serving
 

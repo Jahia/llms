@@ -41,7 +41,9 @@
     "noIndex": "Pages marked No index in their SEO options",
     "types": "Pages of type {{types}}",
     "trees": "Pages of type {{types}}, with all their sub-pages",
-    "limits": "At most {{pages}} pages are listed, down to {{depth}} levels below the home page."
+    "marks": "Pages that do not carry the mark {{types}} (the option List in llms.txt of a page)",
+    "limits": "At most {{pages}} pages are listed, down to {{depth}} levels below the home page.",
+    "limitsWithContents": "At most {{pages}} pages are listed, down to {{depth}} levels below the home page. Content displayed as a page of its own (news, articles) is listed too, the {{contents}} most recent at most."
   },
   "llms": {
     "description": "An index of the site for AI assistants: the site's name, a one-line summary, then its pages by section, each with a link and its description.",

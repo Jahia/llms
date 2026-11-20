@@ -6,9 +6,11 @@ import org.jahia.services.content.decorator.JCRSiteNode;
 import javax.jcr.RepositoryException;
 import javax.jcr.Value;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -23,6 +25,10 @@ import java.util.regex.Pattern;
  * <p>Sections: the home page and the level-1 pages without sub-pages come first, under the home page's
  * title; each level-1 page with sub-pages is a section of its own; pages and menu groups beside the home
  * page close the list. Not thread-safe: one instance per walk.</p>
+ *
+ * <p>After the pages come the contents that are shown as a page of their own ({@code jmix:mainResource}:
+ * a news item, an article), the most recent first, under the title of the page or folder that holds them.
+ * They are not in the page tree: a {@link ContentFinder} finds them.</p>
  */
 public final class SiteWalker {
 
@@ -52,7 +58,20 @@ public final class SiteWalker {
         String urlOf(JCRNodeWrapper page) throws RepositoryException;
     }
 
+    /** Finds the contents shown as a page of their own below a node, the most recent first. */
+    @FunctionalInterface
+    public interface ContentFinder {
+        /**
+         * @param root  the site, or the page at the top of a section
+         * @param limit the most nodes to return
+         * @return the nodes, as the session of {@code root} reads them
+         * @throws RepositoryException when the repository cannot be searched
+         */
+        List<JCRNodeWrapper> find(JCRNodeWrapper root, int limit) throws RepositoryException;
+    }
+
     private static final String PAGE = "jnt:page";
+    private static final String CONTENT_FOLDER = "jnt:contentFolder";
     private static final String MENU_GROUP = "jnt:navMenuText";
     /**
      * The "No index" option of a page, from the sitemap module: the page asks search engines not to index
@@ -86,6 +105,9 @@ public final class SiteWalker {
     private boolean truncated;
     private final Set<String> excluded;
     private final Set<String> excludedTrees;
+    private final Set<String> included;
+    private final int maxContents;
+    private final ContentFinder finder;
 
     /**
      * @param locale   the language of the titles, descriptions and URLs
@@ -106,6 +128,26 @@ public final class SiteWalker {
      * @param excludedTrees node types (mixins) of a page that is left out with everything below it
      */
     public SiteWalker(Locale locale, UrlResolver urls, int maxDepth, int maxPages, Set<String> excluded, Set<String> excludedTrees) {
+        this(locale, urls, maxDepth, maxPages, excluded, excludedTrees, Set.of(), 0, null);
+    }
+
+    /**
+     * @param locale        the language of the titles, descriptions and URLs
+     * @param urls          resolves the public URL of a page
+     * @param maxDepth      levels of pages below the home page that are walked (1 lists the level-1 pages)
+     * @param maxPages      most pages listed
+     * @param excluded      node types (mixins) of a page that is left out; its sub-pages are still listed
+     * @param excludedTrees node types (mixins) of a page that is left out with everything below it
+     * @param included      when not empty, only the pages and contents of one of these types are listed
+     * @param maxContents   most contents shown as a page that are listed; 0 lists none
+     * @param finder        finds those contents, or null to list none
+     */
+    @SuppressWarnings("java:S107")
+    public SiteWalker(Locale locale, UrlResolver urls, int maxDepth, int maxPages, Set<String> excluded, Set<String> excludedTrees,
+                      Set<String> included, int maxContents, ContentFinder finder) {
+        this.included = Set.copyOf(included);
+        this.maxContents = Math.max(0, maxContents);
+        this.finder = finder;
         this.locale = locale;
         this.urls = urls;
         this.maxDepth = Math.max(1, maxDepth);
@@ -179,6 +221,7 @@ public final class SiteWalker {
             descend(pages, pagesBelow(other), 1);
             section(sections, title(other), pages);
         }
+        contents(sections, site);
         return new Walk(title(site), oneLine(property(site, "j:description")), sections, truncated);
     }
 
@@ -193,6 +236,7 @@ public final class SiteWalker {
     public Walk walkSection(JCRNodeWrapper sectionPage) throws RepositoryException {
         List<Section> sections = new ArrayList<>();
         below(sections, sectionPage);
+        contents(sections, sectionPage);
         return new Walk(title(sectionPage), oneLine(property(sectionPage, "jcr:description")), sections, truncated);
     }
 
@@ -285,10 +329,87 @@ public final class SiteWalker {
         pages.add(new Page(title(page), url, oneLine(property(page, "jcr:description")), page.getUrl()));
     }
 
-    private boolean listable(JCRNodeWrapper page) throws RepositoryException {
-        if (hasAny(page, excluded) || bool(page, "j:hideFromNavigationMenu") || !page.hasI18N(locale)) {
+    /**
+     * The contents shown as a page of their own below a node, the most recent first, each under the title
+     * of the nearest page or content folder above it. A content has no place in the navigation: it is
+     * left out by its type, by its language, or because a page above it is left out with all below it.
+     */
+    private void contents(List<Section> sections, JCRNodeWrapper root) throws RepositoryException {
+        if (finder == null || maxContents == 0) {
+            return;
+        }
+        Map<String, Section> byHolder = new LinkedHashMap<>();
+        int kept = 0;
+        // More than the limit is asked for: some of what is found is left out below.
+        for (JCRNodeWrapper node : finder.find(root, maxContents * 2 + 20)) {
+            if (isPage(node) || !listableContent(node) || isBelowExcludedTree(node, root)) {
+                continue;
+            }
+            if (kept >= maxContents) {
+                truncated = true;
+                break;
+            }
+            String url = urls.urlOf(node);
+            if (url == null || url.isEmpty()) {
+                continue;
+            }
+            JCRNodeWrapper holder = holder(node, root);
+            Section section = byHolder.get(holder.getPath());
+            if (section == null) {
+                section = new Section(title(holder), new ArrayList<>());
+                byHolder.put(holder.getPath(), section);
+            }
+            section.pages().add(new Page(title(node), url, oneLine(property(node, "jcr:description")), node.getUrl()));
+            kept++;
+        }
+        sections.addAll(byHolder.values());
+    }
+
+    /** The nearest page or content folder above a content, no higher than the root of the walk. */
+    private static JCRNodeWrapper holder(JCRNodeWrapper node, JCRNodeWrapper root) throws RepositoryException {
+        JCRNodeWrapper above = node.getParent();
+        while (!above.getPath().equals(root.getPath()) && above.getDepth() > root.getDepth()
+                && !above.isNodeType(PAGE) && !above.isNodeType(CONTENT_FOLDER)) {
+            above = above.getParent();
+        }
+        return above;
+    }
+
+    private boolean isBelowExcludedTree(JCRNodeWrapper node, JCRNodeWrapper root) throws RepositoryException {
+        if (excludedTrees.isEmpty()) {
             return false;
         }
+        JCRNodeWrapper above = node.getParent();
+        while (above.getDepth() > root.getDepth()) {
+            if (hasAny(above, excludedTrees)) {
+                return true;
+            }
+            above = above.getParent();
+        }
+        return false;
+    }
+
+    /** A content with no text in any language (a product with a reference and a price) has no translation to miss. */
+    private boolean listableContent(JCRNodeWrapper node) throws RepositoryException {
+        if (hasAny(node, excluded) || !marked(node) || (!node.getExistingLocales().isEmpty() && !node.hasI18N(locale))) {
+            return false;
+        }
+        return validIn(node);
+    }
+
+    /** When only marked pages are listed: whether this one carries one of the marks. */
+    private boolean marked(JCRNodeWrapper node) {
+        return included.isEmpty() || hasAny(node, included);
+    }
+
+    private boolean listable(JCRNodeWrapper page) throws RepositoryException {
+        if (hasAny(page, excluded) || !marked(page) || bool(page, "j:hideFromNavigationMenu") || !page.hasI18N(locale)) {
+            return false;
+        }
+        return validIn(page);
+    }
+
+    private boolean validIn(JCRNodeWrapper page) throws RepositoryException {
         if (page.hasProperty("j:invalidLanguages")) {
             for (Value v : page.getProperty("j:invalidLanguages").getValues()) {
                 if (locale.toString().equals(v.getString())) {

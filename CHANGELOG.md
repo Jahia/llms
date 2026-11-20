@@ -16,6 +16,13 @@
   (`localhost`, Jahia Cloud).
 * OSGi configuration `org.jahia.modules.llms` for the generation limits.
 * German, French and English labels for the panel and the content type fields, with tooltips.
+* **Contents shown as a page of their own** (`jmix:mainResource`: news, articles) are listed after the
+  pages, the most recent first (`maxMainResources`, 100 by default), get a Markdown version and name it
+  in their head.
+* **List only marked pages**: `includedNodeTypes` lists only the pages and contents that carry a mixin,
+  such as the new page option `jmix:llmsListed` (List in llms.txt).
+* **A configuration per site**: `org.jahia.modules.llms.site-<name>.cfg` changes, for one site, what is
+  listed (depth, numbers, excluded and listed types, links to Markdown, images).
 
 * **Each page has a Markdown version at its own URL followed by `.md`** (`page.html.md`), as the
   llms.txt proposal (v2) asks. It is the page as a visitor without an account gets it: no Markdown

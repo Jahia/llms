@@ -57,8 +57,8 @@ public class GqlLlmsQuery {
     }
 
     /**
-     * @param siteKey key of a site the caller may publish on: the rules are the same for every site, but
-     *                they are told only to who can generate
+     * @param siteKey key of a site the caller may publish on: the rules in force for it, told only to who can
+     *                generate
      * @return which pages generation leaves out and how many it lists
      */
     @GraphQLField
@@ -68,7 +68,7 @@ public class GqlLlmsQuery {
     public GqlLlmsRules rules(
             @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey) {
         SiteAccess.site(siteKey, PUBLISH);
-        return new GqlLlmsRules(service.rules());
+        return new GqlLlmsRules(service.rules(siteKey));
     }
 
     /**

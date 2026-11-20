@@ -20,6 +20,7 @@ export const GenerationRules = ({rules}) => {
     const excluded = rules?.excludedTypes || [];
     const otherTypes = excluded.filter(type => type !== NO_INDEX);
     const trees = rules?.excludedTreeTypes || [];
+    const marks = rules?.includedTypes || [];
 
     return (
         <div className={`${styles.rules} ${styles.prose}`} data-llms-role="rules">
@@ -35,6 +36,11 @@ export const GenerationRules = ({rules}) => {
                         {t('rules.types', {types: otherTypes.join(', '), ...PLAIN})}
                     </Typography>
                 )}
+                {marks.length > 0 && (
+                    <Typography component="li" data-llms-rule="marks">
+                        {t('rules.marks', {types: marks.join(', '), ...PLAIN})}
+                    </Typography>
+                )}
                 {trees.length > 0 && (
                     <Typography component="li" data-llms-rule="trees">
                         {t('rules.trees', {types: trees.join(', '), ...PLAIN})}
@@ -43,7 +49,8 @@ export const GenerationRules = ({rules}) => {
             </ul>
             {rules && (
                 <Typography className={styles.muted} data-llms-rule="limits">
-                    {t('rules.limits', {pages: rules.maxPages, depth: rules.maxDepth})}
+                    {t(rules.maxMainResources > 0 ? 'rules.limitsWithContents' : 'rules.limits',
+                        {pages: rules.maxPages, depth: rules.maxDepth, contents: rules.maxMainResources})}
                 </Typography>
             )}
         </div>
@@ -54,6 +61,8 @@ GenerationRules.propTypes = {
     rules: PropTypes.shape({
         excludedTypes: PropTypes.arrayOf(PropTypes.string),
         excludedTreeTypes: PropTypes.arrayOf(PropTypes.string),
+        includedTypes: PropTypes.arrayOf(PropTypes.string),
+        maxMainResources: PropTypes.number,
         maxPages: PropTypes.number,
         maxDepth: PropTypes.number
     })

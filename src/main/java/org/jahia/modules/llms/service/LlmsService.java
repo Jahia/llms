@@ -15,6 +15,7 @@ import org.jahia.services.content.JCRTemplate;
 import org.jahia.services.content.decorator.JCRSiteNode;
 import org.jahia.services.content.decorator.JCRUserNode;
 import org.jahia.services.content.nodetypes.NodeTypeRegistry;
+import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -22,6 +23,10 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +47,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -87,14 +93,15 @@ public class LlmsService {
     /** Walks of a page tree running for llms.txt. */
     private final Semaphore walkSlots = new Semaphore(4);
     private volatile Limits limits;
-    private volatile boolean keepImages;
     private volatile boolean servePageMarkdown = true;
-    private volatile boolean linkToMarkdown;
     private volatile boolean discoveryLinks = true;
     /** Pages converted to Markdown at the same time for visitors: each one renders a page. */
     private final Semaphore pageSlots = new Semaphore(8);
-    private volatile Set<String> excluded = SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED);
-    private volatile Set<String> excludedTrees = Set.of();
+    /** What a generation lists when the site has no configuration of its own. */
+    private volatile SiteSettings defaults = new SiteSettings(3, 200, 100, SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED),
+            Set.of(), Set.of(), false, false);
+    /** The site configurations, one for each org.jahia.modules.llms.site-*.cfg. */
+    private final List<SiteOverride> overrides = new CopyOnWriteArrayList<>();
     /** The generations started from the panel, by identifier, kept a while after they end. */
     private final Map<String, GenerationJob> jobs = new ConcurrentHashMap<>();
     private static final long JOB_LIFETIME_NANOS = TimeUnit.MINUTES.toNanos(15);
@@ -124,7 +131,8 @@ public class LlmsService {
      * @param maxDepth          levels of pages below the home page that are listed
      * @param keepImages        whether images are written in llms-full.txt
      */
-    public record Rules(List<String> excludedTypes, List<String> excludedTreeTypes, int maxPages, int maxDepth, boolean keepImages) {
+    public record Rules(List<String> excludedTypes, List<String> excludedTreeTypes, int maxPages, int maxDepth, boolean keepImages,
+                        List<String> includedTypes, int maxMainResources) {
     }
 
     /**
@@ -181,12 +189,51 @@ public class LlmsService {
             LOGGER.warn("renderBaseUrl is not a scheme, a host and an optional port: ignored, pages are rendered on 127.0.0.1");
         }
         this.limits = Limits.of(config);
-        this.keepImages = config.keepImages();
         this.servePageMarkdown = config.servePageMarkdown();
-        this.linkToMarkdown = config.linkToMarkdown();
         this.discoveryLinks = config.discoveryLinks();
-        this.excluded = SiteWalker.typeNames(config.excludedNodeTypes());
-        this.excludedTrees = SiteWalker.typeNames(config.excludedTreeNodeTypes());
+        this.defaults = SiteSettings.of(limits, config);
+    }
+
+    /**
+     * @param override a site configuration that appeared
+     */
+    @Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC, policyOption = ReferencePolicyOption.GREEDY)
+    public void addSiteOverride(SiteOverride override) {
+        overrides.add(override);
+    }
+
+    /**
+     * @param override a site configuration that went away
+     */
+    public void removeSiteOverride(SiteOverride override) {
+        overrides.remove(override);
+    }
+
+    /** What a generation lists for a site: the module configuration, then what the site's own changes. */
+    private SiteSettings settingsOf(String siteKey) {
+        SiteSettings settings = defaults;
+        for (SiteOverride override : overrides) {
+            if (override.siteKey().equals(siteKey)) {
+                settings = settings.with(override.properties());
+            }
+        }
+        return settings;
+    }
+
+    /** The contents shown as a page of their own below a node, the most recently modified first. */
+    private static List<JCRNodeWrapper> mainResources(JCRNodeWrapper root, int limit) throws RepositoryException {
+        Query query = root.getSession().getWorkspace().getQueryManager().createQuery(
+                "SELECT * FROM [jmix:mainResource] AS n WHERE ISDESCENDANTNODE(n, '" + root.getPath().replace("'", "''")
+                        + "') ORDER BY n.[jcr:lastModified] DESC", Query.JCR_SQL2);
+        query.setLimit(limit);
+        List<JCRNodeWrapper> out = new ArrayList<>();
+        NodeIterator found = query.execute().getNodes();
+        while (found.hasNext()) {
+            if (found.nextNode() instanceof JCRNodeWrapper node) {
+                out.add(node);
+            }
+        }
+        return out;
     }
 
     /**
@@ -209,11 +256,12 @@ public class LlmsService {
         } finally {
             walkSlots.release();
         }
+        boolean toMarkdown = settingsOf(siteKey).linkToMarkdown();
         StringBuilder sb = header(walk);
         for (SiteWalker.Section section : walk.sections()) {
             sb.append("\n## ").append(section.title()).append("\n\n");
             for (SiteWalker.Page page : section.pages()) {
-                sb.append("- [").append(escape(page.title())).append("](").append(linkOf(page.url())).append(')');
+                sb.append("- [").append(escape(page.title())).append("](").append(linkOf(page.url(), toMarkdown)).append(')');
                 if (page.description() != null) {
                     sb.append(": ").append(page.description());
                 }
@@ -281,13 +329,22 @@ public class LlmsService {
         jobs.put(job.id(), job);
         try {
             jobRunner.execute(() -> {
+                // A thread of the module has no user: Jahia logs an error each time something asks for one.
+                // The generation reads as a visitor does, so the visitor is who this thread works for.
+                JCRSessionFactory sessions = JCRSessionFactory.getInstance();
+                JahiaUser before = sessions.getCurrentUser();
                 try {
+                    JCRUserNode guest = JahiaUserManagerService.getInstance().lookupUser(JahiaUserManagerService.GUEST_USERNAME);
+                    if (guest != null) {
+                        sessions.setCurrentUser(guest.getJahiaUser());
+                    }
                     job.finish(full(walk(siteKey, sectionPath, language, baseUrl), siteKey, renderBase, job));
                 } catch (RepositoryException | RuntimeException e) {
                     LOGGER.warn("Could not generate llms-full.txt for {}: {}", siteKey, e.getMessage());
                     LOGGER.debug("Full exception", e);
                     job.fail("The file could not be generated");
                 } finally {
+                    sessions.setCurrentUser(before);
                     fullSlots.release();
                     running.remove(scope);
                 }
@@ -321,7 +378,7 @@ public class LlmsService {
 
     private Generation full(SiteWalker.Walk walk, String siteKey, String renderBase, Progress progress) {
         Limits c = limits;
-        boolean images = keepImages;
+        boolean images = settingsOf(siteKey).keepImages();
         String base = c.renderBaseUrl() == null ? renderBase : c.renderBaseUrl();
         List<SiteWalker.Page> pages = walk.pages();
         progress.started(pages);
@@ -461,14 +518,15 @@ public class LlmsService {
     private SiteWalker.Walk walk(String siteKey, String sectionPath, String language, String baseUrl) throws RepositoryException {
         PublicUrls urls = new PublicUrls(baseUrl);
         Locale locale = Locale.forLanguageTag(language.replace('_', '-'));
-        Limits c = limits;
+        SiteSettings s = settingsOf(siteKey);
         JCRUserNode guest = JahiaUserManagerService.getInstance().lookupUser(JahiaUserManagerService.GUEST_USERNAME);
         if (guest == null) {
             throw new RepositoryException("guest user not found");
         }
         return JCRTemplate.getInstance().doExecute(guest.getJahiaUser(), "live", locale,
                 (JCRCallback<SiteWalker.Walk>) session -> {
-                    SiteWalker walker = new SiteWalker(locale, urls::urlOf, c.maxDepth(), c.maxPages(), excluded, excludedTrees);
+                    SiteWalker walker = new SiteWalker(locale, urls::urlOf, s.maxDepth(), s.maxPages(), s.excluded(),
+                            s.excludedTrees(), s.included(), s.maxMainResources(), LlmsService::mainResources);
                     if (sectionPath != null) {
                         if (!isSectionOf(siteKey, sectionPath)) {
                             throw new RepositoryException("not a section of the site");
@@ -525,7 +583,7 @@ public class LlmsService {
      * The address a line of llms.txt links to: the page, or its Markdown version when configured so and
      * the page has one (an address that ends in {@code .html}; a vanity URL has none).
      */
-    private String linkOf(String pageUrl) {
+    private String linkOf(String pageUrl, boolean linkToMarkdown) {
         return linkToMarkdown && servePageMarkdown && pageUrl.endsWith(".html") ? pageUrl + ".md" : pageUrl;
     }
 
@@ -560,7 +618,7 @@ public class LlmsService {
                     path -> siteKey.equals(PageMarkdown.siteKeyOf(path.startsWith(context) ? path.substring(context.length()) : path)));
             Document doc = Jsoup.parse(fetcher.fetch(context + rawPath), publicUrl);
             String title = PageMarkdown.titleOf(doc);
-            String body = HtmlToMarkdown.convert(doc, title, href -> href, keepImages);
+            String body = HtmlToMarkdown.convert(doc, title, href -> href, settingsOf(siteKey).keepImages());
             return (title.isEmpty() ? "" : "# " + title + "\n\n") + body + "\n";
         } finally {
             pageSlots.release();
@@ -680,11 +738,13 @@ public class LlmsService {
     }
 
     /**
-     * @return which pages generation leaves out and how many it lists, as configured
+     * @param siteKey key of the site
+     * @return which pages generation leaves out and how many it lists for that site, as configured
      */
-    public Rules rules() {
-        Limits c = limits;
-        return new Rules(known(excluded), known(excludedTrees), c.maxPages(), c.maxDepth(), keepImages);
+    public Rules rules(String siteKey) {
+        SiteSettings s = settingsOf(siteKey);
+        return new Rules(known(s.excluded()), known(s.excludedTrees()), s.maxPages(), s.maxDepth(), s.keepImages(),
+                known(s.included()), s.maxMainResources());
     }
 
     /**

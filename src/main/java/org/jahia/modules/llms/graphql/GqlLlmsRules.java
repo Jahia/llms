@@ -66,6 +66,26 @@ public class GqlLlmsRules {
     }
 
     /**
+     * @return node types a page must carry to be listed; empty when every page is
+     */
+    @GraphQLField
+    @GraphQLNonNull
+    @GraphQLDescription("Node types a page must carry to be listed; empty when every page is listed")
+    public List<String> getIncludedTypes() {
+        return rules.includedTypes();
+    }
+
+    /**
+     * @return the most contents shown as a page one file lists
+     */
+    @GraphQLField
+    @GraphQLNonNull
+    @GraphQLDescription("Most contents shown as a page of their own one file lists; 0 when none is listed")
+    public int getMaxMainResources() {
+        return rules.maxMainResources();
+    }
+
+    /**
      * @return whether images are written in llms-full.txt
      */
     @GraphQLField
