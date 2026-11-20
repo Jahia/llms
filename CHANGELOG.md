@@ -1,6 +1,21 @@
 # Changelog
 
-## 1.1.0 (unreleased)
+## 2.0.0 (unreleased)
+
+A major version: the module asks for more of the platform and does more by default than 1.0.0.
+
+### Upgrading from 1.0.0
+
+* **Jahia 8.2 or later** is required.
+* **Nothing to migrate.** The files stay where they are (`jmix:llms`, `j:llms` on the site node) and are
+  served at the same addresses. Modules that read or write them (geo-readiness, content-governance)
+  keep working.
+* **Served by default after the upgrade**, without any action: each published page as Markdown at its
+  URL followed by `.md`, and two discovery links in the `<head>` of the pages of the sites where the
+  module is enabled. `servePageMarkdown` and `discoveryLinks` switch them off.
+* **Save and publish** publishes the site node alone.
+* The module adds the permission `siteAdminLlmsSettings` to the role `site-administrator`.
+* A host claimed by no site is served the files of the default site.
 
 ### Added
 

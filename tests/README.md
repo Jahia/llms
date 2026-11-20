@@ -36,8 +36,8 @@ docker compose up -d                                   # Jahia alone
 curl -u root:$SUPER_USER_PASSWORD -X POST -H "Content-Type: application/yaml" \
      --data-binary @provisioning-manifest-build.yml $JAHIA_URL/modules/api/provisioning
 curl -u root:$SUPER_USER_PASSWORD -X POST $JAHIA_URL/modules/api/provisioning \
-     --form-string 'script=[{"installBundle":"llms-1.1.0-SNAPSHOT.jar","autoStart":true,"uninstallPreviousVersion":true,"forceUpdate":true}]' \
-     --form file=@../target/llms-1.1.0-SNAPSHOT.jar
+     --form-string 'script=[{"installBundle":"llms-2.0.0-SNAPSHOT.jar","autoStart":true,"uninstallPreviousVersion":true,"forceUpdate":true}]' \
+     --form file=@../target/llms-2.0.0-SNAPSHOT.jar
 yarn install && yarn e2e:ci      # or yarn e2e:debug
 ```
 

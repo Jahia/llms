@@ -5,5 +5,5 @@
 
 - addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@snapshots@noreleases@id=JahiaSnapshot'
 
-- installBundle: 'mvn:org.jahiacommunity.modules/llms/1.1.0-SNAPSHOT'
+- installBundle: 'mvn:org.jahiacommunity.modules/llms/2.0.0-SNAPSHOT'
   autoStart: true
