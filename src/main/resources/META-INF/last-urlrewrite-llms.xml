@@ -2,11 +2,46 @@
 <!DOCTYPE urlrewrite PUBLIC "-//tuckey.org//DTD UrlRewrite 3.2//EN" "http://tuckey.org/res/dtds/urlrewrite3.2.dtd">
 <urlrewrite>
 
-    <!-- Inbound rules -->
+    <!-- Inbound rules. The first match wins (last="true"). These rules run after Jahia's own,
+         which may already have put /cms, the language and the site of the host in front of the path:
+         each pattern accepts that prefix and nothing else, so a media file (/files/...) or a resource of
+         another module that happens to be named llms.txt keeps its URL. -->
+    <rule>
+        <name>Markdown version of a page</name>
+        <note>page.html.md is the page as Markdown. Only a page of a site, in the forms Jahia's own rules
+            produce: a Markdown file of the media library (/files/...) keeps its URL.</note>
+        <from>^((?:/cms(?:/render/live)?)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?/sites/[A-Za-z0-9_-]+/.*\.html)\.md$</from>
+        <to last="true">/modules/llmspage?path=$1</to>
+    </rule>
+    <rule>
+        <name>Llms files of a section</name>
+        <note>A file under the path of a page covers the pages below it: /sites/{siteKey}/home/docs/llms.txt.
+            At least one page between the site and the file: the files of the site itself are the rules below.</note>
+        <from>^((?:/cms(?:/render/live)?)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?/sites/[A-Za-z0-9_-]+/.+/llms(?:-full)?\.txt)$</from>
+        <to last="true">/modules/llmssection?path=$1</to>
+    </rule>
+    <rule>
+        <name>Llms full of a site</name>
+        <note>/sites/{siteKey}/llms-full.txt serves that site's llms-full.txt, whatever the host.</note>
+        <from>^(?:/cms(?:/render/live)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?)?/sites/([A-Za-z0-9_-]+)/llms-full\.txt$</from>
+        <to last="true">/modules/llms/llms?file=full&amp;site=$1</to>
+    </rule>
+    <rule>
+        <name>Llms of a site</name>
+        <note>/sites/{siteKey}/llms.txt serves that site's llms.txt, whatever the host.</note>
+        <from>^(?:/cms(?:/render/live)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?)?/sites/([A-Za-z0-9_-]+)/llms\.txt$</from>
+        <to last="true">/modules/llms/llms?site=$1</to>
+    </rule>
+    <rule>
+        <name>Llms full</name>
+        <note>llms-full.txt of the site whose server name is the request's host.</note>
+        <from>^(?:/cms(?:/render/live)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?)?/llms-full\.txt$</from>
+        <to last="true">/modules/llms/llms?file=full</to>
+    </rule>
     <rule>
         <name>Llms</name>
-        <note>Redirects requests to llms.txt to the appropriate generated version for each site. Don't process any subsequent rules if we match.</note>
-        <from>^(.*)/llms.txt$</from>
+        <note>llms.txt of the site whose server name is the request's host.</note>
+        <from>^(?:/cms(?:/render/live)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?)?/llms\.txt$</from>
         <to last="true">/modules/llms/llms</to>
     </rule>
 

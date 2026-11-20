@@ -1,0 +1,425 @@
+/* Fills jContent's flex column so LayoutContent's own box scrolls, and never grows past the pane. */
+.root {
+    display: flex;
+    flex: 1 1 0%;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    contain: inline-size;
+    isolation: isolate;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-large, 24px);
+    width: 100%;
+    min-width: 0;
+    contain: inline-size;
+}
+
+/* One tab panel: its blocks are Moonstone Papers, which space themselves. */
+.panel {
+    width: 100%;
+    min-width: 0;
+}
+
+/* The inside of a Paper: one column, one rhythm. */
+.block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-medium, 16px);
+}
+
+.block > * {
+    flex-shrink: 0;
+}
+
+/* Running text keeps a readable line, whatever the width of the pane. */
+.prose {
+    max-width: 75ch;
+}
+
+.cardHead {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-medium, 16px);
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cardTitle,
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-small, 8px);
+    align-items: center;
+}
+
+.settings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    gap: var(--spacing-large, 24px);
+    align-items: start;
+}
+
+/* A label, its help, its control and its error, aligned with the titles of the block. Moonstone's Field
+   is not used: it indents by 35px for the content editor, and does not tie its texts to the control. */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-nano, 4px);
+    min-width: 0;
+}
+
+/* What a site lists: one value under the other, each as wide as its explanation reads well. */
+.settingsForm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-large, 24px);
+    max-width: 48rem;
+}
+
+/* A group of choices, without the frame a browser draws around one. */
+.choice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-nano, 4px);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+
+    border: 0;
+}
+
+.choice > legend {
+    padding: 0;
+}
+
+/* Each choice is at least 24px high, its label included in what can be clicked (WCAG 2.5.8). */
+.choiceRow {
+    display: flex;
+    gap: var(--spacing-small, 8px);
+    align-items: center;
+    min-height: 24px;
+
+    cursor: pointer;
+}
+
+.choiceRow > input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+
+    accent-color: var(--color-accent_dark);
+}
+
+.choiceRow > input:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
+}
+
+.field > label {
+    cursor: pointer;
+}
+
+/* The colour Moonstone gives a Field error. */
+.error {
+    color: var(--color-warning_dark);
+}
+
+/* Where the file is served. The address can be long: it wraps rather than widen the pane. */
+.served {
+    overflow-wrap: anywhere;
+}
+
+/* A link in running text: underlined, so colour is not its only cue (WCAG 1.4.1). */
+.link {
+    display: inline-flex;
+    gap: var(--spacing-nano, 4px);
+    align-items: center;
+    min-height: 24px;
+
+    color: var(--color-accent_dark);
+    text-decoration: underline;
+    overflow-wrap: anywhere;
+}
+
+.link:hover {
+    text-decoration-thickness: 2px;
+}
+
+.link:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
+}
+
+/* Secondary text. --color-gray_dark60 is 60% transparent: about 3.8:1 on white, under the 4.5:1 of WCAG 1.4.3.
+   The opaque colour at 80% gives about 7:1, as Moonstone does for a Field helper. */
+.muted {
+    color: var(--color-gray_dark);
+
+    opacity: 0.8;
+}
+
+/* The status region of a file. Empty, it must not add a gap between its neighbours in the card. */
+.live {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-medium, 16px);
+}
+
+.live:empty {
+    margin-top: calc(-1 * var(--spacing-medium, 16px));
+}
+
+/* Header tabs scroll rather than wrap under the content. */
+.tabs {
+    overflow-x: auto;
+}
+
+.tabBar {
+    flex-wrap: nowrap;
+    width: max-content;
+}
+
+.editor {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 320px;
+
+    font-size: 0.8125rem;
+    font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+    line-height: 1.5;
+}
+
+/* Moonstone removes the outline of a read-only textarea: the editor is read-only while a file is generated,
+   and must still show where the focus is (WCAG 2.4.7). */
+textarea.editor:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
+}
+
+/* Which pages are left out: a short list under the explanation of the block. */
+.rules {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-nano, 4px);
+}
+
+.rulesList {
+    margin: 0;
+    padding-left: var(--spacing-large, 24px);
+
+    /* jContent resets lists: the marks are what makes these lines a list to the eye. */
+    list-style: disc;
+}
+
+/* A generation of llms-full.txt as it goes. Full width, also inside the block that says it runs. */
+.progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-small, 8px);
+    width: 100%;
+    min-width: 0;
+
+    color: var(--color-gray_dark);
+}
+
+/* While it runs: the colours of a Moonstone information banner, so the block reads as "in progress". */
+.progressRunning {
+    padding: var(--spacing-medium, 16px);
+
+    border-radius: 4px;
+    background: var(--color-accent_light_plain20);
+}
+
+.progressRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-small, 8px) var(--spacing-medium, 16px);
+    align-items: center;
+}
+
+/* The browser draws the bar; its colour is Moonstone's accent, dark enough against the track (WCAG 1.4.11). */
+.bar {
+    flex: 1 1 240px;
+    min-width: 0;
+    height: 8px;
+
+    accent-color: var(--color-accent_dark);
+}
+
+/* The log scrolls in a box, capped in rem so it grows with the text and never takes the whole screen. */
+.log {
+    max-height: min(12.5rem, 50vh);
+    padding: var(--spacing-small, 8px) var(--spacing-medium, 16px);
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    border: 1px solid var(--color-gray_light);
+    border-radius: 4px;
+    background: var(--color-white);
+}
+
+.log:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
+}
+
+.logList {
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.logLine {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--spacing-medium, 16px);
+    justify-content: space-between;
+    padding: var(--spacing-nano, 4px) 0;
+}
+
+.logTitle {
+    min-width: 0;
+
+    overflow-wrap: anywhere;
+}
+
+.failed {
+    margin: var(--spacing-small, 8px) 0 0;
+    padding-left: var(--spacing-large, 24px);
+
+    overflow-wrap: anywhere;
+}
+
+/* A button that is on: said to the eye as aria-pressed says it to a screen reader. */
+.pressed {
+    background: var(--color-accent_light_plain20);
+    box-shadow: inset 0 0 0 1px var(--color-accent_dark);
+}
+
+/* A file as a person reads it. The one box that scrolls, both ways: a table or a block of code wider
+   than the box scrolls with it, and prose wraps. Capped so it never takes the whole screen. */
+.preview {
+    max-height: min(40rem, 70vh);
+    padding: var(--spacing-medium, 16px) var(--spacing-large, 24px);
+
+    color: var(--color-gray_dark);
+
+    border: 1px solid var(--color-gray_dark60);
+    border-radius: 4px;
+    background: var(--color-white);
+    overflow: auto;
+}
+
+.preview:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
+}
+
+.previewBody {
+    max-width: 48rem;
+
+    font-size: 0.875rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.previewBody :is(h3, h4, h5, h6) {
+    margin: 1.5em 0 0.5em;
+
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.previewBody h3 {
+    font-size: 1.375rem;
+}
+
+.previewBody h4 {
+    font-size: 1.125rem;
+}
+
+.previewBody :is(h5, h6) {
+    font-size: 1rem;
+}
+
+.previewBody :is(p, ul, ol, blockquote, pre, table) {
+    margin: 0 0 1em;
+}
+
+/* jContent resets lists: the marks are what makes these lines a list to the eye. */
+.previewBody ul {
+    padding-left: var(--spacing-large, 24px);
+
+    list-style: disc;
+}
+
+.previewBody ol {
+    padding-left: var(--spacing-large, 24px);
+
+    list-style: decimal;
+}
+
+.previewBody a {
+    color: var(--color-accent_dark);
+    text-decoration: underline;
+}
+
+.previewBody blockquote {
+    padding-left: var(--spacing-medium, 16px);
+
+    border-left: 1px solid var(--color-gray_dark60);
+}
+
+.previewBody hr {
+    margin: 2em 0;
+
+    border: 0;
+    border-top: 1px solid var(--color-gray_dark60);
+}
+
+.previewBody :is(code, pre) {
+    font-size: 0.8125rem;
+    font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+}
+
+/* Lines of code are not wrapped: the box scrolls sideways for them. */
+.previewBody pre {
+    padding: var(--spacing-small, 8px) var(--spacing-medium, 16px);
+
+    white-space: pre;
+    overflow-wrap: normal;
+
+    background: var(--color-gray_light40);
+}
+
+.previewBody table {
+    overflow-wrap: normal;
+
+    border-collapse: collapse;
+}
+
+.previewBody :is(th, td) {
+    padding: var(--spacing-nano, 4px) var(--spacing-small, 8px);
+
+    text-align: left;
+    vertical-align: top;
+
+    border: 1px solid var(--color-gray_dark60);
+}
+
+.srOnly {
+    position: absolute;
+
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+
+    white-space: nowrap;
+}

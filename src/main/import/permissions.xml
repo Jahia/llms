@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Shows the option "List in llms.txt" of a page in the content editor. Given, in a role, on the sites
+     that list marked pages only (includedNodeTypes = jmix:llmsListed). -->
+<permissions xmlns:jcr="http://www.jcp.org/jcr/1.0">
+    <!-- Lets its holder change what the site lists (the Settings tab of the panel). Under site-admin:
+         a role that administers the site holds it. -->
+    <site-admin jcr:primaryType="jnt:permission">
+        <siteAdminLlmsSettings jcr:primaryType="jnt:permission"/>
+    </site-admin>
+    <jContent jcr:primaryType="jnt:permission">
+        <engineTabs jcr:primaryType="jnt:permission">
+            <llmsListPages jcr:primaryType="jnt:permission"/>
+        </engineTabs>
+    </jContent>
+</permissions>

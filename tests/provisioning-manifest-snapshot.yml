@@ -1,0 +1,9 @@
+# Nightly lane: nothing is built locally. The module under test is resolved by
+# the instance from Maven coordinates. Keep the version in step with the root pom.
+
+- include: 'provisioning-manifest-build.yml'
+
+- addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@snapshots@noreleases@id=JahiaSnapshot'
+
+- installBundle: 'mvn:org.jahiacommunity.modules/llms/2.0.0-SNAPSHOT'
+  autoStart: true

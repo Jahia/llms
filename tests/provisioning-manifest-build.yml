@@ -1,0 +1,39 @@
+# PR lane: the module under test is built by the pipeline and deployed by the
+# integration-tests action, so this manifest does NOT install it. It installs the
+# template set the suite's createSite builds from, and the chain that set needs
+# (the list the sibling harnesses provision for this image).
+#
+# By hand, on a running instance:
+#   curl -s --fail -u root:<pwd> -X POST -H "Content-Type: application/yaml" \
+#        --data-binary @provisioning-manifest-build.yml http://localhost:8080/modules/api/provisioning
+
+- addMavenRepository: 'https://store.jahia.com/nexus/content/repositories/jahia-public-app-store@id=JahiaStore'
+- addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@id=JahiaDevtools'
+
+# The sitemap module defines the "No index" option of a page (jseomix:noIndex), which the files honour.
+- installBundle: 'mvn:org.jahia.modules/sitemap/5.5.0'
+  autoStart: true
+  ignoreIfPresent: true
+
+- installBundle:
+      - 'mvn:org.jahia.modules/bookmarks/3.1.0'
+      - 'mvn:org.jahia.modules/bootstrap3-components/4.3.0'
+      - 'mvn:org.jahia.modules/bootstrap3-core/4.3.0'
+      - 'mvn:org.jahia.modules/calendar/3.2.0'
+      - 'mvn:org.jahia.modules/default-skins/8.2.0'
+      - 'mvn:org.jahia.modules/dx-base-demo-components/3.0.0'
+      - 'mvn:org.jahia.modules/dx-base-demo-core/2.6.0'
+      - 'mvn:org.jahia.modules/dx-base-demo-templates/4.0.0'
+      - 'mvn:org.jahia.modules/event/4.0.1'
+      - 'mvn:org.jahia.modules/font-awesome/6.1.5'
+      - 'mvn:org.jahia.modules/grid/8.1.0'
+      - 'mvn:org.jahia.modules/legacy-default-components/1.0.0'
+      - 'mvn:org.jahia.modules/location/3.2.0'
+      - 'mvn:org.jahia.modules/news/3.4.0'
+      - 'mvn:org.jahia.modules/person/3.2.0'
+      - 'mvn:org.jahia.modules/press/3.1.0'
+      - 'mvn:org.jahia.modules/rating/3.3.0'
+      - 'mvn:org.jahia.modules/skins/8.2.0'
+      - 'mvn:org.jahia.modules/topstories/3.0.0'
+  autoStart: true
+  uninstallPreviousVersion: true

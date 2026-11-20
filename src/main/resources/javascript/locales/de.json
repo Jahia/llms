@@ -1,9 +1,172 @@
 {
-  "header": "Configure llms.txt for {{siteName}}",
-  "heading": "llms.txt file",
-  "description": "The llms.txt file provides language models (LLMs) with clear guidance on how to use your site’s content. It acts as a structured entry point, highlighting which resources are relevant and should be prioritized.",
-  "save": "Save and Publish",
+  "navLabel": "llms.txt",
+  "header": "{{siteName}}: llms.txt und llms-full.txt",
+  "about": "Über llms.txt",
+  "save": "Speichern und veröffentlichen",
+  "revert": "Änderungen verwerfen",
+  "view": "Veröffentlichte Datei anzeigen",
+  "generateFile": "{{file}} generieren",
+  "regenerateFile": "{{file}} erneut generieren",
+  "servedAt": "Ausgeliefert unter",
+  "servedRoot": " und unter {{path}} auf der Domain der Website.",
+  "notServed": "Noch nicht ausgeliefert. Nach der Veröffentlichung lautet die Adresse {{path}}.",
+  "editorLabel": "Inhalt von {{file}}",
+  "loading": "Wird geladen",
+  "tabsLabel": "Dateien",
+  "tabUnsaved": "{{file}}, ungespeicherte Änderungen",
+  "newTab": "wird in neuem Tab geöffnet",
+  "stats": "{{lines}} Zeilen · {{links}} Links · {{size}}",
+  "scope": {
+    "label": "Dateien von",
+    "help": "Die gesamte Website oder ein Bereich davon: eine Seite und die Seiten darunter, mit Dateien unter dem Pfad dieser Seite. Die Auswahl lädt beide Dateien neu.",
+    "site": "Die gesamte Website ({{name}})",
+    "refused": "Speichern oder verwerfen Sie Ihre Änderungen, bevor Sie einen anderen Bereich wählen.",
+    "showing": "Dateien von {{name}} werden angezeigt",
+    "noResult": "Kein Bereich gefunden"
+  },
+  "settings": {
+    "title": "Aus der Website generieren",
+    "description": "Die Generierung liest die veröffentlichten Seiten der Website, die Besucher ohne Konto sehen. Erst Speichern und veröffentlichen speichert etwas.",
+    "language": "Sprache",
+    "languageHelp": "Sprache der Seitentitel, Beschreibungen und Inhalte. Jeder Bereich hat eine llms.txt und eine llms-full.txt.",
+    "baseUrl": "Öffentliche URL der Website",
+    "baseUrlHelp": "Schema, Host und optionaler Port, mit denen die Links beider Dateien beginnen, zum Beispiel https://www.example.com. Wird mit den Dateien gespeichert.",
+    "baseUrlError": "Geben Sie Schema, Host und optionalen Port ohne Pfad ein: https://www.example.com",
+    "baseUrlSection": "Für die gesamte Website festgelegt: Wählen Sie oben die gesamte Website, um sie zu ändern."
+  },
+  "rules": {
+    "title": "In beiden Dateien ausgelassen",
+    "hidden": "Seiten, die im Navigationsmenü ausgeblendet sind",
+    "untranslated": "Seiten, die in der gewählten Sprache nicht übersetzt sind",
+    "noIndex": "Seiten, die in ihren SEO-Optionen als No index markiert sind",
+    "types": "Seiten vom Typ {{types}}",
+    "trees": "Seiten vom Typ {{types}}, mit allen Unterseiten",
+    "marks": "Seiten ohne die Markierung {{types}} (Option In llms.txt aufführen einer Seite)",
+    "limits": "Höchstens {{pages}} Seiten werden aufgeführt, bis zu {{depth}} Ebenen unter der Startseite.",
+    "limitsWithContents": "Höchstens {{pages}} Seiten werden aufgeführt, bis zu {{depth}} Ebenen unter der Startseite. Inhalte, die als eigene Seite angezeigt werden (Nachrichten, Artikel), werden ebenfalls aufgeführt, höchstens die {{contents}} neuesten. Das sind höchstens {{total}} Einträge in einer Datei."
+  },
+  "llms": {
+    "description": "Ein Verzeichnis der Website für KI-Assistenten: Name der Website, eine Zusammenfassung in einer Zeile, dann die Seiten nach Abschnitten, jeweils mit Link und Beschreibung.",
+    "placeholder": "# Name der Website\n\n> Zusammenfassung in einer Zeile\n\n## Abschnitt\n\n- [Seite](https://www.example.com/page.html): Thema der Seite"
+  },
+  "llmsFull": {
+    "description": "Der Text der in llms.txt aufgeführten Seiten, in Markdown umgewandelt, damit ein Assistent die Website in einer Datei lesen kann.",
+    "placeholder": "# Name der Website\n\n---\n\n# Seitentitel\n\nSource: https://www.example.com/page.html\n\nSeiteninhalt in Markdown"
+  },
+  "status": {
+    "none": "Nicht erstellt",
+    "placeholder": "Nur Platzhalter",
+    "published": "Veröffentlicht",
+    "notPublished": "Gespeichert, nicht veröffentlicht",
+    "unsaved": "Ungespeicherte Änderungen"
+  },
+  "generating": {
+    "title": "Generierung läuft",
+    "titleFile": "{{file}} wird generiert",
+    "index": "Die veröffentlichten Seiten der Website werden gelesen."
+  },
+  "progress": {
+    "done": "Seiten der letzten Generierung",
+    "preparing": "Die Website wird gelesen",
+    "count": "{{done}} / {{total}} Seiten",
+    "logTitle": "Verarbeitete Seiten",
+    "state": {
+      "RENDERED": "Gerendert",
+      "EMPTY": "Leer, ausgelassen",
+      "FAILED": "Fehlgeschlagen, ausgelassen",
+      "SKIPPED": "Ausgelassen, Datei voll"
+    },
+    "spokenStart": "Generierung gestartet, {{total}} Seiten",
+    "spokenStep": "{{percent}} %, {{done}} von {{total}} Seiten",
+    "spokenFailed": "{{count}} Seiten fehlgeschlagen"
+  },
+  "generated": {
+    "title": "Aus {{pages}} Seiten in {{language}} generiert",
+    "review": "Der Text unten wurde durch diesen Vorschlag ersetzt. Prüfen und bearbeiten Sie ihn, dann wählen Sie Speichern und veröffentlichen. Änderungen verwerfen stellt die gespeicherte Datei wieder her.",
+    "advice": " Dieser Text ist eine Aneinanderreihung der Seiten der Website, so wie sie veröffentlicht sind. Ihn vor dem Veröffentlichen gegenzulesen, schlecht Lesbares umzuschreiben und Überflüssiges zu entfernen, wird dringend empfohlen: Eine überarbeitete Datei dient KI-Assistenten, und damit Ihrer Sichtbarkeit in deren Antworten (GEO), weit besser als eine rohe.",
+    "failed": " Seiten, die nicht gerendert werden konnten und ausgelassen wurden ({{count}}):",
+    "cut": {
+      "pages": " Die Website hat mehr Seiten, als eine Datei aufführt: Die Seiten, die der Startseite am nächsten sind, wurden behalten. Um mehr davon zu beschreiben, den großen Bereichen eigene Dateien geben (Files of, oben): Diese Datei verweist dann auf sie.",
+      "size": " Die Datei hat ihre Größengrenze erreicht: Die letzten {{count}} Seiten wurden ausgelassen. Um sie zu erhalten, die Dateien eines Bereichs generieren oder einen Administrator um eine höhere Grenze bitten (maxFullKb).",
+      "time": " Die Zeit für eine Generierung ist abgelaufen: Die nicht rechtzeitig gerenderten Seiten wurden ausgelassen."
+    }
+  },
   "notification": {
-    "save": "The llms.txt file has been saved and is being published."
+    "saved": "Die Dateien wurden gespeichert und veröffentlicht."
+  },
+  "error": {
+    "read": "Die llms.txt-Einstellungen dieser Website konnten nicht gelesen werden.",
+    "generate": "Die Datei konnte nicht generiert werden.",
+    "save": "Die Dateien konnten nicht gespeichert werden."
+  },
+  "disabled": {
+    "title": "llms.txt ist auf dieser Website nicht verfügbar",
+    "text": "Aktivieren Sie das Modul llms.txt manager auf der Website und prüfen Sie, dass Sie die Berechtigung zum Veröffentlichen haben."
+  },
+  "config": {
+    "tab": "Einstellungen",
+    "title": "Was diese Website aufführt",
+    "description": "Diese Werte gelten nur für llms.txt und llms-full.txt dieser Website. Ein leeres Feld behält den Standardwert dieses Jahia, der darunter genannt ist. Eine Änderung gilt für die nächste Generierung: Eine bereits gespeicherte Datei bleibt, wie sie ist, bis sie neu generiert und veröffentlicht wird.",
+    "inherit": "Leer: der Standardwert dieses Jahia ({{value}}).",
+    "nothing": "keiner",
+    "maxPages": {
+      "label": "Aufgeführte Seiten",
+      "help": "Höchstzahl der Seiten in einer Datei, von {{min}} bis {{max}}. Hat die Website mehr, bleiben die Seiten, die der Startseite am nächsten sind. Jede aufgeführte Seite wird für llms-full.txt gerendert: Eine große Zahl verlängert die Generierung."
+    },
+    "maxDepth": {
+      "label": "Seitentiefe",
+      "help": "Ebenen unter der Startseite, die aufgeführt werden, von {{min}} bis {{max}}. Menügruppen zählen nicht als Ebene."
+    },
+    "maxMainResources": {
+      "label": "Als Seite angezeigte Inhalte",
+      "help": "Höchstzahl der Inhalte, die als eigene Seite angezeigt werden (Nachrichten, Artikel) und nach den Seiten aufgeführt werden, die neuesten zuerst, von {{min}} bis {{max}}. 0 führt keine auf."
+    },
+    "includedNodeTypes": {
+      "label": "Nur markierte Seiten aufführen",
+      "help": "Knotentypen (Mixins), durch Kommas getrennt. Sind welche angegeben, werden nur Seiten aufgeführt, die einen davon tragen. jmix:llmsListed ist die Option In llms.txt aufführen einer Seite; der Inhaltseditor zeigt sie den Rollen mit der gleichnamigen Berechtigung. none eingeben, um alle Seiten dieser Website aufzuführen."
+    },
+    "excludedNodeTypes": {
+      "label": "Ausgelassene Seiten",
+      "help": "Knotentypen (Mixins) der ausgelassenen Seiten, durch Kommas getrennt, zum Beispiel jseomix:noIndex. Ihre Unterseiten werden weiterhin aufgeführt. Die Liste ersetzt die Standardliste: zu behaltende Typen wiederholen. none eingeben, um keine Seite auszulassen."
+    },
+    "excludedTreeNodeTypes": {
+      "label": "Ausgelassene Bereiche",
+      "help": "Knotentypen (Mixins) der Seiten, die mit allen Unterseiten ausgelassen werden, durch Kommas getrennt. none eingeben, um keinen Bereich auszulassen."
+    },
+    "linkToMarkdown": {
+      "label": "Links in llms.txt",
+      "help": "Ja: Jede Zeile von llms.txt verweist auf die Markdown-Version der Seite (page.html.md), wie es der llms.txt-Vorschlag empfiehlt. Nein: Sie verweist auf die Seite. Nein wählen, wenn ein anderes Werkzeug diese Links mit den Adressen der Seiten vergleicht."
+    },
+    "keepImages": {
+      "label": "Bilder in llms-full.txt",
+      "help": "Ja: Die Bilder einer Seite mit Textalternative werden geschrieben. Nein: Bilder werden ausgelassen, ein Textleser gewinnt wenig durch sie."
+    },
+    "choice": {
+      "default": "Standardwert dieses Jahia ({{value}})",
+      "yes": "Ja",
+      "no": "Nein"
+    },
+    "save": "Einstellungen speichern",
+    "reset": "Auf Standardwerte zurücksetzen",
+    "unsaved": "Änderungen noch nicht gespeichert.",
+    "resetDone": "Felder geleert. Noch nicht gespeichert.",
+    "saved": "Die Einstellungen der Website wurden gespeichert. Sie gelten für die nächste Generierung.",
+    "server": "Die Grenzen, die den Server schützen (gleichzeitig gerenderte Seiten, Zeitlimits, Dateigrößen), sind für alle Websites gleich. Ein Administrator des Servers legt sie in der OSGi-Konfiguration org.jahia.modules.llms fest.",
+    "errors": {
+      "summary": "{{count}} Werte zu korrigieren. Nichts wurde gespeichert.",
+      "save": "Die Einstellungen konnten nicht gespeichert werden",
+      "number": "Fehler: eine ganze Zahl eingeben.",
+      "range": "Fehler: eine Zahl von {{min}} bis {{max}} eingeben.",
+      "types": "Fehler: kein Knotentyp dieses Jahia: {{detail}}.",
+      "flag": "Fehler: Ja, Nein oder den Standardwert wählen."
+    }
+  },
+  "preview": {
+    "toggle": "Vorschau",
+    "label": "Vorschau von {{file}}",
+    "shown": "Vorschau angezeigt.",
+    "hidden": "Editor angezeigt.",
+    "cut": "Die Datei ist groß: Die Vorschau zeigt nur ihre ersten 300 KB. Der Editor enthält sie vollständig.",
+    "empty": "Die Datei ist leer."
   }
 }

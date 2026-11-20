@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The role that administers a site holds the permission of the Settings tab by name, and not only
+     through site-admin above it. Jahia keeps the permissions of each role in a cache it empties when a
+     role changes, not when a module adds a permission: without this, a site administrator would get the
+     tab only after a restart or a flush of the caches. -->
+<roles jcr:primaryType="jnt:roles"
+       xmlns:jcr="http://www.jcp.org/jcr/1.0"
+       xmlns:j="http://www.jahia.org/jahia/1.0"
+       xmlns:jnt="http://www.jahia.org/jahia/nt/1.0">
+    <site-administrator jcr:primaryType="jnt:role"
+                        j:permissionNames="siteAdminLlmsSettings"/>
+</roles>
