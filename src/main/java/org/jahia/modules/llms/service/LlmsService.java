@@ -26,13 +26,16 @@ import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.jcr.NodeIterator;
 import javax.jcr.RepositoryException;
+import javax.jcr.query.Query;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -95,6 +98,8 @@ public class LlmsService {
     /** The generations started from the panel, by identifier, kept a while after they end. */
     private final Map<String, GenerationJob> jobs = new ConcurrentHashMap<>();
     private static final long JOB_LIFETIME_NANOS = TimeUnit.MINUTES.toNanos(15);
+    /** The most sections the panel is given to choose from. */
+    private static final int MAX_SECTIONS = 100;
     private final ExecutorService jobRunner = Executors.newCachedThreadPool(runnable -> {
         Thread thread = new Thread(runnable, "llms-generation");
         thread.setDaemon(true);
@@ -120,6 +125,16 @@ public class LlmsService {
      * @param keepImages        whether images are written in llms-full.txt
      */
     public record Rules(List<String> excludedTypes, List<String> excludedTreeTypes, int maxPages, int maxDepth, boolean keepImages) {
+    }
+
+    /**
+     * A page that has, or can be given, its own files.
+     *
+     * @param path     the repository path of the page
+     * @param title    its title
+     * @param hasFiles whether it already carries files
+     */
+    public record SectionRef(String path, String title, boolean hasFiles) {
     }
 
     /** Where the two files of a site stand in live. */
@@ -184,13 +199,13 @@ public class LlmsService {
      * @throws RepositoryException   when the site cannot be read
      * @throws IllegalStateException when too many generations are running
      */
-    public Generation generateLlms(String siteKey, String language, String baseUrl) throws RepositoryException {
+    public Generation generateLlms(String siteKey, String sectionPath, String language, String baseUrl) throws RepositoryException {
         if (!walkSlots.tryAcquire()) {
             throw new IllegalStateException(BUSY);
         }
         SiteWalker.Walk walk;
         try {
-            walk = walk(siteKey, language, baseUrl);
+            walk = walk(siteKey, sectionPath, language, baseUrl);
         } finally {
             walkSlots.release();
         }
@@ -221,9 +236,10 @@ public class LlmsService {
      * @throws RepositoryException   when the site cannot be read
      * @throws IllegalStateException when a generation of the same site, or too many generations, are running
      */
-    public Generation generateLlmsFull(String siteKey, String language, String baseUrl, String renderBase)
+    public Generation generateLlmsFull(String siteKey, String sectionPath, String language, String baseUrl, String renderBase)
             throws RepositoryException {
-        if (!running.add(siteKey)) {
+        String scope = scopeOf(siteKey, sectionPath);
+        if (!running.add(scope)) {
             throw new IllegalStateException("A generation of llms-full.txt is already running for this site");
         }
         try {
@@ -231,12 +247,12 @@ public class LlmsService {
                 throw new IllegalStateException(BUSY);
             }
             try {
-                return full(walk(siteKey, language, baseUrl), siteKey, renderBase, NO_PROGRESS);
+                return full(walk(siteKey, sectionPath, language, baseUrl), siteKey, renderBase, NO_PROGRESS);
             } finally {
                 fullSlots.release();
             }
         } finally {
-            running.remove(siteKey);
+            running.remove(scope);
         }
     }
 
@@ -251,13 +267,14 @@ public class LlmsService {
      * @return the identifier of the generation
      * @throws IllegalStateException when a generation of the same site, or too many generations, are running
      */
-    public String startFullGeneration(String siteKey, String language, String baseUrl, String renderBase) {
+    public String startFullGeneration(String siteKey, String sectionPath, String language, String baseUrl, String renderBase) {
         jobs.values().removeIf(old -> old.ageNanos() > JOB_LIFETIME_NANOS);
-        if (!running.add(siteKey)) {
+        String scope = scopeOf(siteKey, sectionPath);
+        if (!running.add(scope)) {
             throw new IllegalStateException("A generation of llms-full.txt is already running for this site");
         }
         if (!fullSlots.tryAcquire()) {
-            running.remove(siteKey);
+            running.remove(scope);
             throw new IllegalStateException(BUSY);
         }
         GenerationJob job = new GenerationJob(UUID.randomUUID().toString(), siteKey);
@@ -265,21 +282,21 @@ public class LlmsService {
         try {
             jobRunner.execute(() -> {
                 try {
-                    job.finish(full(walk(siteKey, language, baseUrl), siteKey, renderBase, job));
+                    job.finish(full(walk(siteKey, sectionPath, language, baseUrl), siteKey, renderBase, job));
                 } catch (RepositoryException | RuntimeException e) {
                     LOGGER.warn("Could not generate llms-full.txt for {}: {}", siteKey, e.getMessage());
                     LOGGER.debug("Full exception", e);
                     job.fail("The file could not be generated");
                 } finally {
                     fullSlots.release();
-                    running.remove(siteKey);
+                    running.remove(scope);
                 }
             });
         } catch (RejectedExecutionException e) {
             // The module is stopping.
             jobs.remove(job.id());
             fullSlots.release();
-            running.remove(siteKey);
+            running.remove(scope);
             throw new IllegalStateException(BUSY);
         }
         return job.id();
@@ -430,7 +447,18 @@ public class LlmsService {
         return href;
     }
 
-    private SiteWalker.Walk walk(String siteKey, String language, String baseUrl) throws RepositoryException {
+    /** What a generation is about, for the one-at-a-time guard: the site, or one section of it. */
+    private static String scopeOf(String siteKey, String sectionPath) {
+        return sectionPath == null ? siteKey : sectionPath;
+    }
+
+    /**
+     * Lists the pages of the site, or of one section of it, as a visitor without an account gets them.
+     *
+     * @param sectionPath the path of the page at the top of a section, or null for the whole site; a
+     *                    section the guest cannot read in live has no page to list
+     */
+    private SiteWalker.Walk walk(String siteKey, String sectionPath, String language, String baseUrl) throws RepositoryException {
         PublicUrls urls = new PublicUrls(baseUrl);
         Locale locale = Locale.forLanguageTag(language.replace('_', '-'));
         Limits c = limits;
@@ -440,12 +468,35 @@ public class LlmsService {
         }
         return JCRTemplate.getInstance().doExecute(guest.getJahiaUser(), "live", locale,
                 (JCRCallback<SiteWalker.Walk>) session -> {
+                    SiteWalker walker = new SiteWalker(locale, urls::urlOf, c.maxDepth(), c.maxPages(), excluded, excludedTrees);
+                    if (sectionPath != null) {
+                        if (!isSectionOf(siteKey, sectionPath)) {
+                            throw new RepositoryException("not a section of the site");
+                        }
+                        JCRNodeWrapper page = session.getNode(sectionPath);
+                        if (!page.isNodeType("jnt:page")) {
+                            throw new RepositoryException("not a page");
+                        }
+                        return walker.walkSection(page);
+                    }
                     JCRNodeWrapper node = session.getNode("/sites/" + siteKey);
                     if (!(node instanceof JCRSiteNode site)) {
                         throw new RepositoryException("not a site");
                     }
-                    return new SiteWalker(locale, urls::urlOf, c.maxDepth(), c.maxPages(), excluded, excludedTrees).walk(site);
+                    return walker.walk(site);
                 });
+    }
+
+    /**
+     * @param siteKey key of a site
+     * @param path    a repository path
+     * @return whether the path is below that site, written plainly: no dot segment, no empty segment
+     */
+    public static boolean isSectionOf(String siteKey, String path) {
+        String root = "/sites/" + siteKey + "/";
+        return path != null && path.startsWith(root) && path.length() > root.length() && !path.endsWith("/")
+                && !path.contains("//") && !path.contains("/../") && !path.contains("/./") && !path.endsWith("/..")
+                && !path.endsWith("/.") && path.indexOf('\\') < 0;
     }
 
     private static StringBuilder header(SiteWalker.Walk walk) {
@@ -532,7 +583,7 @@ public class LlmsService {
      * @param baseUrl  public base URL, or null
      * @throws RepositoryException when the caller may not write or publish the site
      */
-    public void save(JCRSiteNode site, String llms, String llmsFull, String baseUrl) throws RepositoryException {
+    public void save(JCRNodeWrapper site, String llms, String llmsFull, String baseUrl) throws RepositoryException {
         JCRSessionWrapper session = site.getSession();
         if (!site.isNodeType(MIXIN)) {
             site.addMixin(MIXIN);
@@ -570,16 +621,62 @@ public class LlmsService {
      * @return the status of both files
      * @throws RepositoryException when the site cannot be read
      */
-    public Status status(JCRSiteNode site) throws RepositoryException {
+    public Status status(JCRNodeWrapper site) throws RepositoryException {
         JCRSessionWrapper live = JCRSessionFactory.getInstance().getCurrentUserSession("live");
         return new Status(status(site, live, LLMS), status(site, live, LLMS_FULL));
     }
 
     private static FileStatus status(JCRNodeWrapper site, JCRSessionWrapper live, String property) throws RepositoryException {
-        String served = read(live, site.getName(), property);
+        String served = live.nodeExists(site.getPath()) ? readAt(live.getNode(site.getPath()), property) : null;
         boolean isServed = served != null && !served.isBlank();
         String saved = site.hasProperty(property) ? site.getProperty(property).getString() : "";
         return new FileStatus(isServed, isServed && served.equals(saved));
+    }
+
+    /**
+     * The pages an editor can pick as a section: those that already carry files, wherever they are, then
+     * the pages below the home page that have sub-pages, which is where the sections of a site are.
+     *
+     * @param site the site, read with the caller's session in {@code default}
+     * @return the pages, those with files first
+     * @throws RepositoryException when the site cannot be read
+     */
+    public List<SectionRef> sections(JCRSiteNode site) throws RepositoryException {
+        Map<String, SectionRef> out = new LinkedHashMap<>();
+        // Titles are per language: the pages are read in the default language of the site, with the
+        // caller's rights.
+        JCRSessionWrapper session = JCRSessionFactory.getInstance().getCurrentUserSession("default",
+                Locale.forLanguageTag(site.getDefaultLanguage().replace('_', '-')));
+        // The site key was checked by the caller: the path holds nothing to escape.
+        Query query = session.getWorkspace().getQueryManager().createQuery(
+                "select * from [" + MIXIN + "] as n where isdescendantnode(n, '" + site.getPath() + "')", Query.JCR_SQL2);
+        query.setLimit(MAX_SECTIONS);
+        NodeIterator carrying = query.execute().getNodes();
+        while (carrying.hasNext()) {
+            JCRNodeWrapper page = (JCRNodeWrapper) carrying.nextNode();
+            if (page.isNodeType("jnt:page")) {
+                out.put(page.getPath(), new SectionRef(page.getPath(), page.getDisplayableName(), true));
+            }
+        }
+        for (JCRNodeWrapper home : session.getNode(site.getPath()).getNodes()) {
+            if (home.isNodeType("jnt:page")) {
+                for (JCRNodeWrapper page : home.getNodes()) {
+                    if (out.size() < MAX_SECTIONS && page.isNodeType("jnt:page") && hasSubPage(page)) {
+                        out.putIfAbsent(page.getPath(), new SectionRef(page.getPath(), page.getDisplayableName(), false));
+                    }
+                }
+            }
+        }
+        return new ArrayList<>(out.values());
+    }
+
+    private static boolean hasSubPage(JCRNodeWrapper page) throws RepositoryException {
+        for (JCRNodeWrapper child : page.getNodes()) {
+            if (child.isNodeType("jnt:page")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -630,6 +727,16 @@ public class LlmsService {
         }
         JCRNodeWrapper site = session.getNode("/sites/" + siteKey);
         return site.isNodeType(MIXIN) ? site : null;
+    }
+
+    /**
+     * @param node     a site, or a page at the top of a section
+     * @param property {@link #LLMS} or {@link #LLMS_FULL}
+     * @return the file stored on that node, or null when it carries none or only the autocreated placeholder
+     * @throws RepositoryException when the node cannot be read
+     */
+    public static String readAt(JCRNodeWrapper node, String property) throws RepositoryException {
+        return node.isNodeType(MIXIN) ? read(node, property) : null;
     }
 
     /**

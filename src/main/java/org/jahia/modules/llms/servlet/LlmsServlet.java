@@ -153,7 +153,7 @@ public class LlmsServlet extends HttpServlet {
         }
     }
 
-    private static void headers(HttpServletResponse response, String etag) {
+    static void headers(HttpServletResponse response, String etag) {
         response.setHeader("Cache-Control", JahiaUserManagerService.isGuest(JCRSessionFactory.getInstance().getCurrentUser()) ? PUBLIC_CACHE : PRIVATE_CACHE);
         response.setHeader("ETag", etag);
         response.setHeader("X-Content-Type-Options", "nosniff");

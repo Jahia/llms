@@ -10,6 +10,7 @@ import org.jahia.modules.graphql.provider.dxm.osgi.annotations.GraphQLOsgiServic
 import org.jahia.modules.graphql.provider.dxm.util.ContextUtil;
 import org.jahia.modules.llms.service.LlmsService;
 import org.jahia.modules.llms.service.internal.PublicUrls;
+import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.decorator.JCRSiteNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,7 @@ public class GqlLlmsMutation {
     @GraphQLDescription("Saves a site's llms.txt and llms-full.txt and publishes the site node alone")
     public boolean save(
             @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey,
+            @GraphQLName("path") @GraphQLDescription("Path of a page of the site, for the files of that section; omitted for the files of the whole site") String path,
             @GraphQLName("llms") @GraphQLDescription("llms.txt; blank removes it, omitted leaves it unchanged") String llms,
             @GraphQLName("llmsFull") @GraphQLDescription("llms-full.txt; blank removes it, omitted leaves it unchanged") String llmsFull,
             @GraphQLName("baseUrl") @GraphQLDescription("Public base URL; blank removes it, omitted leaves it unchanged") String baseUrl) {
@@ -59,7 +61,9 @@ public class GqlLlmsMutation {
             throw new DataFetchingException("The file is larger than the configured limit");
         }
         try {
-            service.save(site, llms, llmsFull, baseUrl);
+            JCRNodeWrapper scope = SiteAccess.scope(site, path, "jcr:modifyProperties", "publish");
+            // The public URL belongs to the site: saving the files of a section leaves it alone.
+            service.save(scope, llms, llmsFull, scope == site ? baseUrl : null);
             return true;
         } catch (AccessDeniedException e) {
             throw new DataFetchingException(SiteAccess.DENIED);
@@ -83,6 +87,7 @@ public class GqlLlmsMutation {
     @GraphQLDescription("Starts a generation of llms-full.txt in the background; read it with the generationProgress query. Saves nothing.")
     public String startGeneration(
             @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey,
+            @GraphQLName("path") @GraphQLDescription("Path of a page of the site, for the files of that section; omitted for the files of the whole site") String path,
             @GraphQLName("language") @GraphQLNonNull @GraphQLDescription("Language of the file") String language,
             @GraphQLName("baseUrl") @GraphQLNonNull @GraphQLDescription("Public base URL of the site, scheme, host and port") String baseUrl,
             DataFetchingEnvironment environment) {
@@ -92,7 +97,7 @@ public class GqlLlmsMutation {
             throw new DataFetchingException("The public URL must be a scheme, a host and an optional port");
         }
         try {
-            return service.startFullGeneration(siteKey, lang, baseUrl,
+            return service.startFullGeneration(siteKey, SiteAccess.sectionPath(site, path), lang, baseUrl,
                     SiteAccess.renderBase(ContextUtil.getHttpServletRequest(environment.getGraphQlContext())));
         } catch (IllegalStateException e) {
             throw new DataFetchingException(e.getMessage());

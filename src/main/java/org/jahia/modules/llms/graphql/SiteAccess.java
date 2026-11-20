@@ -1,6 +1,7 @@
 package org.jahia.modules.llms.graphql;
 
 import org.jahia.modules.graphql.provider.dxm.DataFetchingException;
+import org.jahia.modules.llms.service.LlmsService;
 import org.jahia.modules.llms.service.internal.LocalAddress;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
@@ -54,6 +55,47 @@ final class SiteAccess {
             throw new DataFetchingException("The site could not be read");
         }
         throw new DataFetchingException(DENIED);
+    }
+
+    /**
+     * What the files are about: the site, or a page of it at the top of a section.
+     *
+     * @param site        the site, already checked with {@link #site}
+     * @param path        the path of a page of the site, or null or blank for the site itself
+     * @param permissions the permissions the caller needs on that page
+     * @return the site, or the page read with the caller's session in {@code default}
+     * @throws DataFetchingException when the path is not a page of this site, or the caller lacks a permission on it
+     */
+    static JCRNodeWrapper scope(JCRSiteNode site, String path, String... permissions) {
+        if (path == null || path.isBlank()) {
+            return site;
+        }
+        try {
+            if (LlmsService.isSectionOf(site.getSiteKey(), path) && site.getSession().nodeExists(path)) {
+                JCRNodeWrapper page = site.getSession().getNode(path);
+                if (page.isNodeType("jnt:page")) {
+                    for (String permission : permissions) {
+                        if (!page.hasPermission(permission)) {
+                            throw new DataFetchingException(DENIED);
+                        }
+                    }
+                    return page;
+                }
+            }
+        } catch (RepositoryException e) {
+            // answered below, as a page that is not there
+        }
+        throw new DataFetchingException("Unknown section");
+    }
+
+    /**
+     * @param site the site
+     * @param path the path given by the caller
+     * @return the path of the section, or null for the whole site
+     */
+    static String sectionPath(JCRSiteNode site, String path) {
+        JCRNodeWrapper scope = scope(site, path);
+        return scope == site ? null : scope.getPath();
     }
 
     /**

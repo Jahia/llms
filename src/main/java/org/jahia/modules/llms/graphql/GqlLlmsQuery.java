@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.jcr.RepositoryException;
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * The llms queries, under {@code llms} on the root Query. Read-only: the generated text is returned,
@@ -34,6 +35,26 @@ public class GqlLlmsQuery {
     @Inject
     @GraphQLOsgiService
     private LlmsService service;
+
+    /**
+     * @param siteKey key of the site
+     * @return the pages that have, or can be given, their own llms.txt
+     */
+    @GraphQLField
+    @GraphQLName("sections")
+    @GraphQLNonNull
+    @GraphQLDescription("The pages of a site that have their own llms.txt, and the pages below the home page that can be given one")
+    public List<GqlLlmsSection> sections(
+            @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey) {
+        JCRSiteNode site = SiteAccess.site(siteKey, PUBLISH);
+        try {
+            return service.sections(site).stream().map(GqlLlmsSection::new).toList();
+        } catch (RepositoryException e) {
+            LOGGER.warn("Could not list the sections of {}: {}", siteKey, e.getMessage());
+            LOGGER.debug("Full exception", e);
+            throw new DataFetchingException("The sections could not be read");
+        }
+    }
 
     /**
      * @param siteKey key of a site the caller may publish on: the rules are the same for every site, but
@@ -80,10 +101,11 @@ public class GqlLlmsQuery {
     @GraphQLNonNull
     @GraphQLDescription("Whether a site's llms.txt and llms-full.txt are served, and are the saved ones")
     public GqlLlmsStatus status(
-            @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey) {
+            @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey,
+            @GraphQLName("path") @GraphQLDescription("Path of a page of the site, for the files of that section; omitted for the files of the whole site") String path) {
         JCRSiteNode site = SiteAccess.site(siteKey, PUBLISH);
         try {
-            return new GqlLlmsStatus(service.status(site));
+            return new GqlLlmsStatus(service.status(SiteAccess.scope(site, path)));
         } catch (RepositoryException e) {
             LOGGER.warn("Could not read the status of the llms files of {}: {}", siteKey, e.getMessage());
             LOGGER.debug("Full exception", e);
@@ -105,6 +127,7 @@ public class GqlLlmsQuery {
     @GraphQLDescription("Generates a site's llms.txt or llms-full.txt from its published pages, without saving it")
     public GqlLlmsGeneration generate(
             @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey,
+            @GraphQLName("path") @GraphQLDescription("Path of a page of the site, for the files of that section; omitted for the files of the whole site") String path,
             @GraphQLName("language") @GraphQLNonNull @GraphQLDescription("Language of the file") String language,
             @GraphQLName("baseUrl") @GraphQLNonNull @GraphQLDescription("Public base URL of the site, scheme, host and port") String baseUrl,
             @GraphQLName("full") @GraphQLNonNull @GraphQLDescription("True for llms-full.txt") boolean full,
@@ -114,12 +137,13 @@ public class GqlLlmsQuery {
         if (!PublicUrls.BASE_URL.matcher(baseUrl).matches()) {
             throw new DataFetchingException("The public URL must be a scheme, a host and an optional port");
         }
+        String section = SiteAccess.sectionPath(site, path);
         try {
             if (!full) {
-                return new GqlLlmsGeneration(service.generateLlms(siteKey, lang, baseUrl));
+                return new GqlLlmsGeneration(service.generateLlms(siteKey, section, lang, baseUrl));
             }
             HttpServletRequest request = ContextUtil.getHttpServletRequest(environment.getGraphQlContext());
-            return new GqlLlmsGeneration(service.generateLlmsFull(siteKey, lang, baseUrl, SiteAccess.renderBase(request)));
+            return new GqlLlmsGeneration(service.generateLlmsFull(siteKey, section, lang, baseUrl, SiteAccess.renderBase(request)));
         } catch (IllegalStateException e) {
             throw new DataFetchingException(e.getMessage());
         } catch (RepositoryException | RuntimeException e) {

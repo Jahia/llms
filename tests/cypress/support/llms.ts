@@ -50,23 +50,24 @@ export const gql = (user: User, query: string, variables: Record<string, unknown
 export const errorOf = (response: Cypress.Response<any>): string | null =>
     response.body?.errors?.[0]?.message ?? null;
 
-export const SAVE = `mutation ($siteKey: String!, $llms: String, $llmsFull: String, $baseUrl: String) {
-    llms { save(siteKey: $siteKey, llms: $llms, llmsFull: $llmsFull, baseUrl: $baseUrl) }
+// $path names a page of the site, for the files of that section; left out, the files are the site's.
+export const SAVE = `mutation ($siteKey: String!, $path: String, $llms: String, $llmsFull: String, $baseUrl: String) {
+    llms { save(siteKey: $siteKey, path: $path, llms: $llms, llmsFull: $llmsFull, baseUrl: $baseUrl) }
 }`;
 
-export const GENERATE = `query ($siteKey: String!, $language: String!, $baseUrl: String!, $full: Boolean!) {
-    llms { generate(siteKey: $siteKey, language: $language, baseUrl: $baseUrl, full: $full) {
+export const GENERATE = `query ($siteKey: String!, $path: String, $language: String!, $baseUrl: String!, $full: Boolean!) {
+    llms { generate(siteKey: $siteKey, path: $path, language: $language, baseUrl: $baseUrl, full: $full) {
         content pages failedPages truncated
     } }
 }`;
 
-export const STATUS = `query ($siteKey: String!) {
-    llms { status(siteKey: $siteKey) { llms { served current } llmsFull { served current } } }
+export const STATUS = `query ($siteKey: String!, $path: String) {
+    llms { status(siteKey: $siteKey, path: $path) { llms { served current } llmsFull { served current } } }
 }`;
 
 /** Saves and publishes as root, and fails the spec if that did not work: a fixture, not a subject. */
-export const saveAsRoot = (siteKey: string, files: {llms?: string | null; llmsFull?: string | null; baseUrl?: string | null}): void => {
-    gql(ROOT(), SAVE, {siteKey, llms: null, llmsFull: null, baseUrl: null, ...files}).then(response => {
+export const saveAsRoot = (siteKey: string, files: {llms?: string | null; llmsFull?: string | null; baseUrl?: string | null; path?: string}): void => {
+    gql(ROOT(), SAVE, {siteKey, path: null, llms: null, llmsFull: null, baseUrl: null, ...files}).then(response => {
         expect(errorOf(response), 'saving as root').to.eq(null);
         expect(response.body.data.llms.save).to.eq(true);
     });

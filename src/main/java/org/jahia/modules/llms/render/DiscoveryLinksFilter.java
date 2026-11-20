@@ -3,6 +3,7 @@ package org.jahia.modules.llms.render;
 import org.jahia.bin.Jahia;
 import org.jahia.modules.llms.service.LlmsService;
 import org.jahia.modules.llms.service.internal.DiscoveryLinks;
+import org.jahia.modules.llms.service.internal.SectionFile;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.decorator.JCRSiteNode;
 import org.jahia.services.render.RenderContext;
@@ -73,8 +74,19 @@ public class DiscoveryLinksFilter extends AbstractFilter {
                 resource.getLocale().toString(), site.getDefaultLanguage());
     }
 
-    /** The llms.txt of the site, when it serves one: read in the session of the page, so as the visitor. */
+    /**
+     * The llms.txt that covers the page: the nearest one going up from the page, the file of a section
+     * before the file of the site, since the most specific file applies. Read in the session of the page,
+     * so as the visitor.
+     */
     private static String llmsHref(JCRNodeWrapper page, JCRSiteNode site) throws RepositoryException {
+        for (JCRNodeWrapper node = page; node != null && node.getPath().startsWith(site.getPath() + "/"); node = node.getParent()) {
+            String file = LlmsService.readAt(node, LlmsService.LLMS);
+            String href = file == null || file.isBlank() ? null : SectionFile.hrefOf(node.getPath());
+            if (href != null) {
+                return Jahia.getContextPath() + href;
+            }
+        }
         String file = LlmsService.read(page.getSession(), site.getSiteKey(), LlmsService.LLMS);
         return file == null || file.isBlank() ? null : Jahia.getContextPath() + "/sites/" + site.getSiteKey() + "/llms.txt";
     }

@@ -14,6 +14,13 @@
         <to last="true">/modules/llmspage?path=$1</to>
     </rule>
     <rule>
+        <name>Llms files of a section</name>
+        <note>A file under the path of a page covers the pages below it: /sites/{siteKey}/home/docs/llms.txt.
+            At least one page between the site and the file: the files of the site itself are the rules below.</note>
+        <from>^((?:/cms(?:/render/live)?)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?/sites/[A-Za-z0-9_-]+/.+/llms(?:-full)?\.txt)$</from>
+        <to last="true">/modules/llmssection?path=$1</to>
+    </rule>
+    <rule>
         <name>Llms full of a site</name>
         <note>/sites/{siteKey}/llms-full.txt serves that site's llms-full.txt, whatever the host.</note>
         <from>^(?:/cms(?:/render/live)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?)?/sites/([A-Za-z0-9_-]+)/llms-full\.txt$</from>

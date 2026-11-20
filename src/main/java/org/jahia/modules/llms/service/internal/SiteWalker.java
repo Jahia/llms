@@ -163,30 +163,7 @@ public final class SiteWalker {
         }
         JCRNodeWrapper home = home(top);
         if (home != null) {
-            List<Page> main = new ArrayList<>();
-            add(main, home);
-            List<Group> grouped = new ArrayList<>();
-            for (JCRNodeWrapper child : pagesBelow(home)) {
-                if (truncated) {
-                    break;
-                }
-                List<JCRNodeWrapper> below = pagesBelow(child);
-                if (below.isEmpty()) {
-                    add(main, child);
-                } else {
-                    grouped.add(new Group(child, below));
-                }
-            }
-            section(sections, title(home), main);
-            for (Group group : grouped) {
-                if (truncated) {
-                    break;
-                }
-                List<Page> pages = new ArrayList<>();
-                add(pages, group.page());
-                descend(pages, group.below(), 2);
-                section(sections, title(group.page()), pages);
-            }
+            below(sections, home);
         }
         for (JCRNodeWrapper other : top) {
             if (truncated) {
@@ -203,6 +180,51 @@ public final class SiteWalker {
             section(sections, title(other), pages);
         }
         return new Walk(title(site), oneLine(property(site, "j:description")), sections, truncated);
+    }
+
+    /**
+     * Lists a section of the site: one page and everything below it, laid out as the site is from its
+     * home page. This is what an llms.txt placed under that page covers.
+     *
+     * @param sectionPage the page at the top of the section, from a guest session in live
+     * @return the pages, by section, under the title of that page
+     * @throws RepositoryException when the page cannot be read
+     */
+    public Walk walkSection(JCRNodeWrapper sectionPage) throws RepositoryException {
+        List<Section> sections = new ArrayList<>();
+        below(sections, sectionPage);
+        return new Walk(title(sectionPage), oneLine(property(sectionPage, "jcr:description")), sections, truncated);
+    }
+
+    /**
+     * A page and what is below it: the page and its sub-pages without sub-pages come first, under its
+     * title; each sub-page with sub-pages is a section of its own.
+     */
+    private void below(List<Section> sections, JCRNodeWrapper root) throws RepositoryException {
+        List<Page> main = new ArrayList<>();
+        add(main, root);
+        List<Group> grouped = new ArrayList<>();
+        for (JCRNodeWrapper child : pagesBelow(root)) {
+            if (truncated) {
+                break;
+            }
+            List<JCRNodeWrapper> below = pagesBelow(child);
+            if (below.isEmpty()) {
+                add(main, child);
+            } else {
+                grouped.add(new Group(child, below));
+            }
+        }
+        section(sections, title(root), main);
+        for (Group group : grouped) {
+            if (truncated) {
+                break;
+            }
+            List<Page> pages = new ArrayList<>();
+            add(pages, group.page());
+            descend(pages, group.below(), 2);
+            section(sections, title(group.page()), pages);
+        }
     }
 
     /**
