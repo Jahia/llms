@@ -143,7 +143,7 @@ describe('contents shown as a page, and the configuration of one site', () => {
             expect(response.body.data.llms.rules).to.deep.eq({includedTypes: [], maxMainResources: 0, maxDepth: 7});
         });
         gql(ROOT(), RULES, {siteKey: OTHER}).then(response => {
-            expect(response.body.data.llms.rules).to.deep.eq({includedTypes: [], maxMainResources: 100, maxDepth: 3});
+            expect(response.body.data.llms.rules).to.deep.eq({includedTypes: [], maxMainResources: 100, maxDepth: 10});
         });
     });
 

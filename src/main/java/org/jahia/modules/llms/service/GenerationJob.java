@@ -24,7 +24,9 @@ public final class GenerationJob implements LlmsService.Progress {
         /** Rendered, with nothing to read: left out of the file. */
         EMPTY,
         /** Could not be rendered, or not in time: left out of the file. */
-        FAILED
+        FAILED,
+        /** Not written because the file had reached its size limit: left out of the file. */
+        SKIPPED
     }
 
     /**
@@ -95,7 +97,8 @@ public final class GenerationJob implements LlmsService.Progress {
     public void page(int index, PageState state) {
         AtomicReferenceArray<PageState> all = states;
         if (all != null && index >= 0 && index < all.length()) {
-            all.set(index, state);
+            // Left out for good: a page still being rendered when the file filled up reports after that.
+            all.updateAndGet(index, current -> current == PageState.SKIPPED ? current : state);
         }
     }
 

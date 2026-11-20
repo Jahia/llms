@@ -13,10 +13,11 @@ import {
     Tab,
     TabItem
 } from '@jahia/moonstone';
-import {LLMS_GENERATE, LLMS_PROGRESS, LLMS_RULES, LLMS_SAVE, LLMS_SITE, LLMS_START, LLMS_STATUS} from './Llms.gql';
+import {LLMS_GENERATE, LLMS_PROGRESS, LLMS_RULES, LLMS_SAVE, LLMS_SETTINGS, LLMS_SITE, LLMS_START, LLMS_STATUS} from './Llms.gql';
 import {FileCard} from './FileCard';
 import {GenerationCard} from './GenerationCard';
 import {ScopeSelector} from './ScopeSelector';
+import {SiteSettingsPanel} from './SiteSettingsPanel';
 import {useScope} from './useScope';
 import {BASE_URL, FILES, MODULE} from './module';
 import styles from './Llms.module.css';
@@ -114,8 +115,16 @@ ScopeState.propTypes = {
     error: PropTypes.object
 };
 
-/** One tab per file. A file with unsaved changes says so in its name, not only with a mark. */
-const FileTabs = ({selected, changed, onSelect}) => {
+// The tab of what the site lists, beside the tabs of the files.
+const SETTINGS_TAB = 'settings';
+// The configuration reaches the module a moment after it is written: the rules are read again then.
+const SETTINGS_APPLY_MS = 2500;
+
+/**
+ * One tab per file, and one for the settings of the site for who may change them. A file with unsaved
+ * changes says so in its name, not only with a mark.
+ */
+const FileTabs = ({selected, changed, hasSettings, onSelect}) => {
     const {t} = useTranslation(MODULE);
     return (
         <div className={styles.tabs}>
@@ -134,6 +143,14 @@ const FileTabs = ({selected, changed, onSelect}) => {
                                  onClick={() => onSelect(f.id)}/>
                     );
                 })}
+                {hasSettings && (
+                    <TabItem id={`llms-tab-${SETTINGS_TAB}`}
+                             aria-controls="llms-tabpanel"
+                             data-llms-tab={SETTINGS_TAB}
+                             label={t('config.tab')}
+                             isSelected={selected === SETTINGS_TAB}
+                             onClick={() => onSelect(SETTINGS_TAB)}/>
+                )}
             </Tab>
         </div>
     );
@@ -142,16 +159,18 @@ const FileTabs = ({selected, changed, onSelect}) => {
 FileTabs.propTypes = {
     selected: PropTypes.string.isRequired,
     changed: PropTypes.objectOf(PropTypes.bool).isRequired,
+    hasSettings: PropTypes.bool.isRequired,
     onSelect: PropTypes.func.isRequired
 };
 
 /** The header of the panel: its title, Save and publish, one tab per file, and the link to the proposal. */
-const EditorHeader = ({title, tab, changed, isSaving, isSaveBlocked, onSave, onSelectTab}) => {
+const EditorHeader = ({title, tab, changed, hasSettings, isSaving, isSaveBlocked, onSave, onSelectTab}) => {
     const {t} = useTranslation(MODULE);
     return (
         <Header
             title={title}
-            mainActions={[
+            // Save and publish is for the files: the settings have their own Save, in their form.
+            mainActions={tab === SETTINGS_TAB ? [] : [
                 <Button key="save"
                         data-llms-role="save"
                         size="big"
@@ -162,7 +181,7 @@ const EditorHeader = ({title, tab, changed, isSaving, isSaveBlocked, onSave, onS
                         isLoading={isSaving}
                         onClick={onSave}/>
             ]}
-            toolbarLeft={<FileTabs selected={tab} changed={changed} onSelect={onSelectTab}/>}
+            toolbarLeft={<FileTabs selected={tab} changed={changed} hasSettings={hasSettings} onSelect={onSelectTab}/>}
             toolbarRight={[
                 <Button key="spec"
                         variant="ghost"
@@ -179,11 +198,21 @@ EditorHeader.propTypes = {
     title: PropTypes.string.isRequired,
     tab: PropTypes.string.isRequired,
     changed: PropTypes.objectOf(PropTypes.bool).isRequired,
+    hasSettings: PropTypes.bool.isRequired,
     isSaving: PropTypes.bool.isRequired,
     isSaveBlocked: PropTypes.bool.isRequired,
     onSave: PropTypes.func.isRequired,
     onSelectTab: PropTypes.func.isRequired
 };
+
+/** The values the site may set. Answered only to who may change them: null for the others, who get no Settings tab. */
+const useSiteSettings = siteKey => {
+    const {data, error} = useQuery(LLMS_SETTINGS, {variables: {siteKey}, fetchPolicy: 'network-only', errorPolicy: 'all'});
+    return (!error && data?.llms?.settings) || null;
+};
+
+/** The file of a tab. The settings are no file: what the files need then reads the first one, and is not shown. */
+const fileOf = tab => FILES.find(f => f.id === tab) || FILES[0];
 
 export const LlmsEditor = ({siteKey}) => {
     const {t} = useTranslation(MODULE);
@@ -195,6 +224,7 @@ export const LlmsEditor = ({siteKey}) => {
     const live = useQuery(LLMS_STATUS, {variables: {siteKey, path: scoped.scope}, fetchPolicy: 'network-only', errorPolicy: 'all'});
     // Read on its own: the panel works without it, it only says less about what is left out.
     const rules = useQuery(LLMS_RULES, {variables: {siteKey}, errorPolicy: 'all'});
+    const settingFields = useSiteSettings(siteKey);
     const [saveFiles, {loading: saving}] = useMutation(LLMS_SAVE);
 
     const node = data?.jcr?.nodeByPath;
@@ -285,7 +315,8 @@ export const LlmsEditor = ({siteKey}) => {
     // Only the languages visitors are served: the server refuses the others.
     const languages = (site?.languages || []).filter(l => l.activeInLive)
         .map(l => ({label: `${l.displayName} (${l.language})`, value: l.language}));
-    const file = FILES.find(f => f.id === tab);
+    const isSettings = tab === SETTINGS_TAB && settingFields !== null;
+    const file = fileOf(tab);
 
     // The index is read in one request. llms-full.txt renders every page: it runs in the background
     // and the panel follows it, so the editor sees the pages go by.
@@ -380,6 +411,7 @@ export const LlmsEditor = ({siteKey}) => {
                     <EditorHeader title={title}
                                   tab={tab}
                                   changed={changed}
+                                  hasSettings={settingFields !== null}
                                   isSaving={saving}
                                   isSaveBlocked={!dirty || !baseUrlValid || Boolean(generating)}
                                   onSave={save}
@@ -395,24 +427,34 @@ export const LlmsEditor = ({siteKey}) => {
                             </Banner>
                         )}
                         {/* Before the panel of the tabs: the scope applies to both files. Only when there is a choice. */}
-                        {scoped.sections.length > 0 && (
-                            <ScopeSelector siteName={siteName}
-                                           sections={scoped.sections}
-                                           scope={scoped.scope}
-                                           refusal={refusal}
-                                           onSelect={selectScope}/>
+                        {/* The settings are the site's, whatever the section: no choice of section above them. */}
+                        {isSettings ? (
+                            <div role="tabpanel" id="llms-tabpanel" aria-labelledby={`llms-tab-${SETTINGS_TAB}`} className={styles.panel}>
+                                <SiteSettingsPanel siteKey={siteKey}
+                                                   fields={settingFields}
+                                                   onAnnounce={setAnnouncement}
+                                                   onSaved={() => setTimeout(() => rules.refetch(), SETTINGS_APPLY_MS)}/>
+                            </div>
+                        ) : (
+                            <>
+                                {scoped.sections.length > 0 && (
+                                <ScopeSelector siteName={siteName}
+                                               sections={scoped.sections}
+                                               scope={scoped.scope}
+                                               refusal={refusal}
+                                               onSelect={selectScope}/>
                         )}
-                        {/* One panel per tab: what generates the file, then the file. It stays in place
+                                {/* One panel per tab: what generates the file, then the file. It stays in place
                             while the files of a section load, so the tabs keep the panel they control. */}
-                        <div role="tabpanel"
-                             id="llms-tabpanel"
-                             aria-labelledby={`llms-tab-${file.id}`}
-                             aria-busy={scoped.isLoading}
-                             className={styles.panel}
-                             data-llms-file={file.id}
-                        >
-                            <ScopeState isLoading={scoped.isLoading} error={scoped.error}/>
-                            <GenerationCard
+                                <div role="tabpanel"
+                                     id="llms-tabpanel"
+                                     aria-labelledby={`llms-tab-${file.id}`}
+                                     aria-busy={scoped.isLoading}
+                                     className={styles.panel}
+                                     data-llms-file={file.id}
+                                >
+                                    <ScopeState isLoading={scoped.isLoading} error={scoped.error}/>
+                                    <GenerationCard
                                 file={file}
                                 languages={languages}
                                 language={language}
@@ -430,7 +472,7 @@ export const LlmsEditor = ({siteKey}) => {
                                 onBaseUrlChange={setBaseUrl}
                                 onGenerate={generate}
                             />
-                            <FileCard
+                                    <FileCard
                                 file={file}
                                 value={drafts[file.id]}
                                 saved={saved[file.id]}
@@ -450,7 +492,9 @@ export const LlmsEditor = ({siteKey}) => {
                                     setRefocus(n => n + 1);
                                 }}
                             />
-                        </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             />

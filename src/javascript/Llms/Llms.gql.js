@@ -59,6 +59,8 @@ export const LLMS_GENERATE = gql`
                 pages
                 failedPages
                 truncated
+                cutBy
+                skipped
             }
         }
     }
@@ -141,6 +143,8 @@ export const LLMS_PROGRESS = gql`
                     pages
                     failedPages
                     truncated
+                    cutBy
+                    skipped
                 }
             }
         }
@@ -151,6 +155,34 @@ export const LLMS_SAVE = gql`
     mutation LlmsSave($siteKey: String!, $path: String, $llms: String, $llmsFull: String, $baseUrl: String) {
         llms {
             save(siteKey: $siteKey, path: $path, llms: $llms, llmsFull: $llmsFull, baseUrl: $baseUrl)
+        }
+    }
+`;
+
+const SETTING_FIELDS = `
+    key
+    kind
+    value
+    inherited
+    min
+    max
+    error
+    detail
+`;
+
+// Answers only who may change what the site lists: for anyone else it is an error, and the tab is not shown.
+export const LLMS_SETTINGS = gql`
+    query LlmsSettings($siteKey: String!) {
+        llms {
+            settings(siteKey: $siteKey) {${SETTING_FIELDS}}
+        }
+    }
+`;
+
+export const LLMS_SAVE_SETTINGS = gql`
+    mutation LlmsSaveSettings($siteKey: String!, $keys: [String!]!, $values: [String!]!) {
+        llms {
+            saveSettings(siteKey: $siteKey, keys: $keys, values: $values) {${SETTING_FIELDS}}
         }
     }
 `;

@@ -73,6 +73,53 @@
     min-width: 0;
 }
 
+/* What a site lists: one value under the other, each as wide as its explanation reads well. */
+.settingsForm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-large, 24px);
+    max-width: 48rem;
+}
+
+/* A group of choices, without the frame a browser draws around one. */
+.choice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-nano, 4px);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+
+    border: 0;
+}
+
+.choice > legend {
+    padding: 0;
+}
+
+/* Each choice is at least 24px high, its label included in what can be clicked (WCAG 2.5.8). */
+.choiceRow {
+    display: flex;
+    gap: var(--spacing-small, 8px);
+    align-items: center;
+    min-height: 24px;
+
+    cursor: pointer;
+}
+
+.choiceRow > input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+
+    accent-color: var(--color-accent_dark);
+}
+
+.choiceRow > input:focus-visible {
+    outline: 2px solid var(--color-accent_dark);
+    outline-offset: 2px;
+}
+
 .field > label {
     cursor: pointer;
 }

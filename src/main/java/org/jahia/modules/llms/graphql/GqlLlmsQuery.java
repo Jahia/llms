@@ -57,6 +57,20 @@ public class GqlLlmsQuery {
     }
 
     /**
+     * @param siteKey key of a site the caller administers
+     * @return the values that site may set for its generation
+     */
+    @GraphQLField
+    @GraphQLName("settings")
+    @GraphQLNonNull
+    @GraphQLDescription("The values a site may set for the generation of its files, with what it inherits. For who may change them.")
+    public List<GqlLlmsSetting> settings(
+            @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey) {
+        SiteAccess.site(siteKey, SiteAccess.SETTINGS);
+        return service.siteSettings(siteKey).stream().map(GqlLlmsSetting::new).toList();
+    }
+
+    /**
      * @param siteKey key of a site the caller may publish on: the rules in force for it, told only to who can
      *                generate
      * @return which pages generation leaves out and how many it lists

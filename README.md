@@ -62,7 +62,7 @@ add `digital-factory-data/karaf/etc/org.jahia.modules.llms.cfg` to change a valu
 
 | Key | Default | Meaning |
 |---|---|---|
-| `maxDepth` | `3` | Levels of pages below the home page that are listed |
+| `maxDepth` | `10` | Levels of pages below the home page that are listed (1 to 10). Menu groups do not count as a level. `maxPages` is the real limit: when a site has more pages than that, every page of a level is listed before any page of the next, so the limit cuts the deepest level reached and not the last sections of the site. |
 | `maxPages` | `200` | Most pages one file lists |
 | `maxMainResources` | `100` | Most contents shown as a page of their own (`jmix:mainResource`: a news item, an article) one file lists after the pages, the most recently modified first, under the title of the page or folder that holds them. `0` lists none. |
 | `fetchTimeoutSeconds` | `20` | Time allowed to render one page for llms-full.txt |
@@ -101,6 +101,14 @@ key left out or blank keeps the value of the module configuration. For a list of
 the list for that site. The panel of the site states the rules in force for it. The limits that protect
 the server (threads, timeouts, sizes) and what is served (`servePageMarkdown`, `discoveryLinks`) are
 set for the whole Jahia only.
+
+The same values can be set in the panel: its **Settings** tab, shown to who holds the permission
+`siteAdminLlmsSettings` on the site (under `site-admin`, so a site administrator holds it). The tab
+explains each value, shows what an empty one inherits, and refuses a value the module would have to
+correct: a number out of range, a name that is not a node type of this Jahia. Saving writes
+`org.jahia.modules.llms.site-<siteKey>.cfg` through Jahia's configuration service; a site that sets
+nothing any more has no file. Where the `.cfg` files are deployed by other means (git, provisioning),
+the next deployment overwrites what the tab wrote.
 
 ### The option List in llms.txt
 

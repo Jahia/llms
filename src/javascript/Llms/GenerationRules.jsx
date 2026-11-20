@@ -50,7 +50,7 @@ export const GenerationRules = ({rules}) => {
             {rules && (
                 <Typography className={styles.muted} data-llms-rule="limits">
                     {t(rules.maxMainResources > 0 ? 'rules.limitsWithContents' : 'rules.limits',
-                        {pages: rules.maxPages, depth: rules.maxDepth, contents: rules.maxMainResources})}
+                        {pages: rules.maxPages, depth: rules.maxDepth, contents: rules.maxMainResources, total: rules.maxPages + rules.maxMainResources})}
                 </Typography>
             )}
         </div>

@@ -103,7 +103,9 @@ export const GenerationCard = ({
                             data-llms-role="generated"
                     >
                         <span>{t('generated.review')}</span>
-                        {generation.truncated && <span>{t('generated.truncated')}</span>}
+                        {generation.truncated && (
+                            <span data-llms-role="cut">{t(`generated.cut.${generation.cutBy || 'pages'}`, {count: generation.skipped})}</span>
+                        )}
                         {generation.failedPages.length > 0 && (
                             <span>
                                 {t('generated.failed', {count: generation.failedPages.length})}
@@ -141,6 +143,8 @@ GenerationCard.propTypes = {
         pages: PropTypes.number,
         failedPages: PropTypes.arrayOf(PropTypes.string),
         truncated: PropTypes.bool,
+        cutBy: PropTypes.string,
+        skipped: PropTypes.number,
         language: PropTypes.string
     }),
     progress: PropTypes.shape({

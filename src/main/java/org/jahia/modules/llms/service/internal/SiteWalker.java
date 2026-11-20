@@ -6,6 +6,7 @@ import org.jahia.services.content.decorator.JCRSiteNode;
 import javax.jcr.RepositoryException;
 import javax.jcr.Value;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,6 +26,10 @@ import java.util.regex.Pattern;
  * <p>Sections: the home page and the level-1 pages without sub-pages come first, under the home page's
  * title; each level-1 page with sub-pages is a section of its own; pages and menu groups beside the home
  * page close the list. Not thread-safe: one instance per walk.</p>
+ *
+ * <p>When the site has more pages than the file may list, the pages nearest to the home page are the ones
+ * kept: every page of a level before any page of the next. The limit then cuts the deepest level reached,
+ * not the last sections of the site.</p>
  *
  * <p>After the pages come the contents that are shown as a page of their own ({@code jmix:mainResource}:
  * a news item, an article), the most recent first, under the title of the page or folder that holds them.
@@ -103,6 +108,10 @@ public final class SiteWalker {
     private final int maxPages;
     private int listed;
     private boolean truncated;
+    /** The pages the limit lets in, chosen level by level before the walk; null before that choice. */
+    private Set<String> admitted;
+    /** Whether that choice left pages out. */
+    private boolean cut;
     private final Set<String> excluded;
     private final Set<String> excludedTrees;
     private final Set<String> included;
@@ -204,6 +213,13 @@ public final class SiteWalker {
             }
         }
         JCRNodeWrapper home = home(top);
+        List<JCRNodeWrapper> start = new ArrayList<>();
+        for (JCRNodeWrapper node : top) {
+            if (isPage(node) || isGroup(node)) {
+                start.add(node);
+            }
+        }
+        choose(start);
         if (home != null) {
             below(sections, home);
         }
@@ -222,7 +238,7 @@ public final class SiteWalker {
             section(sections, title(other), pages);
         }
         contents(sections, site);
-        return new Walk(title(site), oneLine(property(site, "j:description")), sections, truncated);
+        return new Walk(title(site), oneLine(property(site, "j:description")), sections, truncated || cut);
     }
 
     /**
@@ -235,9 +251,40 @@ public final class SiteWalker {
      */
     public Walk walkSection(JCRNodeWrapper sectionPage) throws RepositoryException {
         List<Section> sections = new ArrayList<>();
+        choose(List.of(sectionPage));
         below(sections, sectionPage);
         contents(sections, sectionPage);
-        return new Walk(title(sectionPage), oneLine(property(sectionPage, "jcr:description")), sections, truncated);
+        return new Walk(title(sectionPage), oneLine(property(sectionPage, "jcr:description")), sections, truncated || cut);
+    }
+
+    /**
+     * Chooses the pages the limit lets in, one level at a time from the top: all the pages of a level are
+     * in before the first page of the next. Reads no deeper than the level where the limit is reached.
+     *
+     * @param start the nodes at the top of the walk: their pages are at level 0
+     */
+    private void choose(List<JCRNodeWrapper> start) throws RepositoryException {
+        Set<String> chosen = new HashSet<>();
+        List<JCRNodeWrapper> level = start;
+        for (int depth = 0; depth <= maxDepth && !level.isEmpty() && !cut; depth++) {
+            for (JCRNodeWrapper node : level) {
+                if (isPage(node) && listable(node)) {
+                    if (chosen.size() >= maxPages) {
+                        cut = true;
+                        break;
+                    }
+                    chosen.add(node.getPath());
+                }
+            }
+            List<JCRNodeWrapper> next = new ArrayList<>();
+            if (!cut && depth < maxDepth) {
+                for (JCRNodeWrapper node : level) {
+                    next.addAll(pagesBelow(node));
+                }
+            }
+            level = next;
+        }
+        admitted = chosen;
     }
 
     /**
@@ -314,7 +361,7 @@ public final class SiteWalker {
     }
 
     private void add(List<Page> pages, JCRNodeWrapper page) throws RepositoryException {
-        if (!listable(page)) {
+        if (!listable(page) || (admitted != null && !admitted.contains(page.getPath()))) {
             return;
         }
         if (listed >= maxPages) {

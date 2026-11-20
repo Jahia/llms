@@ -15,6 +15,8 @@ import org.jahia.services.content.JCRTemplate;
 import org.jahia.services.content.decorator.JCRSiteNode;
 import org.jahia.services.content.decorator.JCRUserNode;
 import org.jahia.services.content.nodetypes.NodeTypeRegistry;
+import org.jahia.services.modulemanager.spi.Config;
+import org.jahia.services.modulemanager.spi.ConfigService;
 import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.jsoup.Jsoup;
@@ -98,8 +100,10 @@ public class LlmsService {
     /** Pages converted to Markdown at the same time for visitors: each one renders a page. */
     private final Semaphore pageSlots = new Semaphore(8);
     /** What a generation lists when the site has no configuration of its own. */
-    private volatile SiteSettings defaults = new SiteSettings(3, 200, 100, SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED),
+    private volatile SiteSettings defaults = new SiteSettings(10, 200, 100, SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED),
             Set.of(), Set.of(), false, false);
+    private static final String SITE_PID = "org.jahia.modules.llms.site";
+    private volatile ConfigService configService;
     /** The site configurations, one for each org.jahia.modules.llms.site-*.cfg. */
     private final List<SiteOverride> overrides = new CopyOnWriteArrayList<>();
     /** The generations started from the panel, by identifier, kept a while after they end. */
@@ -176,8 +180,19 @@ public class LlmsService {
     };
 
     /** What a generation produced. */
-    public record Generation(String content, int pages, List<String> failedPages, boolean truncated) {
+    public record Generation(String content, int pages, List<String> failedPages, boolean truncated, String cutBy, int skipped) {
+        /** A file that no limit of time or size cut. */
+        Generation(String content, int pages, List<String> failedPages, boolean truncated) {
+            this(content, pages, failedPages, truncated, truncated ? CUT_BY_PAGES : null, 0);
+        }
     }
+
+    /** The site has more pages than one file lists. */
+    public static final String CUT_BY_PAGES = "pages";
+    /** The file reached its size limit before every page was written. */
+    public static final String CUT_BY_SIZE = "size";
+    /** The time allowed for one generation ran out. */
+    public static final String CUT_BY_TIME = "time";
 
     /**
      * @param config the OSGi configuration
@@ -207,6 +222,110 @@ public class LlmsService {
      */
     public void removeSiteOverride(SiteOverride override) {
         overrides.remove(override);
+    }
+
+    /**
+     * @param service Jahia's configuration service, which writes the files of karaf/etc
+     */
+    @Reference
+    public void setConfigService(ConfigService service) {
+        this.configService = service;
+    }
+
+    /**
+     * One value a site may set, as the panel shows it.
+     *
+     * @param key       its key in the configuration
+     * @param kind      NUMBER, TYPES or FLAG
+     * @param value     what the site sets, or an empty text when it sets nothing
+     * @param inherited what applies when the site sets nothing: the value of the module configuration
+     * @param min       the smallest number allowed, for a number
+     * @param max       the largest number allowed, for a number
+     * @param error     why the value was refused ({@code number}, {@code range}, {@code types}, {@code flag}), or null
+     * @param detail    the names that are not known types, when the error is {@code types}
+     */
+    public record Setting(String key, String kind, String value, String inherited, int min, int max, String error, String detail) {
+    }
+
+    /**
+     * @param siteKey key of the site
+     * @return the values the site may set, with what it sets and what it inherits
+     */
+    public List<Setting> siteSettings(String siteKey) {
+        Map<String, Object> site = Map.of();
+        for (SiteOverride override : overrides) {
+            if (override.siteKey().equals(siteKey)) {
+                site = override.properties();
+                break;
+            }
+        }
+        Map<String, String> values = new HashMap<>();
+        for (SiteSettings.Definition definition : SiteSettings.DEFINITIONS) {
+            Object value = site.get(definition.key());
+            values.put(definition.key(), value == null ? "" : String.valueOf(value).trim());
+        }
+        return settingsOf(values, Map.of());
+    }
+
+    private List<Setting> settingsOf(Map<String, String> values, Map<String, SiteSettings.Refusal> refused) {
+        SiteSettings module = defaults;
+        List<Setting> out = new ArrayList<>();
+        for (SiteSettings.Definition d : SiteSettings.DEFINITIONS) {
+            SiteSettings.Refusal refusal = refused.get(d.key());
+            String value = values.get(d.key());
+            out.add(new Setting(d.key(), d.kind().name(), value == null ? "" : value.trim(), module.textOf(d.key()), d.min(), d.max(),
+                    refusal == null ? null : refusal.code(), refusal == null ? null : refusal.detail()));
+        }
+        return out;
+    }
+
+    /**
+     * Writes what a site lists differently from the module configuration, in its own configuration file
+     * ({@code org.jahia.modules.llms.site-<name>.cfg}). Nothing is written when a value is refused. A site
+     * that sets nothing any more has no file.
+     *
+     * @param siteKey key of the site
+     * @param values  the values by key; a blank or missing one means "as the module configuration says"
+     * @return the values as they now stand; one that carries an error means nothing was saved
+     * @throws IOException              when the configuration cannot be written
+     * @throws IllegalArgumentException when a key is not one a site may set
+     * @throws IllegalStateException    when the configuration of the site cannot be found again by name
+     */
+    public List<Setting> saveSiteSettings(String siteKey, Map<String, String> values) throws IOException {
+        NodeTypeRegistry registry = NodeTypeRegistry.getInstance();
+        Map<String, SiteSettings.Refusal> refused = SiteSettings.check(values, registry::hasNodeType);
+        if (!refused.isEmpty()) {
+            return settingsOf(values, refused);
+        }
+        String identifier = siteKey;
+        for (SiteOverride override : overrides) {
+            if (override.siteKey().equals(siteKey)) {
+                identifier = override.identifier();
+                if (identifier == null) {
+                    throw new IllegalStateException("The configuration of this site was not made from a named file");
+                }
+                break;
+            }
+        }
+        Config config = configService.getConfig(SITE_PID, identifier);
+        Map<String, String> stored = config.getRawProperties();
+        boolean any = false;
+        for (SiteSettings.Definition d : SiteSettings.DEFINITIONS) {
+            String value = values.get(d.key());
+            if (value == null || value.isBlank()) {
+                stored.remove(d.key());
+            } else {
+                stored.put(d.key(), value.trim());
+                any = true;
+            }
+        }
+        if (any) {
+            stored.put("siteKey", siteKey);
+            configService.storeConfig(config);
+        } else {
+            configService.deleteConfig(config);
+        }
+        return settingsOf(values, Map.of());
     }
 
     /** What a generation lists for a site: the module configuration, then what the site's own changes. */
@@ -425,12 +544,15 @@ public class LlmsService {
             int bytes = sb.toString().getBytes(StandardCharsets.UTF_8).length;
             int written = 0;
             boolean truncated = walk.truncated();
+            String cutBy = truncated ? CUT_BY_PAGES : null;
+            int skipped = 0;
             for (int i = 0; i < pages.size(); i++) {
                 SiteWalker.Page page = pages.get(i);
                 long left = TimeUnit.NANOSECONDS.toSeconds(deadline - System.nanoTime());
                 if (left <= 0) {
                     // Out of time: the pages not rendered yet are named, not waited for.
                     truncated = true;
+                    cutBy = CUT_BY_TIME;
                     for (int rest = i; rest < pages.size(); rest++) {
                         failed.add(pages.get(rest).url());
                         progress.page(rest, GenerationJob.PageState.FAILED);
@@ -450,14 +572,21 @@ public class LlmsService {
                 String block = "\n---\n\n# " + page.title() + "\n\nSource: " + page.url() + "\n\n" + body + "\n";
                 int size = block.getBytes(StandardCharsets.UTF_8).length;
                 if (bytes + size > maxBytes) {
+                    // The file is full: this page and the ones after it are said to be left out, not left
+                    // unsaid. The ones still being rendered are stopped below, and are not failures.
                     truncated = true;
+                    cutBy = CUT_BY_SIZE;
+                    skipped = pages.size() - i;
+                    for (int rest = i; rest < pages.size(); rest++) {
+                        progress.page(rest, GenerationJob.PageState.SKIPPED);
+                    }
                     break;
                 }
                 sb.append(block);
                 bytes += size;
                 written++;
             }
-            return new Generation(sb.toString(), written, failed, truncated);
+            return new Generation(sb.toString(), written, failed, truncated, cutBy, skipped);
         } finally {
             pool.shutdownNow();
         }

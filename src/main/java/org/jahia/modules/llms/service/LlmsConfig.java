@@ -14,8 +14,8 @@ public @interface LlmsConfig {
     /**
      * @return how many levels of pages below the home page are walked
      */
-    @AttributeDefinition(name = "Page depth", description = "Levels of pages below the home page that are listed")
-    int maxDepth() default 3;
+    @AttributeDefinition(name = "Page depth", description = "Levels of pages below the home page that are listed (1 to 10). Menu groups do not count as a level. The number of pages is the real limit: when a site has more pages than that, the levels nearest to the home page are listed first.")
+    int maxDepth() default 10;
 
     /**
      * @return the most pages one file lists

@@ -43,7 +43,7 @@
     "trees": "Seiten vom Typ {{types}}, mit allen Unterseiten",
     "marks": "Seiten ohne die Markierung {{types}} (Option In llms.txt aufführen einer Seite)",
     "limits": "Höchstens {{pages}} Seiten werden aufgeführt, bis zu {{depth}} Ebenen unter der Startseite.",
-    "limitsWithContents": "Höchstens {{pages}} Seiten werden aufgeführt, bis zu {{depth}} Ebenen unter der Startseite. Inhalte, die als eigene Seite angezeigt werden (Nachrichten, Artikel), werden ebenfalls aufgeführt, höchstens die {{contents}} neuesten."
+    "limitsWithContents": "Höchstens {{pages}} Seiten werden aufgeführt, bis zu {{depth}} Ebenen unter der Startseite. Inhalte, die als eigene Seite angezeigt werden (Nachrichten, Artikel), werden ebenfalls aufgeführt, höchstens die {{contents}} neuesten. Das sind höchstens {{total}} Einträge in einer Datei."
   },
   "llms": {
     "description": "Ein Verzeichnis der Website für KI-Assistenten: Name der Website, eine Zusammenfassung in einer Zeile, dann die Seiten nach Abschnitten, jeweils mit Link und Beschreibung.",
@@ -73,7 +73,8 @@
     "state": {
       "RENDERED": "Gerendert",
       "EMPTY": "Leer, ausgelassen",
-      "FAILED": "Fehlgeschlagen, ausgelassen"
+      "FAILED": "Fehlgeschlagen, ausgelassen",
+      "SKIPPED": "Ausgelassen, Datei voll"
     },
     "spokenStart": "Generierung gestartet, {{total}} Seiten",
     "spokenStep": "{{percent}} %, {{done}} von {{total}} Seiten",
@@ -82,8 +83,12 @@
   "generated": {
     "title": "Aus {{pages}} Seiten in {{language}} generiert",
     "review": "Der Text unten wurde durch diesen Vorschlag ersetzt. Prüfen und bearbeiten Sie ihn, dann wählen Sie Speichern und veröffentlichen. Änderungen verwerfen stellt die gespeicherte Datei wieder her.",
-    "truncated": " Das Seiten- oder Größenlimit der Modulkonfiguration hat die Datei gekürzt.",
-    "failed": " Seiten, die nicht gerendert werden konnten und ausgelassen wurden ({{count}}):"
+    "failed": " Seiten, die nicht gerendert werden konnten und ausgelassen wurden ({{count}}):",
+    "cut": {
+      "pages": " Die Website hat mehr Seiten, als eine Datei aufführt: Die Seiten, die der Startseite am nächsten sind, wurden behalten.",
+      "size": " Die Datei hat ihre Größengrenze erreicht: Die letzten {{count}} Seiten wurden ausgelassen. Um sie zu erhalten, die Dateien eines Bereichs generieren oder einen Administrator um eine höhere Grenze bitten (maxFullKb).",
+      "time": " Die Zeit für eine Generierung ist abgelaufen: Die nicht rechtzeitig gerenderten Seiten wurden ausgelassen."
+    }
   },
   "notification": {
     "saved": "Die Dateien wurden gespeichert und veröffentlicht."
@@ -96,5 +101,63 @@
   "disabled": {
     "title": "llms.txt ist auf dieser Website nicht verfügbar",
     "text": "Aktivieren Sie das Modul llms.txt manager auf der Website und prüfen Sie, dass Sie die Berechtigung zum Veröffentlichen haben."
+  },
+  "config": {
+    "tab": "Einstellungen",
+    "title": "Was diese Website aufführt",
+    "description": "Diese Werte gelten nur für llms.txt und llms-full.txt dieser Website. Ein leeres Feld behält den Standardwert dieses Jahia, der darunter genannt ist. Eine Änderung gilt für die nächste Generierung: Eine bereits gespeicherte Datei bleibt, wie sie ist, bis sie neu generiert und veröffentlicht wird.",
+    "inherit": "Leer: der Standardwert dieses Jahia ({{value}}).",
+    "nothing": "keiner",
+    "maxPages": {
+      "label": "Aufgeführte Seiten",
+      "help": "Höchstzahl der Seiten in einer Datei, von {{min}} bis {{max}}. Hat die Website mehr, bleiben die Seiten, die der Startseite am nächsten sind. Jede aufgeführte Seite wird für llms-full.txt gerendert: Eine große Zahl verlängert die Generierung."
+    },
+    "maxDepth": {
+      "label": "Seitentiefe",
+      "help": "Ebenen unter der Startseite, die aufgeführt werden, von {{min}} bis {{max}}. Menügruppen zählen nicht als Ebene."
+    },
+    "maxMainResources": {
+      "label": "Als Seite angezeigte Inhalte",
+      "help": "Höchstzahl der Inhalte, die als eigene Seite angezeigt werden (Nachrichten, Artikel) und nach den Seiten aufgeführt werden, die neuesten zuerst, von {{min}} bis {{max}}. 0 führt keine auf."
+    },
+    "includedNodeTypes": {
+      "label": "Nur markierte Seiten aufführen",
+      "help": "Knotentypen (Mixins), durch Kommas getrennt. Sind welche angegeben, werden nur Seiten aufgeführt, die einen davon tragen. jmix:llmsListed ist die Option In llms.txt aufführen einer Seite; der Inhaltseditor zeigt sie den Rollen mit der gleichnamigen Berechtigung. none eingeben, um alle Seiten dieser Website aufzuführen."
+    },
+    "excludedNodeTypes": {
+      "label": "Ausgelassene Seiten",
+      "help": "Knotentypen (Mixins) der ausgelassenen Seiten, durch Kommas getrennt, zum Beispiel jseomix:noIndex. Ihre Unterseiten werden weiterhin aufgeführt. Die Liste ersetzt die Standardliste: zu behaltende Typen wiederholen. none eingeben, um keine Seite auszulassen."
+    },
+    "excludedTreeNodeTypes": {
+      "label": "Ausgelassene Bereiche",
+      "help": "Knotentypen (Mixins) der Seiten, die mit allen Unterseiten ausgelassen werden, durch Kommas getrennt. none eingeben, um keinen Bereich auszulassen."
+    },
+    "linkToMarkdown": {
+      "label": "Links in llms.txt",
+      "help": "Ja: Jede Zeile von llms.txt verweist auf die Markdown-Version der Seite (page.html.md), wie es der llms.txt-Vorschlag empfiehlt. Nein: Sie verweist auf die Seite. Nein wählen, wenn ein anderes Werkzeug diese Links mit den Adressen der Seiten vergleicht."
+    },
+    "keepImages": {
+      "label": "Bilder in llms-full.txt",
+      "help": "Ja: Die Bilder einer Seite mit Textalternative werden geschrieben. Nein: Bilder werden ausgelassen, ein Textleser gewinnt wenig durch sie."
+    },
+    "choice": {
+      "default": "Standardwert dieses Jahia ({{value}})",
+      "yes": "Ja",
+      "no": "Nein"
+    },
+    "save": "Einstellungen speichern",
+    "reset": "Auf Standardwerte zurücksetzen",
+    "unsaved": "Änderungen noch nicht gespeichert.",
+    "resetDone": "Felder geleert. Noch nicht gespeichert.",
+    "saved": "Die Einstellungen der Website wurden gespeichert. Sie gelten für die nächste Generierung.",
+    "server": "Die Grenzen, die den Server schützen (gleichzeitig gerenderte Seiten, Zeitlimits, Dateigrößen), sind für alle Websites gleich. Ein Administrator des Servers legt sie in der OSGi-Konfiguration org.jahia.modules.llms fest.",
+    "errors": {
+      "summary": "{{count}} Werte zu korrigieren. Nichts wurde gespeichert.",
+      "save": "Die Einstellungen konnten nicht gespeichert werden",
+      "number": "Fehler: eine ganze Zahl eingeben.",
+      "range": "Fehler: eine Zahl von {{min}} bis {{max}} eingeben.",
+      "types": "Fehler: kein Knotentyp dieses Jahia: {{detail}}.",
+      "flag": "Fehler: Ja, Nein oder den Standardwert wählen."
+    }
   }
 }

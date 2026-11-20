@@ -18,7 +18,11 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.jcr.AccessDeniedException;
 import javax.jcr.RepositoryException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The llms mutations, under {@code llms} on the root Mutation: writes the files an editor reviewed and
@@ -31,6 +35,8 @@ public class GqlLlmsMutation {
     private static final Logger LOGGER = LoggerFactory.getLogger(GqlLlmsMutation.class);
     /** llms.txt is an index: a file this large is a mistake, not a list of pages. */
     private static final int MAX_LLMS_BYTES = 1024 * 1024;
+    private static final int MAX_SETTINGS = 32;
+    private static final int MAX_SETTING_LENGTH = 2000;
 
     @Inject
     @GraphQLOsgiService
@@ -71,6 +77,45 @@ public class GqlLlmsMutation {
             LOGGER.warn("Could not save the llms files of {}: {}", siteKey, e.getMessage());
             LOGGER.debug("Full exception", e);
             throw new DataFetchingException("The files could not be saved");
+        }
+    }
+
+    /**
+     * @param siteKey key of the site
+     * @param keys    the keys of the values
+     * @param values  the values, in the order of the keys; a blank one means "as the module configuration says"
+     * @return the values as they now stand; one that carries an error means nothing was saved
+     */
+    @GraphQLField
+    @GraphQLName("saveSettings")
+    @GraphQLNonNull
+    @GraphQLDescription("Writes what a site lists differently from the module configuration, in the configuration of that site. Nothing is written when a value is refused: the refused values come back with an error.")
+    public List<GqlLlmsSetting> saveSettings(
+            @GraphQLName("siteKey") @GraphQLNonNull @GraphQLDescription("Key of the site") String siteKey,
+            @GraphQLName("keys") @GraphQLNonNull @GraphQLDescription("Keys of the values") List<String> keys,
+            @GraphQLName("values") @GraphQLNonNull @GraphQLDescription("The values, in the order of the keys; blank for the value of the module configuration") List<String> values) {
+        SiteAccess.site(siteKey, SiteAccess.SETTINGS);
+        if (keys.size() != values.size() || keys.size() > MAX_SETTINGS) {
+            throw new DataFetchingException("As many values as keys are expected");
+        }
+        Map<String, String> byKey = new LinkedHashMap<>();
+        for (int i = 0; i < keys.size(); i++) {
+            String value = values.get(i);
+            if (value != null && value.length() > MAX_SETTING_LENGTH) {
+                throw new DataFetchingException("A value is too long");
+            }
+            byKey.put(keys.get(i), value);
+        }
+        try {
+            return service.saveSiteSettings(siteKey, byKey).stream().map(GqlLlmsSetting::new).toList();
+        } catch (IllegalArgumentException e) {
+            throw new DataFetchingException("Unknown setting");
+        } catch (IllegalStateException e) {
+            throw new DataFetchingException(e.getMessage());
+        } catch (IOException e) {
+            LOGGER.warn("Could not write the llms settings of {}: {}", siteKey, e.getMessage());
+            LOGGER.debug("Full exception", e);
+            throw new DataFetchingException("The settings could not be saved");
         }
     }
 

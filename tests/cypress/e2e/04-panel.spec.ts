@@ -63,7 +63,7 @@ describe('the llms.txt panel in jContent', () => {
             cy.get('[data-llms-rule="noIndex"]').should('have.text', 'Pages marked No index in their SEO options');
             // The marks of template sets this Jahia does not have are not shown: no page here can carry them.
             cy.get('[data-llms-rule="types"]').should('not.exist');
-            cy.get('[data-llms-rule="limits"]').invoke('text').should('match', /^At most \d+ pages are listed, down to \d+ levels below the home page\. Content displayed as a page of its own \(news, articles\) is listed too, the \d+ most recent at most\.$/);
+            cy.get('[data-llms-rule="limits"]').invoke('text').should('match', /^At most \d+ pages are listed, down to \d+ levels below the home page\. Content displayed as a page of its own \(news, articles\) is listed too, the \d+ most recent at most\. That is \d+ entries at most in one file\.$/);
         });
     });
 

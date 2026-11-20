@@ -22,6 +22,12 @@
 * **List only marked pages**: `includedNodeTypes` lists only the pages and contents that carry a mixin,
   such as the new page option `jmix:llmsListed` (List in llms.txt). The content editor shows that
   option only to who holds the new permission `llmsListPages` on the site.
+* **Settings tab** in the panel, for who administers the site (permission `siteAdminLlmsSettings`): the
+  values of the site, each explained and checked, written in the configuration of that site.
+* **Fair page selection**: when a site has more pages than one file lists, every page of a level is
+  listed before any page of the next. `maxDepth` now defaults to 10: `maxPages` is the limit.
+* The panel says which limit cut a generated file (pages, size or time) and how many pages were left
+  out; pages not written because llms-full.txt was full are marked so, no longer as failures.
 * **A configuration per site**: `org.jahia.modules.llms.site-<name>.cfg` changes, for one site, what is
   listed (depth, numbers, excluded and listed types, links to Markdown, images).
 

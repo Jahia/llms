@@ -63,4 +63,23 @@ public class GqlLlmsGeneration {
     public boolean isTruncated() {
         return generation.truncated();
     }
+
+    /**
+     * @return which limit cut the file, or null
+     */
+    @GraphQLField
+    @GraphQLDescription("Which limit cut the file: pages (more pages than one file lists), size (the file is full) or time (the generation ran out of time); null when nothing was cut")
+    public String getCutBy() {
+        return generation.cutBy();
+    }
+
+    /**
+     * @return how many listed pages were not written because the file was full
+     */
+    @GraphQLField
+    @GraphQLNonNull
+    @GraphQLDescription("How many listed pages were not written because the file had reached its size limit")
+    public int getSkipped() {
+        return generation.skipped();
+    }
 }

@@ -43,6 +43,40 @@ class SiteSettingsTest {
     }
 
     @Test
+    void whatAnAdministratorTypesIsRefusedRatherThanCorrected() {
+        Map<String, SiteSettings.Refusal> refused = SiteSettings.check(Map.of(
+                "maxDepth", "99", "maxPages", "many", "maxMainResources", "0",
+                "excludedNodeTypes", "jseomix:noIndex, acme:unknown, notAType", "linkToMarkdown", "yes"),
+                "jseomix:noIndex"::equals);
+        assertThat(refused.get("maxDepth").code()).isEqualTo("range");
+        assertThat(refused.get("maxPages").code()).isEqualTo("number");
+        assertThat(refused).doesNotContainKey("maxMainResources");
+        assertThat(refused.get("excludedNodeTypes")).isEqualTo(new SiteSettings.Refusal("types", "acme:unknown, notAType"));
+        assertThat(refused.get("linkToMarkdown").code()).isEqualTo("flag");
+    }
+
+    @Test
+    void blankValuesAndNoneAreAccepted() {
+        assertThat(SiteSettings.check(Map.of("maxDepth", " ", "includedNodeTypes", "none", "keepImages", "false"), name -> false)).isEmpty();
+    }
+
+    @Test
+    void aKeyASiteMayNotSetIsNotChecked() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> SiteSettings.check(Map.of("renderBaseUrl", "http://internal"), name -> true))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> SiteSettings.check(Map.of("fetchThreads", "64"), name -> true))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void theValuesAreWrittenAsAConfigurationWritesThem() {
+        assertThat(MODULE.textOf("maxDepth")).isEqualTo("3");
+        assertThat(MODULE.textOf("excludedNodeTypes")).isEqualTo("jseomix:noIndex");
+        assertThat(MODULE.textOf("includedNodeTypes")).isEmpty();
+        assertThat(MODULE.textOf("keepImages")).isEqualTo("false");
+    }
+
+    @Test
     void aFlagIsTrueOrFalseAndNothingElse() {
         SiteSettings on = MODULE.with(Map.of("keepImages", "TRUE"));
         assertThat(on.keepImages()).isTrue();

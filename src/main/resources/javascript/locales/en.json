@@ -43,7 +43,7 @@
     "trees": "Pages of type {{types}}, with all their sub-pages",
     "marks": "Pages that do not carry the mark {{types}} (the option List in llms.txt of a page)",
     "limits": "At most {{pages}} pages are listed, down to {{depth}} levels below the home page.",
-    "limitsWithContents": "At most {{pages}} pages are listed, down to {{depth}} levels below the home page. Content displayed as a page of its own (news, articles) is listed too, the {{contents}} most recent at most."
+    "limitsWithContents": "At most {{pages}} pages are listed, down to {{depth}} levels below the home page. Content displayed as a page of its own (news, articles) is listed too, the {{contents}} most recent at most. That is {{total}} entries at most in one file."
   },
   "llms": {
     "description": "An index of the site for AI assistants: the site's name, a one-line summary, then its pages by section, each with a link and its description.",
@@ -73,7 +73,8 @@
     "state": {
       "RENDERED": "Rendered",
       "EMPTY": "Empty, left out",
-      "FAILED": "Failed, left out"
+      "FAILED": "Failed, left out",
+      "SKIPPED": "Left out, file full"
     },
     "spokenStart": "Generation started, {{total}} pages",
     "spokenStep": "{{percent}}%, {{done}} of {{total}} pages",
@@ -82,8 +83,12 @@
   "generated": {
     "title": "Generated from {{pages}} pages in {{language}}",
     "review": "The text below was replaced by this proposal. Review and edit it, then select Save and publish. Discard changes restores the saved file.",
-    "truncated": " The page or size limit of the module configuration cut the file.",
-    "failed": " Pages that could not be rendered, left out of the file ({{count}}):"
+    "failed": " Pages that could not be rendered, left out of the file ({{count}}):",
+    "cut": {
+      "pages": " The site has more pages than one file lists: the pages nearest to the home page were kept.",
+      "size": " The file reached its size limit: the last {{count}} pages were left out. To have them, generate the files of a section, or ask an administrator for a higher limit (maxFullKb).",
+      "time": " The time allowed for one generation ran out: the pages not rendered in time were left out."
+    }
   },
   "notification": {
     "saved": "The files were saved and published."
@@ -96,5 +101,63 @@
   "disabled": {
     "title": "llms.txt is not available on this site",
     "text": "Enable the llms.txt manager module on the site, and make sure you have the publish permission on it."
+  },
+  "config": {
+    "tab": "Settings",
+    "title": "What this site lists",
+    "description": "These values apply to the llms.txt and llms-full.txt of this site only. An empty field keeps the default of this Jahia, named under it. A change applies to the next generation: a file already saved stays as it is until it is generated and published again.",
+    "inherit": "Empty: the default of this Jahia ({{value}}).",
+    "nothing": "none",
+    "maxPages": {
+      "label": "Pages listed",
+      "help": "Most pages one file lists, from {{min}} to {{max}}. When the site has more, the pages nearest to the home page are kept. Each listed page is rendered for llms-full.txt: a large number makes its generation long."
+    },
+    "maxDepth": {
+      "label": "Page depth",
+      "help": "Levels of pages below the home page that are listed, from {{min}} to {{max}}. Menu groups do not count as a level."
+    },
+    "maxMainResources": {
+      "label": "Contents shown as a page",
+      "help": "Most contents displayed as a page of their own (news, articles) listed after the pages, the most recent first, from {{min}} to {{max}}. 0 lists none."
+    },
+    "includedNodeTypes": {
+      "label": "List only marked pages",
+      "help": "Node types (mixins), separated by commas. When set, only the pages that carry one of them are listed. jmix:llmsListed is the option List in llms.txt of a page; the content editor shows it to the roles that hold the permission of that name. Type none to list every page on this site."
+    },
+    "excludedNodeTypes": {
+      "label": "Pages left out",
+      "help": "Node types (mixins) of the pages left out, separated by commas, for example jseomix:noIndex. Their sub-pages are still listed. The list replaces the default one: repeat the types to keep. Type none to leave no page out."
+    },
+    "excludedTreeNodeTypes": {
+      "label": "Sections left out",
+      "help": "Node types (mixins) of the pages left out with all their sub-pages, separated by commas. Type none to leave no section out."
+    },
+    "linkToMarkdown": {
+      "label": "Links of llms.txt",
+      "help": "Yes: each line of llms.txt links to the Markdown version of the page (page.html.md), as the llms.txt proposal recommends. No: it links to the page. Choose No when another tool compares these links with the addresses of the pages."
+    },
+    "keepImages": {
+      "label": "Images in llms-full.txt",
+      "help": "Yes: the images of a page that have a text alternative are written. No: images are left out, a reader of text gains little from them."
+    },
+    "choice": {
+      "default": "Default of this Jahia ({{value}})",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "save": "Save settings",
+    "reset": "Reset to defaults",
+    "unsaved": "Changes not saved yet.",
+    "resetDone": "Fields emptied. Not saved yet.",
+    "saved": "The settings of the site were saved. They apply to the next generation.",
+    "server": "The limits that protect the server (pages rendered at the same time, timeouts, file sizes) are the same for every site. An administrator of the server sets them in the OSGi configuration org.jahia.modules.llms.",
+    "errors": {
+      "summary": "{{count}} values to correct. Nothing was saved.",
+      "save": "The settings could not be saved",
+      "number": "Error: enter a whole number.",
+      "range": "Error: enter a number from {{min}} to {{max}}.",
+      "types": "Error: not a node type of this Jahia: {{detail}}.",
+      "flag": "Error: choose Yes, No or the default."
+    }
   }
 }

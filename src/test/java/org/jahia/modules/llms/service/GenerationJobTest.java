@@ -41,6 +41,22 @@ class GenerationJobTest {
     }
 
     @Test
+    void aPageLeftOutBecauseTheFileIsFullStaysSo() {
+        GenerationJob job = new GenerationJob("id", "a");
+        job.started(List.of(page("home"), page("about")));
+        job.page(0, GenerationJob.PageState.RENDERED);
+        job.page(1, GenerationJob.PageState.SKIPPED);
+        // The page was still being rendered when the file filled up: its thread, stopped, reports a failure.
+        job.page(1, GenerationJob.PageState.FAILED);
+
+        GenerationJob.Snapshot snapshot = job.snapshot();
+        assertThat(snapshot.pages()).extracting(GenerationJob.PageProgress::state)
+                .containsExactly(GenerationJob.PageState.RENDERED, GenerationJob.PageState.SKIPPED);
+        // Left out is done: the count reaches the total, and the bar its end.
+        assertThat(snapshot.done()).isEqualTo(2);
+    }
+
+    @Test
     void givesTheFileOnlyOnceFinished() {
         GenerationJob job = new GenerationJob("id", "a");
         job.started(List.of(page("home")));
