@@ -15,6 +15,10 @@ class HtmlToMarkdownTest {
         return HtmlToMarkdown.convert(Jsoup.parse(html, BASE), title, UnaryOperator.identity());
     }
 
+    private static String withImages(String html, String title) {
+        return HtmlToMarkdown.convert(Jsoup.parse(html, BASE), title, UnaryOperator.identity(), true);
+    }
+
     @Test
     void keepsMainAndDropsChrome() {
         String md = convert("<html><body><header><nav><a href='/'>Home</a></nav></header>"
@@ -38,7 +42,7 @@ class HtmlToMarkdownTest {
 
     @Test
     void resolvesLinksAndImagesAgainstThePublicUrl() {
-        String md = convert("<main><p>See <a href='/en/contact.html'>contact</a> and "
+        String md = withImages("<main><p>See <a href='/en/contact.html'>contact</a> and "
                 + "<a href='#top'>top</a>. <img src='/files/a.png' alt='A chart'><img src='/b.png' alt=''></p></main>", "x");
         assertThat(md).isEqualTo("See [contact](https://www.example.com/en/contact.html) and top. "
                 + "![A chart](https://www.example.com/files/a.png)");
@@ -100,7 +104,7 @@ class HtmlToMarkdownTest {
 
     @Test
     void dropsImagesThatAreNotOnTheWeb() {
-        String md = convert("<main><p><img alt='a' src='data:image/png;base64,AAAA'><img alt='b' src='javascript:x'>"
+        String md = withImages("<main><p><img alt='a' src='data:image/png;base64,AAAA'><img alt='b' src='javascript:x'>"
                 + "<img alt='c' src='/c.png'></p></main>", "T");
         assertThat(md).isEqualTo("![c](https://www.example.com/c.png)");
     }
@@ -189,7 +193,7 @@ class HtmlToMarkdownTest {
 
     @Test
     void keepsAnEmbeddedVideoAsALinkAndALazyImage() {
-        String md = convert("<main><p><iframe title='Presentation video' src='https://video.example.com/embed/1'></iframe></p>"
+        String md = withImages("<main><p><iframe title='Presentation video' src='https://video.example.com/embed/1'></iframe></p>"
                 + "<p><iframe src='https://tracker.example.com/x'></iframe></p>"
                 + "<p><img alt='Team' src='data:image/gif;base64,AAAA' data-src='/team.jpg'></p></main>", "T");
         assertThat(md).isEqualTo("[Presentation video](https://video.example.com/embed/1)\n\n![Team](https://www.example.com/team.jpg)");
@@ -245,5 +249,16 @@ class HtmlToMarkdownTest {
                 + "<div id='loginForm' class='modal fade' role='dialog'><form><label>Username</label><input></form></div>"
                 + "</div></body>", "P1");
         assertThat(md).isEqualTo("yeah!");
+    }
+
+    @Test
+    void leavesImagesOutUnlessAskedFor() {
+        String html = "<main><p>Our team <img alt='Team photo' src='/team.jpg'> at work.</p>"
+                + "<p><a href='/home.html'><img alt='Logo' src='/logo.png'></a></p>"
+                + "<figure><img alt='Chart' src='/chart.png'><figcaption>Sales in 2025</figcaption></figure></main>";
+        // A link that held only an image has nothing left to say: it goes with the image.
+        assertThat(convert(html, "T")).isEqualTo("Our team at work.\n\nSales in 2025");
+        assertThat(withImages(html, "T")).contains("![Team photo](https://www.example.com/team.jpg)")
+                .contains("[![Logo](https://www.example.com/logo.png)](https://www.example.com/home.html)");
     }
 }

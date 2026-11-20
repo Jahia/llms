@@ -54,6 +54,12 @@ public @interface LlmsConfig {
     int maxTotalSeconds() default 300;
 
     /**
+     * @return whether the images of a page are written in llms-full.txt
+     */
+    @AttributeDefinition(name = "Keep images", description = "Write the images of a page that have a text alternative in llms-full.txt. Off: images are left out.")
+    boolean keepImages() default false;
+
+    /**
      * @return where this Jahia renders pages for llms-full.txt; blank for the port the request came in on, on 127.0.0.1
      */
     @AttributeDefinition(name = "Render base URL", description = "Scheme, host and port this Jahia answers on from inside its own container (http://127.0.0.1:8080). Blank: 127.0.0.1 on the port of the request.", required = false)

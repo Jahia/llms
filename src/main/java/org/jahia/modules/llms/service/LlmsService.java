@@ -18,6 +18,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
@@ -33,11 +34,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -78,6 +81,15 @@ public class LlmsService {
     /** Walks of a page tree running for llms.txt. */
     private final Semaphore walkSlots = new Semaphore(4);
     private volatile Limits limits;
+    private volatile boolean keepImages;
+    /** The generations started from the panel, by identifier, kept a while after they end. */
+    private final Map<String, GenerationJob> jobs = new ConcurrentHashMap<>();
+    private static final long JOB_LIFETIME_NANOS = TimeUnit.MINUTES.toNanos(15);
+    private final ExecutorService jobRunner = Executors.newCachedThreadPool(runnable -> {
+        Thread thread = new Thread(runnable, "llms-generation");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     /**
      * Where one file stands in live.
@@ -91,6 +103,32 @@ public class LlmsService {
     /** Where the two files of a site stand in live. */
     public record Status(FileStatus llms, FileStatus llmsFull) {
     }
+
+    /** Told how a generation of llms-full.txt goes, page by page. Called from several threads. */
+    public interface Progress {
+        /**
+         * @param pages the pages that will be rendered, in the order of the file
+         */
+        void started(List<SiteWalker.Page> pages);
+
+        /**
+         * @param index the place of a page in that list
+         * @param state what became of it
+         */
+        void page(int index, GenerationJob.PageState state);
+    }
+
+    private static final Progress NO_PROGRESS = new Progress() {
+        @Override
+        public void started(List<SiteWalker.Page> pages) {
+            // nobody follows a generation asked for in one request
+        }
+
+        @Override
+        public void page(int index, GenerationJob.PageState state) {
+            // nobody follows a generation asked for in one request
+        }
+    };
 
     /** What a generation produced. */
     public record Generation(String content, int pages, List<String> failedPages, boolean truncated) {
@@ -106,6 +144,7 @@ public class LlmsService {
             LOGGER.warn("renderBaseUrl is not a scheme, a host and an optional port: ignored, pages are rendered on 127.0.0.1");
         }
         this.limits = Limits.of(config);
+        this.keepImages = config.keepImages();
     }
 
     /**
@@ -165,7 +204,7 @@ public class LlmsService {
                 throw new IllegalStateException(BUSY);
             }
             try {
-                return full(walk(siteKey, language, baseUrl), siteKey, renderBase);
+                return full(walk(siteKey, language, baseUrl), siteKey, renderBase, NO_PROGRESS);
             } finally {
                 fullSlots.release();
             }
@@ -174,10 +213,74 @@ public class LlmsService {
         }
     }
 
-    private Generation full(SiteWalker.Walk walk, String siteKey, String renderBase) {
+    /**
+     * Starts a generation of llms-full.txt in the background and returns at once. The panel then reads
+     * {@link #job} until it is finished: the pages rendered so far, then the file.
+     *
+     * @param siteKey    key of the site
+     * @param language   language of the pages
+     * @param baseUrl    public base URL of the site
+     * @param renderBase scheme, host and port this Jahia answers on from inside its container
+     * @return the identifier of the generation
+     * @throws IllegalStateException when a generation of the same site, or too many generations, are running
+     */
+    public String startFullGeneration(String siteKey, String language, String baseUrl, String renderBase) {
+        jobs.values().removeIf(old -> old.ageNanos() > JOB_LIFETIME_NANOS);
+        if (!running.add(siteKey)) {
+            throw new IllegalStateException("A generation of llms-full.txt is already running for this site");
+        }
+        if (!fullSlots.tryAcquire()) {
+            running.remove(siteKey);
+            throw new IllegalStateException(BUSY);
+        }
+        GenerationJob job = new GenerationJob(UUID.randomUUID().toString(), siteKey);
+        jobs.put(job.id(), job);
+        try {
+            jobRunner.execute(() -> {
+                try {
+                    job.finish(full(walk(siteKey, language, baseUrl), siteKey, renderBase, job));
+                } catch (RepositoryException | RuntimeException e) {
+                    LOGGER.warn("Could not generate llms-full.txt for {}: {}", siteKey, e.getMessage());
+                    LOGGER.debug("Full exception", e);
+                    job.fail("The file could not be generated");
+                } finally {
+                    fullSlots.release();
+                    running.remove(siteKey);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            // The module is stopping.
+            jobs.remove(job.id());
+            fullSlots.release();
+            running.remove(siteKey);
+            throw new IllegalStateException(BUSY);
+        }
+        return job.id();
+    }
+
+    /**
+     * @param siteKey key of the site the caller may generate for
+     * @param id      identifier of a generation
+     * @return that generation when it is one of this site, else null
+     */
+    public GenerationJob job(String siteKey, String id) {
+        GenerationJob job = id == null ? null : jobs.get(id);
+        return job != null && job.siteKey().equals(siteKey) ? job : null;
+    }
+
+    /** Stops the generations that run when the module stops. */
+    @Deactivate
+    public void deactivate() {
+        jobRunner.shutdownNow();
+        jobs.clear();
+    }
+
+    private Generation full(SiteWalker.Walk walk, String siteKey, String renderBase, Progress progress) {
         Limits c = limits;
+        boolean images = keepImages;
         String base = c.renderBaseUrl() == null ? renderBase : c.renderBaseUrl();
         List<SiteWalker.Page> pages = walk.pages();
+        progress.started(pages);
         // A page may redirect, but only to a render URL of the same site: the file describes this site
         // alone. The allowed paths start like the render URLs of the listed pages, up to the site key.
         Set<String> sitePrefixes = sitePrefixes(pages, siteKey);
@@ -199,10 +302,20 @@ public class LlmsService {
         ExecutorService pool = Executors.newFixedThreadPool(c.fetchThreads());
         try {
             List<Future<String>> markdown = new ArrayList<>();
-            for (SiteWalker.Page page : pages) {
+            for (int i = 0; i < pages.size(); i++) {
+                SiteWalker.Page page = pages.get(i);
+                int index = i;
                 markdown.add(pool.submit(() -> {
-                    Document doc = Jsoup.parse(fetcher.fetch(page.renderPath()), page.url());
-                    return HtmlToMarkdown.convert(doc, page.title(), href -> relink(href, page.url(), publicUrls));
+                    try {
+                        Document doc = Jsoup.parse(fetcher.fetch(page.renderPath()), page.url());
+                        String md = HtmlToMarkdown.convert(doc, page.title(), href -> relink(href, page.url(), publicUrls), images);
+                        // Said as soon as the page is rendered, not when its turn comes to be written.
+                        progress.page(index, md.isBlank() ? GenerationJob.PageState.EMPTY : GenerationJob.PageState.RENDERED);
+                        return md;
+                    } catch (Exception e) {
+                        progress.page(index, GenerationJob.PageState.FAILED);
+                        throw e;
+                    }
                 }));
             }
             StringBuilder sb = header(walk);
@@ -217,10 +330,17 @@ public class LlmsService {
                 if (left <= 0) {
                     // Out of time: the pages not rendered yet are named, not waited for.
                     truncated = true;
-                    pages.subList(i, pages.size()).forEach(p -> failed.add(p.url()));
+                    for (int rest = i; rest < pages.size(); rest++) {
+                        failed.add(pages.get(rest).url());
+                        progress.page(rest, GenerationJob.PageState.FAILED);
+                    }
                     break;
                 }
                 String body = body(markdown.get(i), page, Math.min(c.fetchTimeoutSeconds() * 2L, left), failed);
+                if (body == null) {
+                    // Also a page that did not answer in time, which its own thread has not reported.
+                    progress.page(i, GenerationJob.PageState.FAILED);
+                }
                 // A page with nothing to read (an empty page, a page that is only a form) adds no block:
                 // a title and an address with nothing under them tell a reader nothing.
                 if (body == null || body.isBlank()) {

@@ -17,8 +17,8 @@ import java.util.regex.Pattern;
 /**
  * Turns the main content of a rendered page into Markdown for llms-full.txt.
  *
- * <p>Only what a reader needs survives: headings, paragraphs, lists, quotes, code, tables, links and
- * images that have a text alternative. Scripts, styles, form controls, dialogs and the page chrome
+ * <p>Only what a reader needs survives: headings, paragraphs, lists, quotes, code, tables and links.
+ * Images are left out unless asked for; kept, only those with a text alternative are written. Scripts, styles, form controls, dialogs and the page chrome
  * (header, navigation, footer) are dropped. Hidden elements are dropped too, except the panels a visitor
  * can open (tabs, accordions, slides). The content is the whole body without its chrome; a usual place
  * ({@code <main>}, a single {@code <article>}, {@code #content}) replaces it only when it holds nearly
@@ -85,6 +85,18 @@ public final class HtmlToMarkdown {
      * @return the Markdown of the page's main content, without a trailing new line
      */
     public static String convert(Document page, String title, UnaryOperator<String> linkMap) {
+        return convert(page, title, linkMap, false);
+    }
+
+    /**
+     * @param page       the rendered page, parsed with its public URL as base URI
+     * @param title      the page title, written by the caller: a first {@code h1} with the same text is left out
+     * @param linkMap    maps an absolute link of the page to the URL to write (the public URL of a listed page)
+     * @param keepImages false to leave images out: a reader of text gains nothing from an address it cannot
+     *                   open, and logos, icons and decorations are most of the images of a page
+     * @return the Markdown of the page's main content, without a trailing new line
+     */
+    public static String convert(Document page, String title, UnaryOperator<String> linkMap, boolean keepImages) {
         Element body = page.body();
         revealDisclosed(body);
         // The title of an accordion is a button inside a heading: its text is the heading.
@@ -94,7 +106,7 @@ public final class HtmlToMarkdown {
         page.select(DROPPED).remove();
         Element main = mainContent(body);
         main.select(BREADCRUMB).remove();
-        Writer writer = new Writer(title, linkMap, false);
+        Writer writer = new Writer(title, linkMap, false, keepImages);
         writer.blocks(main, 0);
         return writer.result();
     }
@@ -226,10 +238,12 @@ public final class HtmlToMarkdown {
         private final UnaryOperator<String> linkMap;
         /** Inside a list item or a table cell: everything ends up on one line, headings included. */
         private final boolean flat;
+        private final boolean keepImages;
         private final List<String> out = new ArrayList<>();
         private boolean titleSeen;
 
-        Writer(String title, UnaryOperator<String> linkMap, boolean flat) {
+        Writer(String title, UnaryOperator<String> linkMap, boolean flat, boolean keepImages) {
+            this.keepImages = keepImages;
             this.title = title == null ? "" : title.trim();
             this.linkMap = linkMap;
             this.flat = flat;
@@ -333,13 +347,13 @@ public final class HtmlToMarkdown {
 
         /** A block inside a list item or a table cell, flattened to one line. */
         private String textOfBlock(Element el) {
-            Writer inner = new Writer("", linkMap, true);
+            Writer inner = new Writer("", linkMap, true, keepImages);
             inner.blocks(el, 0);
             return oneLine(inner.result());
         }
 
         private String quote(Element el) {
-            Writer inner = new Writer("", linkMap, false);
+            Writer inner = new Writer("", linkMap, false, keepImages);
             inner.titleSeen = true;
             inner.blocks(el, 0);
             String text = inner.result();
@@ -400,7 +414,7 @@ public final class HtmlToMarkdown {
             return switch (name) {
                 case "br" -> "\n";
                 case "a" -> link(el);
-                case "img" -> image(el);
+                case "img" -> keepImages ? image(el) : "";
                 case "iframe" -> embed(el);
                 case "strong", "b" -> wrap(inlineOf(el), "**");
                 case "em", "i" -> wrap(inlineOf(el), "*");
@@ -421,7 +435,9 @@ public final class HtmlToMarkdown {
             if (text.isEmpty()) {
                 return "";
             }
-            return "[" + text.replace("[", "\\[").replace("]", "\\]") + "](" + target(linkMap.apply(href)) + ")";
+            // The text of a link around an image is that image, already written as Markdown: its brackets stay.
+            String label = keepImages && a.selectFirst("img") != null ? text : text.replace("[", "\\[").replace("]", "\\]");
+            return "[" + label + "](" + target(linkMap.apply(href)) + ")";
         }
 
         private String image(Element img) {

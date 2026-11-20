@@ -69,6 +69,7 @@ add `digital-factory-data/karaf/etc/org.jahia.modules.llms.cfg` to change a valu
 | `maxPageKb` | `2048` | Largest rendered page read |
 | `maxFullKb` | `4096` | Largest llms-full.txt produced |
 | `maxTotalSeconds` | `300` | Time allowed for one generation of llms-full.txt, all pages together. Pages not rendered in time are named after generation and left out. |
+| `keepImages` | `false` | Write the images of a page (those with a text alternative) in llms-full.txt. Off, images are left out: a text reader gains little from them, and most are logos and decorations. |
 | `renderBaseUrl` | blank | Scheme, host and port this Jahia answers on from inside its own container. Blank: `http://127.0.0.1` on the port the editor's request came in on. Set it when Jahia sits behind a connector on another port. |
 
 A value out of range is brought back into it (for example `maxPages` between 1 and 2000, sizes up to
