@@ -96,7 +96,8 @@ describe('generating llms.txt and llms-full.txt', () => {
         'javascript:alert(1)'
     ].forEach(baseUrl => {
         // No double quote in a test title: @jahia/cypress writes titles into a Groovy string on the server.
-        it(`refuses the public URL ${baseUrl.replace('\n', '<newline>')}`, () => {
+        // A line break is written out, wherever it is: a title is one line.
+        it(`refuses the public URL ${baseUrl.replace(/\n/g, '<newline>')}`, () => {
             generate({baseUrl}).then(response => {
                 expect(errorOf(response)).to.eq('The public URL must be a scheme, a host and an optional port');
             });
