@@ -33,9 +33,14 @@ A major version: the module asks for more of the platform and does more by defau
 
 **What the llms.txt proposal (v2) asks**
 
-* **Each page has a Markdown version at its own URL followed by `.md`** (`page.html.md`). It is the page
-  as a visitor without an account gets it: no Markdown version of a page that is not published or not
-  open to visitors. `linkToMarkdown` makes a generated llms.txt link to these versions.
+* **Each page has a Markdown version at its own URL followed by `.md`** (`page.html.md`), and at the
+  shorter `page.md`. It is the page as a visitor without an account gets it, whoever asks: no Markdown
+  version of a page that is not published or not open to visitors. `linkToMarkdown` makes a generated
+  llms.txt link to these versions.
+* **The Markdown version is a view of the module** (template type `md`, for `jnt:page` and
+  `jmix:mainResource`): Jahia renders the page with its own template, the module converts its main
+  content, and Jahia keeps the result in its cache until the page or a content below it is published.
+  It needs the module enabled on the site.
 * **A vanity URL has a Markdown version too**: the vanity URL followed by `.md`, on the hosts where
   Jahia answers that vanity URL. `linkToMarkdown` links to it, so the contents known by a vanity URL (news, articles) are linked
   as Markdown like the pages.

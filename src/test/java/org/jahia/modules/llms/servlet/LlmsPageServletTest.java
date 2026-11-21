@@ -47,4 +47,38 @@ class LlmsPageServletTest {
             assertThat(LlmsPageServlet.pagePath(path + ".md", "", "path=" + path)).as(path).isNull();
         }
     }
+
+    @Test
+    void rendersTheNodeAnAddressFollowedByMdNames() {
+        assertThat(LlmsPageServlet.nodePath("/sites/a/home/about.md", "", "node=/cms/render/live/en/sites/a/home/about"))
+                .isEqualTo("/cms/render/live/en/sites/a/home/about.html");
+        // The short address of the host of the site, which Jahia's rules completed.
+        assertThat(LlmsPageServlet.nodePath("/home/about.md", "", "node=/cms/render/live/en/sites/a/home/about"))
+                .isEqualTo("/cms/render/live/en/sites/a/home/about.html");
+        assertThat(LlmsPageServlet.nodePath("/ctx/home/about.md", "/ctx", "node=/cms/render/live/en/sites/a/home/about"))
+                .isEqualTo("/cms/render/live/en/sites/a/home/about.html");
+    }
+
+    @Test
+    void neverRendersANodeTheVisitorNamedInTheQuery() {
+        // What the rule wrote is not the address asked for: a visitor does not choose the node.
+        assertThat(LlmsPageServlet.nodePath("/home/about.md", "", "node=/cms/render/live/en/sites/a/home/secret")).isNull();
+        assertThat(LlmsPageServlet.nodePath("/home/about.md", "", "x=1&node=/cms/render/live/en/sites/a/home/about")).isNull();
+        // Not a node of a site, called directly, a page address, or a path that reads two ways.
+        assertThat(LlmsPageServlet.nodePath("/news/launch.md", "", "node=/news/launch")).isNull();
+        assertThat(LlmsPageServlet.nodePath(null, "", "node=/cms/render/live/en/sites/a/home/about")).isNull();
+        assertThat(LlmsPageServlet.nodePath("/home/about.html.md", "", "node=/cms/render/live/en/sites/a/home/about.html")).isNull();
+        assertThat(LlmsPageServlet.nodePath("/home/../x.md", "", "node=/cms/render/live/en/sites/a/home/../x")).isNull();
+    }
+
+    @Test
+    void readsTheNodeAndTheLanguageOfARenderPath() {
+        LlmsPageServlet.Target target = LlmsPageServlet.Target.of("/cms/render/live/fr/sites/a/home/a%20propos.html");
+        assertThat(target.nodePath()).isEqualTo("/sites/a/home/a propos");
+        assertThat(target.locale().toLanguageTag()).isEqualTo("fr");
+        assertThat(target.siteKey()).isEqualTo("a");
+        assertThat(LlmsPageServlet.Target.of("/cms/render/live/en/sites/a/home/a+b.html").nodePath()).isEqualTo("/sites/a/home/a+b");
+        assertThat(LlmsPageServlet.Target.of("/files/live/sites/a/files/x.html")).isNull();
+        assertThat(LlmsPageServlet.Target.of("/cms/render/live/en/sites/a/home/%2e%2e/x.html")).isNull();
+    }
 }

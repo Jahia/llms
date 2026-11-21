@@ -1,6 +1,6 @@
-import {addVanityUrl, deleteSite, publishAndWaitJobEnding, uploadFile} from '@jahia/cypress';
-import {addUnpublishedPage, createSiteWithPages} from '../support/fixtures';
-import {fetchFile, saveAsRoot} from '../support/llms';
+import {addNode, addVanityUrl, createSite, deleteSite, publishAndWaitJobEnding, setNodeProperty, uploadFile} from '@jahia/cypress';
+import {addUnpublishedPage, createSiteWithPages, TEMPLATE_SET} from '../support/fixtures';
+import {fetchFile, ROOT, saveAsRoot, signOut} from '../support/llms';
 
 /**
  * The Markdown version of a page, at the page's own URL followed by .md, as the llms.txt proposal asks.
@@ -18,8 +18,46 @@ describe('the Markdown version of a page (page.html.md)', () => {
     });
 
     after(() => {
+        serveMarkdown(true);
         deleteSite(SITE);
     });
+
+    /** Switches the Markdown versions on or off for the whole Jahia, as an operator does in the .cfg file. */
+    const serveMarkdown = (served: boolean) => {
+        cy.request({
+            method: 'POST',
+            url: '/modules/api/provisioning',
+            auth: {user: 'root', pass: Cypress.env('SUPER_USER_PASSWORD')},
+            headers: {'Content-Type': 'application/json'},
+            body: [{editConfiguration: 'org.jahia.modules.llms', properties: {servePageMarkdown: String(served)}}]
+        }).its('status').should('eq', 200);
+        signOut();
+        // The configuration reaches the module a moment after the call returns.
+        cy.wait(3000);
+    };
+
+    /** Asks again until the file holds the text: what Jahia kept of a page goes a moment after a publication. */
+    const untilItHolds = (path: string, text: string, tries = 15): void => {
+        fetchFile(path).then(response => {
+            if (tries > 0 && !String(response.body).includes(text)) {
+                cy.wait(1000);
+                untilItHolds(path, text, tries - 1);
+                return;
+            }
+
+            expect(response.status).to.eq(200);
+            expect(response.body).to.contain(text);
+        });
+    };
+
+    /** The same request as a signed-in administrator, who may read what no visitor may. */
+    const fetchAsRoot = (path: string) => {
+        cy.clearCookies();
+        return cy.request({url: path, auth: {user: ROOT()!.name, pass: ROOT()!.password}, failOnStatusCode: false}).then(response => {
+            signOut();
+            return cy.wrap(response, {log: false});
+        });
+    };
 
     it('serves a published page as Markdown, under its title, and names the page as the reference', () => {
         fetchFile(`${ABOUT}.md`).then(response => {
@@ -73,6 +111,143 @@ describe('the Markdown version of a page (page.html.md)', () => {
         });
     });
 
+    /**
+     * The address of the page with .md in place of .html: the Markdown view Jahia renders by itself.
+     * One page, one Markdown version, whichever of the two addresses asks for it.
+     */
+    it('serves the same Markdown at the address of the page ending in .md', () => {
+        const short = `/sites/${SITE}/home/about.md`;
+        fetchFile(`${ABOUT}.md`).then(long => {
+            fetchFile(short).then(response => {
+                expect(response.status).to.eq(200);
+                expect(response.headers['content-type']).to.match(/^text\/markdown;\s*charset=utf-8$/i);
+                expect(response.headers['x-content-type-options']).to.eq('nosniff');
+                expect(response.body).to.eq(long.body);
+                expect(response.headers.etag).to.eq(long.headers.etag);
+                // The reference is the page a visitor reads, not one of its Markdown addresses.
+                expect(response.headers.link).to.eq(
+                    `<${Cypress.config('baseUrl')}${ABOUT}>; rel="canonical", </sites/${SITE}/llms.txt>; rel="describedby"`);
+                fetchFile(short, {'If-None-Match': response.headers.etag as string}).its('status').should('eq', 304);
+            });
+        });
+        fetchFile('/home/about.md', {Host: `${SITE}.test`.toLowerCase()}).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.body).to.match(/^# About us\n/);
+            expect(response.headers.link).to.contain('/home/about.html>; rel="canonical"');
+        });
+        fetchFile(`/sites/${SITE}/home/no-such-page.md`).its('status').should('eq', 404);
+        fetchFile(`/sites/${SITE}/home/draft.md`).its('status').should('eq', 404);
+    });
+
+    it('renders the node of the address, whatever node a visitor names in the query string', () => {
+        fetchFile(`/sites/${SITE}/home/about.md`).then(plain => {
+            cy.request({
+                url: `/sites/${SITE}/home/about.md`,
+                qs: {node: `/cms/render/live/en/sites/${SITE}/home/draft`},
+                failOnStatusCode: false
+            }).then(response => {
+                expect(response.status).to.eq(200);
+                expect(response.body).to.eq(plain.body);
+            });
+        });
+        cy.request({url: '/modules/llmspage', qs: {node: `/cms/render/live/en/sites/${SITE}/home/about`}, failOnStatusCode: false})
+            .its('status').should('eq', 404);
+    });
+
+    /**
+     * Jahia keeps the Markdown of a page as it keeps its HTML. What it kept must go when the page is
+     * published again: its own properties, and a content inside it.
+     */
+    it('follows the publication of the page and of a content inside it', () => {
+        const CONTACT = `/sites/${SITE}/home/contact`;
+        addNode({
+            parentPathOrId: `/sites/${SITE}/home`,
+            primaryNodeType: 'jnt:page',
+            name: 'contact',
+            properties: [{name: 'jcr:title', value: 'Contact', language: 'en'}, {name: 'j:templateName', value: 'simple'}],
+            children: [{
+                name: 'area-main',
+                primaryNodeType: 'jnt:contentList',
+                children: [{
+                    name: 'text',
+                    primaryNodeType: 'jnt:bigText',
+                    properties: [{name: 'text', value: '<p>Write to us first.</p>', language: 'en'}]
+                }]
+            }]
+        });
+        publishAndWaitJobEnding(CONTACT, ['en']);
+        // Both addresses are asked, so both are kept by Jahia before anything changes.
+        untilItHolds(`${CONTACT}.md`, 'Write to us first.');
+        untilItHolds(`${CONTACT}.html.md`, 'Write to us first.');
+
+        setNodeProperty(`${CONTACT}/area-main/text`, 'text', '<p>Call us instead.</p>', 'en');
+        // Changed in the editing workspace only: visitors, and the Markdown, still have the published text.
+        fetchFile(`${CONTACT}.md`).its('body').should('contain', 'Write to us first.').and('not.contain', 'Call us instead.');
+        publishAndWaitJobEnding(CONTACT, ['en']);
+        untilItHolds(`${CONTACT}.md`, 'Call us instead.');
+        untilItHolds(`${CONTACT}.html.md`, 'Call us instead.');
+        fetchFile(`${CONTACT}.md`).its('body').should('not.contain', 'Write to us first.');
+
+        setNodeProperty(CONTACT, 'jcr:title', 'Contact us', 'en');
+        publishAndWaitJobEnding(CONTACT, ['en']);
+        untilItHolds(`${CONTACT}.md`, '# Contact us');
+    });
+
+    /**
+     * Jahia keeps one Markdown of a page for every visitor, and a request names the host it likes: the
+     * links of the Markdown carry the host of the request that reads them, never the one of the request
+     * that happened to make Jahia render the page.
+     */
+    it('writes its links on the host of each request, not on the host of whoever asked first', () => {
+        const LINKS = `/sites/${SITE}/home/links`;
+        addNode({
+            parentPathOrId: `/sites/${SITE}/home`,
+            primaryNodeType: 'jnt:page',
+            name: 'links',
+            properties: [{name: 'jcr:title', value: 'Links', language: 'en'}, {name: 'j:templateName', value: 'simple'}],
+            children: [{
+                name: 'area-main',
+                primaryNodeType: 'jnt:contentList',
+                children: [{
+                    name: 'text',
+                    primaryNodeType: 'jnt:bigText',
+                    properties: [{name: 'text', value: `<p><a href="/sites/${SITE}/home.html">Back home</a></p>`, language: 'en'}]
+                }]
+            }]
+        });
+        publishAndWaitJobEnding(LINKS, ['en']);
+        // The first request for this page, so the one Jahia renders it for, names a host of its own.
+        fetchFile(`${LINKS}.md`, {Host: 'someone-else.test'}).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.body).to.contain(`[Back home](http://someone-else.test/sites/${SITE}/home.html)`);
+        });
+        fetchFile(`${LINKS}.md`).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.body).to.contain(`[Back home](${Cypress.config('baseUrl')}/sites/${SITE}/home.html)`);
+            expect(response.body).to.not.contain('someone-else.test').and.to.not.contain('.invalid');
+        });
+        fetchFile(`${LINKS}.html.md`).its('body').should('not.contain', 'someone-else.test').and('not.contain', '.invalid');
+    });
+
+    /**
+     * The Markdown version is the one of a visitor without an account, for everyone: a signed-in
+     * administrator gets no draft and nothing a visitor may not read, and what Jahia keeps is one version.
+     */
+    it('gives a signed-in user the version of a visitor without an account', () => {
+        fetchFile(`${ABOUT}.md`).then(visitor => {
+            fetchAsRoot(`/sites/${SITE}/home/about.md`).then(response => {
+                expect(response.status).to.eq(200);
+                expect(response.body).to.eq(visitor.body);
+            });
+            fetchAsRoot(`${ABOUT}.md`).its('body').should('eq', visitor.body);
+        });
+        fetchAsRoot(`/sites/${SITE}/home/draft.md`).then(response => {
+            expect(response.status).to.eq(404);
+            expect(String(response.body)).to.not.contain('Unpublished draft');
+        });
+        fetchAsRoot(`/sites/${SITE}/home/draft.html.md`).its('status').should('eq', 404);
+    });
+
     it('serves a page at its vanity URL followed by .md, on the hosts that serve the vanity URL', () => {
         const host = {Host: `${SITE}.test`.toLowerCase()};
         addVanityUrl(`/sites/${SITE}/home/about`, 'en', '/who-we-are');
@@ -115,6 +290,12 @@ describe('the Markdown version of a page (page.html.md)', () => {
             expect(response.status).to.eq(404);
             expect(String(response.body)).to.not.contain('About us');
         });
+        // What Jahia kept of the page while it was open is not served either, at any of its addresses.
+        fetchFile(`/sites/${SITE}/home/about.md`).then(response => {
+            expect(response.status).to.eq(404);
+            expect(String(response.body)).to.not.contain('About us');
+        });
+        fetchFile('/who-we-are.md', {Host: `${SITE}.test`.toLowerCase()}).its('status').should('eq', 404);
     });
 
     it('renders the page of the URL, whatever a visitor adds to the query string', () => {
@@ -142,5 +323,34 @@ describe('the Markdown version of a page (page.html.md)', () => {
             expect(response.status).to.eq(200);
             expect(response.body).to.contain('A Markdown file of the media library.');
         });
+    });
+
+    /** The Markdown version is a view of the module: Jahia finds it on the sites that use the module. */
+    it('has no Markdown version on a site where the module is not enabled', () => {
+        const BARE = 'llmsPageMdBare';
+        deleteSite(BARE);
+        createSite(BARE, {templateSet: TEMPLATE_SET, serverName: `${BARE}.test`, locale: 'en', languages: 'en'});
+        publishAndWaitJobEnding(`/sites/${BARE}`, ['en']);
+        fetchFile(`/sites/${BARE}/home.html`).its('status').should('eq', 200);
+        fetchFile(`/sites/${BARE}/home.md`).its('status').should('eq', 404);
+        fetchFile(`/sites/${BARE}/home.html.md`).its('status').should('eq', 404);
+        deleteSite(BARE);
+    });
+
+    it('serves no Markdown version at all when the operator switched them off', () => {
+        const HOME = `/sites/${SITE}/home`;
+        fetchFile(`${HOME}.md`).its('status').should('eq', 200);
+        serveMarkdown(false);
+        // Kept by Jahia or not: none of the addresses answers.
+        fetchFile(`${HOME}.md`).its('status').should('eq', 404);
+        fetchFile(`${HOME}.html.md`).its('status').should('eq', 404);
+        fetchFile('/home.md', {Host: `${SITE}.test`.toLowerCase()}).its('status').should('eq', 404);
+        // The page itself stays, and no longer names a Markdown version.
+        fetchFile(`${HOME}.html`).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.body).to.not.contain('type="text/markdown"');
+        });
+        serveMarkdown(true);
+        fetchFile(`${HOME}.md`).its('status').should('eq', 200);
     });
 });

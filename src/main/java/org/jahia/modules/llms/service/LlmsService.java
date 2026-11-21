@@ -98,8 +98,6 @@ public class LlmsService {
     private volatile Limits limits;
     private volatile boolean servePageMarkdown = true;
     private volatile boolean discoveryLinks = true;
-    /** Pages converted to Markdown at the same time for visitors: each one renders a page. */
-    private final Semaphore pageSlots = new Semaphore(8);
     /** What a generation lists when the site has no configuration of its own. */
     private volatile SiteSettings defaults = new SiteSettings(10, 200, 100, SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED),
             Set.of(), Set.of(), false, false);
@@ -784,6 +782,14 @@ public class LlmsService {
     }
 
     /**
+     * @param siteKey key of a site
+     * @return whether the images of a page of that site are written in its Markdown
+     */
+    public boolean keepsImages(String siteKey) {
+        return settingsOf(siteKey).keepImages();
+    }
+
+    /**
      * @return whether each page is also served as Markdown at its URL followed by .md
      */
     public boolean servesPageMarkdown() {
@@ -798,44 +804,6 @@ public class LlmsService {
     private String linkOf(String pageUrl, boolean linkToMarkdown) {
         boolean plain = !pageUrl.endsWith("/") && pageUrl.indexOf('?') < 0 && pageUrl.indexOf('#') < 0;
         return linkToMarkdown && servePageMarkdown && plain ? pageUrl + ".md" : pageUrl;
-    }
-
-    /**
-     * The Markdown version of one page, as a visitor without an account gets the page: rendered by an
-     * anonymous request to this Jahia, in live, then converted like a page of llms-full.txt.
-     *
-     * @param rawPath    the path of the page from the root of the context, still encoded; must be a page
-     *                   of a site ({@link PageMarkdown#siteKeyOf})
-     * @param publicUrl  the address the visitor knows the page by, which its relative links resolve against
-     * @param renderBase scheme, host and port this Jahia answers on from inside its container
-     * @return the Markdown, or null when Markdown versions are switched off or the path is not a page
-     * @throws IOException           when the page does not answer 200 with HTML to a visitor
-     * @throws InterruptedException  when the thread is stopped
-     * @throws IllegalStateException when too many pages are being converted
-     */
-    public String pageMarkdown(String rawPath, String publicUrl, String renderBase) throws IOException, InterruptedException {
-        String siteKey = PageMarkdown.siteKeyOf(rawPath);
-        if (!servePageMarkdown || siteKey == null) {
-            return null;
-        }
-        if (!pageSlots.tryAcquire()) {
-            throw new IllegalStateException(BUSY);
-        }
-        try {
-            Limits c = limits;
-            String base = c.renderBaseUrl() == null ? renderBase : c.renderBaseUrl();
-            // The path comes from the rewrite rules, which work from the root of the context: Jahia's
-            // context path goes back in front of it. A redirect is followed only to another page of the site.
-            String context = Jahia.getContextPath();
-            PageFetcher fetcher = new PageFetcher(base, c.fetchTimeoutSeconds(), c.maxPageBytes(),
-                    path -> siteKey.equals(PageMarkdown.siteKeyOf(path.startsWith(context) ? path.substring(context.length()) : path)));
-            Document doc = Jsoup.parse(fetcher.fetch(context + rawPath), publicUrl);
-            String title = PageMarkdown.titleOf(doc);
-            String body = HtmlToMarkdown.convert(doc, title, href -> href, settingsOf(siteKey).keepImages());
-            return (title.isEmpty() ? "" : "# " + title + "\n\n") + body + "\n";
-        } finally {
-            pageSlots.release();
-        }
     }
 
     private static String escape(String text) {
