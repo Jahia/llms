@@ -225,4 +225,33 @@ describe('contents shown as a page, and the configuration of one site', () => {
         configureSite({includedNodeTypes: 'jmix:llmsListed', maxMainResources: '1'});
         generated(false).should('contain', '[Product launch]').and('not.contain', '[Later news]');
     });
+
+    /**
+     * A content often keeps the name of the file or the title it came from: a space or an accent, which
+     * its address carries encoded. Its Markdown version is at that same address, encoded the same way.
+     */
+    it('serves the Markdown version of a content whose name has a space or an accent', () => {
+        news('tomcat config', 'Tomcat configuration', 'Set the connector encoding.');
+        news('café', 'Coffee', 'Served in the morning.');
+        publishAndWaitJobEnding(`/sites/${SITE}/contents/tomcat config`, ['en']);
+        publishAndWaitJobEnding(`/sites/${SITE}/contents/café`, ['en']);
+        const host = {Host: `${SITE}.test`.toLowerCase()};
+        [`/sites/${SITE}/contents/tomcat%20config.html.md`, `/sites/${SITE}/contents/tomcat%20config.md`].forEach(address => {
+            fetchFile(address).then(response => {
+                expect(response.status, address).to.eq(200);
+                expect(response.body).to.contain('Set the connector encoding.');
+            });
+        });
+        // On the host of the site, where the address has no /sites/<key>.
+        fetchFile('/contents/tomcat%20config.html.md', host).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.headers.link).to.contain('/contents/tomcat%20config.html>; rel="canonical"');
+        });
+        fetchFile(`/sites/${SITE}/contents/caf%C3%A9.html.md`).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.body).to.contain('Served in the morning.');
+        });
+        // A plus sign is a plus sign, not a space: no content has that name.
+        fetchFile(`/sites/${SITE}/contents/tomcat+config.html.md`).its('status').should('eq', 404);
+    });
 });

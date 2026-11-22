@@ -3,6 +3,8 @@ package org.jahia.modules.llms.service.internal;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -87,7 +89,30 @@ public final class PageMarkdown {
      *         page fetched is then the page asked for
      */
     public static boolean isSamePage(String asked, String fetched) {
-        return asked != null && fetched != null && !asked.isEmpty() && asked.startsWith("/") && fetched.endsWith(asked);
+        if (asked == null || fetched == null || asked.isEmpty() || !asked.startsWith("/")) {
+            return false;
+        }
+        if (fetched.endsWith(asked)) {
+            return true;
+        }
+        // The rules hand over the path decoded, where the address asked for is still encoded: a name
+        // with a space or an accent (my%20page) reads "my page" there. Decoded once, and only an
+        // address that reads one way.
+        String decoded = isAmbiguous(asked) ? null : decoded(asked);
+        return decoded != null && fetched.endsWith(decoded);
+    }
+
+    /**
+     * @param rawPath a path, still encoded
+     * @return the path with its percent escapes decoded, a plus sign staying a plus sign, or null when an
+     *         escape is not one
+     */
+    public static String decoded(String rawPath) {
+        try {
+            return URLDecoder.decode(rawPath.replace("+", "%2B"), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     /**

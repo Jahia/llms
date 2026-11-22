@@ -35,6 +35,12 @@ class PageMarkdownTest {
         assertThat(PageMarkdown.isSamePage("/home/about.html", "/cms/render/live/en/sites/a/home/about.html")).isTrue();
         assertThat(PageMarkdown.isSamePage("/sites/a/home.html", "/sites/a/home.html")).isTrue();
         assertThat(PageMarkdown.isSamePage("/home/about.html", "/cms/render/live/en/sites/a/home/other.html")).isFalse();
+        // The rules hand over a decoded path: a name with a space or an accent is the same page.
+        assertThat(PageMarkdown.isSamePage("/contents/my%20page.html", "/cms/render/live/en/sites/a/contents/my page.html")).isTrue();
+        assertThat(PageMarkdown.isSamePage("/contents/caf%C3%A9.html", "/cms/render/live/en/sites/a/contents/café.html")).isTrue();
+        assertThat(PageMarkdown.isSamePage("/contents/a+b.html", "/cms/render/live/en/sites/a/contents/a b.html")).isFalse();
+        assertThat(PageMarkdown.isSamePage("/contents/a%2Fb.html", "/cms/render/live/en/sites/a/contents/a/b.html")).isFalse();
+        assertThat(PageMarkdown.isSamePage("/contents/a%zz.html", "/cms/render/live/en/sites/a/contents/a%zz.htm")).isFalse();
         assertThat(PageMarkdown.isSamePage("", "/sites/a/home.html")).isFalse();
         assertThat(PageMarkdown.isSamePage("home.html", "/sites/a/home.html")).isFalse();
     }
