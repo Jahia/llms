@@ -1,6 +1,6 @@
 import {addNode, addVanityUrl, createSite, deleteSite, publishAndWaitJobEnding, setNodeProperty, uploadFile} from '@jahia/cypress';
 import {addUnpublishedPage, createSiteWithPages, TEMPLATE_SET} from '../support/fixtures';
-import {fetchFile, ROOT, saveAsRoot, signOut} from '../support/llms';
+import {errorOf, fetchFile, gql, ROOT, saveAsRoot, signOut} from '../support/llms';
 
 /**
  * The Markdown version of a page, at the page's own URL followed by .md, as the llms.txt proposal asks.
@@ -194,6 +194,48 @@ describe('the Markdown version of a page (page.html.md)', () => {
         setNodeProperty(CONTACT, 'jcr:title', 'Contact us', 'en');
         publishAndWaitJobEnding(CONTACT, ['en']);
         untilItHolds(`${CONTACT}.md`, '# Contact us');
+    });
+
+    /**
+     * A link an editor makes to another page is kept as a reference, and Jahia writes its address when
+     * it renders the page. The Markdown must carry the address the page carries: the module renders
+     * from a servlet of its own, whose path is no part of the address of a page.
+     */
+    it('writes the links Jahia generates as the page writes them', () => {
+        const LINKED = `/sites/${SITE}/home/linked`;
+        const host = {Host: `${SITE}.test`.toLowerCase()};
+        addNode({
+            parentPathOrId: `/sites/${SITE}/home`,
+            primaryNodeType: 'jnt:page',
+            name: 'linked',
+            properties: [{name: 'jcr:title', value: 'Linked', language: 'en'}, {name: 'j:templateName', value: 'simple'}],
+            children: [{name: 'area-main', primaryNodeType: 'jnt:contentList'}]
+        });
+        gql(ROOT(), `{ jcr(workspace: EDIT) { nodeByPath(path: "/sites/${SITE}/home/about") { uuid } } }`).then(response => {
+            const target = response.body.data.jcr.nodeByPath.uuid as string;
+            // As the rich text editor stores a link to a page: a placeholder in the text, a reference beside it.
+            gql(ROOT(), `mutation ($parent: String!, $target: String!) { jcr(workspace: EDIT) {
+                addNode(parentPathOrId: $parent, name: "text", primaryNodeType: "jnt:bigText",
+                    mixins: ["jmix:referencesInField"],
+                    properties: [{name: "text", language: "en",
+                        value: "<p>See <a href=\\"##cms-context##/{mode}/{lang}/##ref:link1##\\">the other page</a>.</p>"}]) {
+                    addChild(name: "j:referenceInField_text_en_1", primaryNodeType: "jnt:referenceInField",
+                        properties: [{name: "j:fieldName", value: "text_en"},
+                            {name: "j:reference", value: $target, type: WEAKREFERENCE}]) { uuid }
+                } } }`, {parent: `${LINKED}/area-main`, target}).then(added => expect(errorOf(added)).to.eq(null));
+        });
+        publishAndWaitJobEnding(LINKED, ['en']);
+
+        fetchFile('/home/linked.html', host).then(page => {
+            const href = (/<a href="([^"]+)"[^>]*>the other page/.exec(page.body) || [])[1];
+            expect(href, 'the link of the page').to.match(/^\/[^/]/);
+            expect(href).to.not.contain('/modules');
+            fetchFile('/home/linked.md', host).then(markdown => {
+                expect(markdown.status).to.eq(200);
+                expect(markdown.body).to.contain(`[the other page](http://${host.Host}${href})`);
+                expect(markdown.body).to.not.contain('/modules/');
+            });
+        });
     });
 
     /**
