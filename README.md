@@ -234,6 +234,9 @@ https://www.example.com/news/launch.md       a vanity URL (/news/launch) as Mark
   their address and at their vanity URL followed by `.md`. A vanity URL is answered wherever Jahia
   answers it: on the host of its site, and on a host several sites share. On a shared host, a vanity
   URL that two sites use is not answered, since nothing says which one is meant.
+- The Markdown of a page is served at these addresses only. The view behind it has an address of its
+  own in Jahia (`about.md/`, `about.md.ajax`): it answers 404 there. What a visitor adds to the address
+  (`?page=2`) is not given to the rendering, which Jahia keeps for everyone.
 - **The module must be enabled on the site**: the Markdown version is a view of the module (template
   type `md`), which Jahia finds on the sites that use the module. Elsewhere the address answers 404.
 - **Jahia renders it and keeps it in its cache**, as it does the HTML of the page: the page is rendered

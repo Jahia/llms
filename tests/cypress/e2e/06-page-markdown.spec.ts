@@ -278,6 +278,43 @@ describe('the Markdown version of a page (page.html.md)', () => {
         });
     });
 
+    /**
+     * The Markdown version is a view of the module, and a view has an address of its own in Jahia: the
+     * address of the node followed by its template type. Served there it would leave as HTML, without
+     * the headers of a Markdown version and with the text of the page no longer escaped.
+     */
+    it('answers the Markdown of a page at its Markdown addresses and nowhere else', () => {
+        [
+            `/sites/${SITE}/home/about.md/`,
+            `/sites/${SITE}/home/about.html.md.ajax`,
+            `/sites/${SITE}/home/about.md.ajax`,
+            `/cms/render/live/en/sites/${SITE}/home/about.md/`
+        ].forEach(address => {
+            fetchFile(address).then(response => {
+                expect(response.status, address).to.eq(404);
+                expect(String(response.body), address).to.not.contain('# About us');
+                expect(String(response.body), address).to.not.contain('.invalid');
+            });
+        });
+        // Asked for right after, the Markdown version is there: nothing was kept from the refusals.
+        fetchFile(`${ABOUT}.md`).then(response => {
+            expect(response.status).to.eq(200);
+            expect(response.headers['content-type']).to.match(/^text\/markdown/i);
+            expect(response.headers['x-content-type-options']).to.eq('nosniff');
+        });
+    });
+
+    /** What a visitor adds to the address changes nothing of what Jahia keeps for everyone. */
+    it('renders the page the same whatever a visitor adds to its address', () => {
+        fetchFile(`${ABOUT}.md`).then(plain => {
+            fetchFile(`${ABOUT}.md?page=2&q=%3Cb%3Ex`).then(response => {
+                expect(response.status).to.eq(200);
+                expect(response.body).to.eq(plain.body);
+                expect(response.body).to.not.contain('<b>');
+            });
+        });
+    });
+
     it('has no Markdown version of a page that does not exist or is not published', () => {
         fetchFile(`/sites/${SITE}/home/no-such-page.html.md`).its('status').should('eq', 404);
         fetchFile(`/sites/${SITE}/home/draft.html.md`).then(response => {
