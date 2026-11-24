@@ -50,6 +50,11 @@ public final class NativeMarkdown {
      * back to the host of the request by whoever serves the Markdown.
      */
     public static final String ORIGIN = "https://llms-origin.invalid";
+    /**
+     * Stands for the address of the page in the Markdown Jahia keeps: the same page is asked for at its
+     * path and at its vanity URL, and on any host. Whoever serves the Markdown writes the address there.
+     */
+    public static final String PAGE_URL = "https://llms-page.invalid";
     private static final String SERVLET_PATH = "/cms/render";
     private static final String LIVE = "live";
 

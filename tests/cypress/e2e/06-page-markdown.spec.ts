@@ -64,7 +64,10 @@ describe('the Markdown version of a page (page.html.md)', () => {
             expect(response.status).to.eq(200);
             expect(response.headers['content-type']).to.match(/^text\/markdown;\s*charset=utf-8$/i);
             expect(response.headers['x-content-type-options']).to.eq('nosniff');
-            expect(response.body).to.match(/^# About us\n/);
+            // What names the page to a reader that only has the file: its title, the address of the page
+            // as HTML, which is the one to quote, and the day it was last published.
+            expect(response.body.startsWith(`---\ntitle: "About us"\nurl: "${Cypress.config('baseUrl')}${ABOUT}"\n`), 'header').to.eq(true);
+            expect(response.body).to.match(/\ndescription: "Who we are"\nlast_updated: \d{4}-\d{2}-\d{2}\n---\n\n# About us\n/);
             expect(response.body, 'no page chrome').to.not.match(/Login|All Rights Reserved/);
             // Markdown has no <head>: the page it is another form of, and the llms.txt that covers it, are a header.
             expect(response.headers.link).to.eq(
@@ -107,7 +110,7 @@ describe('the Markdown version of a page (page.html.md)', () => {
     it('serves it at the short URL of the site\'s own host too', () => {
         fetchFile('/home/about.html.md', {Host: `${SITE}.test`.toLowerCase()}).then(response => {
             expect(response.status).to.eq(200);
-            expect(response.body).to.match(/^# About us\n/);
+            expect(response.body).to.match(/\n---\n\n# About us\n/);
         });
     });
 
@@ -132,7 +135,7 @@ describe('the Markdown version of a page (page.html.md)', () => {
         });
         fetchFile('/home/about.md', {Host: `${SITE}.test`.toLowerCase()}).then(response => {
             expect(response.status).to.eq(200);
-            expect(response.body).to.match(/^# About us\n/);
+            expect(response.body).to.match(/\n---\n\n# About us\n/);
             expect(response.headers.link).to.contain('/home/about.html>; rel="canonical"');
         });
         fetchFile(`/sites/${SITE}/home/no-such-page.md`).its('status').should('eq', 404);
@@ -257,8 +260,10 @@ describe('the Markdown version of a page (page.html.md)', () => {
         fetchFile('/who-we-are.md', host).then(response => {
             expect(response.status).to.eq(200);
             expect(response.headers['content-type']).to.match(/^text\/markdown;\s*charset=utf-8$/i);
-            expect(response.body).to.match(/^# About us\n/);
+            expect(response.body).to.match(/\n---\n\n# About us\n/);
             expect(response.headers.link).to.contain('/who-we-are>; rel="canonical"');
+            // The address written in the file is the one that was asked for, as in the header.
+            expect(response.body).to.contain('\nurl: "http://llmspagemd.test/who-we-are"\n');
         });
         // The address of the page keeps its own Markdown version.
         fetchFile('/home/about.html.md', host).its('status').should('eq', 200);
@@ -269,7 +274,7 @@ describe('the Markdown version of a page (page.html.md)', () => {
         fetchFile('/who-we-are', {Host: 'shared-host.test'}).its('status').should('eq', 200);
         fetchFile('/who-we-are.md', {Host: 'shared-host.test'}).then(response => {
             expect(response.status).to.eq(200);
-            expect(response.body).to.match(/^# About us\n/);
+            expect(response.body).to.match(/\n---\n\n# About us\n/);
         });
     });
 

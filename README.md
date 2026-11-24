@@ -209,6 +209,21 @@ https://www.example.com/news/launch.md       a vanity URL (/news/launch) as Mark
 - Served as `text/markdown`, with an `ETag` and a `Link: <page>; rel="canonical"` header. The reference
   is the page a visitor reads: `about.html` for both `about.html.md` and `about.md`, the vanity URL for
   a vanity URL.
+- Starts with a YAML block that names the page to a reader that only has the file, once it has left
+  HTTP and its headers: `title`, `url` (the same address as the `canonical`, the one to quote),
+  `description` (the SEO description of the page, when it has one) and `last_updated` (the day the page
+  itself was last published, UTC). The title of the page follows, as a `#` heading.
+
+  ```markdown
+  ---
+  title: "About us"
+  url: "https://www.example.com/home/about.html"
+  description: "Who we are"
+  last_updated: 2026-11-21
+  ---
+
+  # About us
+  ```
 - Works for pages and for contents shown as a page (`jmix:mainResource`: a news item, an article), at
   their address and at their vanity URL followed by `.md`. A vanity URL is answered wherever Jahia
   answers it: on the host of its site, and on a host several sites share. On a shared host, a vanity

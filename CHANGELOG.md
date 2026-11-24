@@ -41,6 +41,9 @@ A major version: the module asks for more of the platform and does more by defau
   `jmix:mainResource`): Jahia renders the page with its own template, the module converts its main
   content, and Jahia keeps the result in its cache until the page or a content below it is published.
   It needs the module enabled on the site.
+* **A Markdown version names its page**: it starts with a YAML block that gives the `title` of the
+  page, its `url` (the page as HTML, the one to quote), its `description` and the day it was last
+  published (`last_updated`), for a reader that has the file without its HTTP headers.
 * **A vanity URL has a Markdown version too**: the vanity URL followed by `.md`, on the hosts where
   Jahia answers that vanity URL. `linkToMarkdown` links to it, so the contents known by a vanity URL (news, articles) are linked
   as Markdown like the pages.

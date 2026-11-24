@@ -90,7 +90,8 @@ public class LlmsPageServlet extends HttpServlet {
             return;
         }
         // Jahia trims what a view writes: a text file ends with a line break.
-        markdown = markdown.strip().replace(NativeMarkdown.ORIGIN, MarkdownResponse.onHost(request, "")) + "\n";
+        markdown = markdown.strip().replace(NativeMarkdown.PAGE_URL, MarkdownResponse.onHost(request, page))
+                .replace(NativeMarkdown.ORIGIN, MarkdownResponse.onHost(request, "")) + "\n";
         response.setHeader("Cache-Control", "public, no-cache");
         if (MarkdownResponse.notModified(request, response, markdown, MarkdownResponse.onHost(request, page), target.siteKey())) {
             return;
