@@ -34,9 +34,16 @@ public class GqlLlmsQuery {
     private static final Logger LOGGER = LoggerFactory.getLogger(GqlLlmsQuery.class);
     private static final String PUBLISH = "publish";
 
+    private LlmsService service;
+
+    /**
+     * @param service the llms service, given by the GraphQL provider when it builds this object
+     */
     @Inject
     @GraphQLOsgiService
-    private LlmsService service;
+    public void setService(LlmsService service) {
+        this.service = service;
+    }
 
     /**
      * @param siteKey key of the site

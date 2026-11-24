@@ -3,12 +3,14 @@ package org.jahia.modules.llms.servlet;
 import org.jahia.bin.Jahia;
 import org.jahia.exceptions.JahiaException;
 import org.jahia.modules.llms.service.LlmsService;
+import org.jahia.modules.llms.service.internal.PageMarkdown;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.content.decorator.JCRSiteNode;
 import org.jahia.services.sites.JahiaSitesService;
 import org.jahia.services.usermanager.JahiaUserManagerService;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -61,7 +63,15 @@ public class LlmsServlet extends HttpServlet {
 
     /** The ETag of each file last served, by site and file: no file content is kept in memory. */
     private final transient Map<String, Validator> validators = new ConcurrentHashMap<>();
-    private transient JahiaSitesService sitesService;
+    private final transient JahiaSitesService sitesService;
+
+    /**
+     * @param sitesService the sites service
+     */
+    @Activate
+    public LlmsServlet(@Reference JahiaSitesService sitesService) {
+        this.sitesService = sitesService;
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) {
@@ -179,9 +189,8 @@ public class LlmsServlet extends HttpServlet {
             if (forwardedUri == null) {
                 return new Target(siteParameter, "full".equals(fileParameter));
             }
-            String path = contextPath != null && !contextPath.isEmpty() && forwardedUri.startsWith(contextPath + "/")
-                    ? forwardedUri.substring(contextPath.length()) : forwardedUri;
-            Matcher m = PUBLIC_URL.matcher(RENDER_PREFIX.matcher(path).replaceFirst(""));
+            String fromContext = PageMarkdown.withoutContext(forwardedUri, contextPath);
+            Matcher m = PUBLIC_URL.matcher(RENDER_PREFIX.matcher(fromContext).replaceFirst(""));
             return m.matches() ? new Target(m.group(1), m.group(2) != null) : null;
         }
     }
@@ -261,13 +270,5 @@ public class LlmsServlet extends HttpServlet {
             }
         }
         return false;
-    }
-
-    /**
-     * @param sitesService the sites service
-     */
-    @Reference
-    public void setSitesService(JahiaSitesService sitesService) {
-        this.sitesService = sitesService;
     }
 }

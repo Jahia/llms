@@ -609,7 +609,7 @@ public class LlmsService {
 
     /** {@code /cms/render/live/en/sites/key/} for each language and context the listed pages render under. */
     static Set<String> sitePrefixes(List<SiteWalker.Page> pages, String siteKey) {
-        String sitePath = SITES + siteKey + "/";
+        String sitePath = SITES + siteKey + '/';
         Set<String> prefixes = new HashSet<>();
         for (SiteWalker.Page page : pages) {
             int at = page.renderPath().indexOf(sitePath);

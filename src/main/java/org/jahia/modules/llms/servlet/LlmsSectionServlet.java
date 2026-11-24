@@ -94,8 +94,7 @@ public class LlmsSectionServlet extends HttpServlet {
         }
         int end = queryString.indexOf('&');
         String path = queryString.substring(PATH_PARAMETER.length(), end < 0 ? queryString.length() : end);
-        String asked = contextPath != null && !contextPath.isEmpty() && forwardedUri.startsWith(contextPath + "/")
-                ? forwardedUri.substring(contextPath.length()) : forwardedUri;
+        String asked = PageMarkdown.withoutContext(forwardedUri, contextPath);
         return PageMarkdown.isSamePage(asked, path) ? SectionFile.of(path) : null;
     }
 }

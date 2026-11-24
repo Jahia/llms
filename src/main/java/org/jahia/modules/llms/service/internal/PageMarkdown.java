@@ -71,6 +71,16 @@ public final class PageMarkdown {
     }
 
     /**
+     * @param uri         an address from the root of the server
+     * @param contextPath the context path of Jahia, or nothing when Jahia is at the root
+     * @return the address from the root of the context
+     */
+    public static String withoutContext(String uri, String contextPath) {
+        boolean below = contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath + '/');
+        return below ? uri.substring(contextPath.length()) : uri;
+    }
+
+    /**
      * @param rawPath a path as it was asked for, still encoded, from the root of the context
      * @return the key of the site when the path is a page of a site and reads the same for every server
      *         (no encoded separator, no dot segment, no path parameter), else null

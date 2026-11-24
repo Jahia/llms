@@ -40,9 +40,16 @@ public class GqlLlmsMutation {
     private static final int MAX_SETTINGS = 32;
     private static final int MAX_SETTING_LENGTH = 2000;
 
+    private LlmsService service;
+
+    /**
+     * @param service the llms service, given by the GraphQL provider when it builds this object
+     */
     @Inject
     @GraphQLOsgiService
-    private LlmsService service;
+    public void setService(LlmsService service) {
+        this.service = service;
+    }
 
     /**
      * @param siteKey  key of the site
