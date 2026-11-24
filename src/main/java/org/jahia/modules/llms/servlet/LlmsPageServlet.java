@@ -49,6 +49,8 @@ import java.util.regex.Pattern;
 @Component(service = {HttpServlet.class, Servlet.class}, property = {"alias=/llmspage", "osgi.http.whiteboard.servlet.asyncSupported=true"})
 public class LlmsPageServlet extends HttpServlet {
 
+    private static final String HTML_EXTENSION = ".html";
+
     private static final long serialVersionUID = 1L;
     private static final Logger LOGGER = LoggerFactory.getLogger(LlmsPageServlet.class);
     private static final String SUFFIX = ".md";
@@ -59,7 +61,16 @@ public class LlmsPageServlet extends HttpServlet {
     private transient LlmsService service;
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            serve(request, response);
+        } catch (IOException e) {
+            // The visitor went away before the end: nothing is left to answer, and nothing to report.
+            LOGGER.debug("Could not write the Markdown version of a page", e);
+        }
+    }
+
+    private void serve(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String path = pagePath((String) request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI),
                 Jahia.getContextPath(), request.getQueryString());
         // The address of the page this is another form of: about.html for about.html.md and about.md,
@@ -71,7 +82,7 @@ public class LlmsPageServlet extends HttpServlet {
             path = vanityPagePath(request);
             if (path == null) {
                 path = nodePath(forwarded, Jahia.getContextPath(), request.getQueryString());
-                page = page + ".html";
+                page = page + HTML_EXTENSION;
             }
         }
         Target target = path == null || !service.servesPageMarkdown() ? null : Target.of(path);
@@ -148,7 +159,7 @@ public class LlmsPageServlet extends HttpServlet {
      * @return the path of the page, still encoded, from the root of the context
      */
     static String pagePath(String forwardedUri, String contextPath, String queryString) {
-        if (forwardedUri == null || !forwardedUri.endsWith(".html" + SUFFIX) || queryString == null || !queryString.startsWith(PATH_PARAMETER)) {
+        if (forwardedUri == null || !forwardedUri.endsWith(HTML_EXTENSION + SUFFIX) || queryString == null || !queryString.startsWith(PATH_PARAMETER)) {
             return null;
         }
         // The first parameter is the one the rule wrote. A second "path" a visitor appended is never read.
@@ -171,13 +182,13 @@ public class LlmsPageServlet extends HttpServlet {
      * @return the path of the page as Jahia renders it ({@code .../about.html}), still encoded
      */
     static String nodePath(String forwardedUri, String contextPath, String queryString) {
-        if (forwardedUri == null || !forwardedUri.endsWith(SUFFIX) || forwardedUri.endsWith(".html" + SUFFIX)
+        if (forwardedUri == null || !forwardedUri.endsWith(SUFFIX) || forwardedUri.endsWith(HTML_EXTENSION + SUFFIX)
                 || queryString == null || !queryString.startsWith(NODE_PARAMETER)) {
             return null;
         }
         int end = queryString.indexOf('&');
-        String path = queryString.substring(NODE_PARAMETER.length(), end < 0 ? queryString.length() : end) + ".html";
-        String asked = forwardedUri.substring(0, forwardedUri.length() - SUFFIX.length()) + ".html";
+        String path = queryString.substring(NODE_PARAMETER.length(), end < 0 ? queryString.length() : end) + HTML_EXTENSION;
+        String asked = forwardedUri.substring(0, forwardedUri.length() - SUFFIX.length()) + HTML_EXTENSION;
         if (contextPath != null && !contextPath.isEmpty() && asked.startsWith(contextPath + "/")) {
             asked = asked.substring(contextPath.length());
         }

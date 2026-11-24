@@ -51,7 +51,7 @@ class SiteSettingsTest {
         assertThat(refused.get("maxDepth").code()).isEqualTo("range");
         assertThat(refused.get("maxPages").code()).isEqualTo("number");
         assertThat(refused).doesNotContainKey("maxMainResources");
-        assertThat(refused.get("excludedNodeTypes")).isEqualTo(new SiteSettings.Refusal("types", "acme:unknown, notAType"));
+        assertThat(refused).containsEntry("excludedNodeTypes", new SiteSettings.Refusal("types", "acme:unknown, notAType"));
         assertThat(refused.get("linkToMarkdown").code()).isEqualTo("flag");
     }
 
@@ -62,9 +62,11 @@ class SiteSettingsTest {
 
     @Test
     void aKeyASiteMayNotSetIsNotChecked() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> SiteSettings.check(Map.of("renderBaseUrl", "http://internal"), name -> true))
+        Map<String, String> address = Map.of("renderBaseUrl", "http://internal");
+        Map<String, String> threads = Map.of("fetchThreads", "64");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> SiteSettings.check(address, name -> true))
                 .isInstanceOf(IllegalArgumentException.class);
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> SiteSettings.check(Map.of("fetchThreads", "64"), name -> true))
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> SiteSettings.check(threads, name -> true))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

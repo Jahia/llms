@@ -19,8 +19,8 @@ public record SectionFile(String nodePath, boolean full) {
      * read at all, so nothing in it can be understood two ways.
      */
     private static final Pattern FILE = Pattern.compile(
-            "^(?:/cms(?:/render/live)?)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?(/sites/[A-Za-z0-9_-]{1,64}(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)+)/llms(-full)?\\.txt$");
-    private static final Pattern PAGE_PATH = Pattern.compile("^/sites/[A-Za-z0-9_-]{1,64}(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)+$");
+            "^(?:/cms(?:/render/live)?)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?(/sites/[A-Za-z0-9_-]{1,64}/[A-Za-z0-9._/-]+)/llms(-full)?\\.txt$");
+    private static final Pattern PAGE_PATH = Pattern.compile("^/sites/[A-Za-z0-9_-]{1,64}/[A-Za-z0-9._/-]+$");
 
     /**
      * @param rawPath a path as it was asked for, from the root of the context
@@ -31,7 +31,7 @@ public record SectionFile(String nodePath, boolean full) {
             return null;
         }
         Matcher m = FILE.matcher(rawPath);
-        return m.matches() ? new SectionFile(m.group(1), m.group(2) != null) : null;
+        return m.matches() && hasPlainSegments(m.group(1)) ? new SectionFile(m.group(1), m.group(2) != null) : null;
     }
 
     /**
@@ -40,6 +40,15 @@ public record SectionFile(String nodePath, boolean full) {
      *         written as one (a page name with a character an address would have to encode)
      */
     public static String hrefOf(String nodePath) {
-        return nodePath != null && PAGE_PATH.matcher(nodePath).matches() ? nodePath + "/llms.txt" : null;
+        return nodePath != null && PAGE_PATH.matcher(nodePath).matches() && hasPlainSegments(nodePath) ? nodePath + "/llms.txt" : null;
+    }
+
+    /**
+     * The patterns accept any run of the characters of a page name and of slashes, read in one pass
+     * whatever the length of the path. What they cannot say is checked here: no empty segment, none that
+     * starts with a dot.
+     */
+    private static boolean hasPlainSegments(String path) {
+        return !path.contains("//") && !path.contains("/.") && !path.endsWith("/");
     }
 }

@@ -64,7 +64,16 @@ public class LlmsServlet extends HttpServlet {
     private transient JahiaSitesService sitesService;
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            serve(request, response);
+        } catch (IOException e) {
+            // The visitor went away before the end: nothing is left to answer, and nothing to report.
+            LOGGER.debug("Could not write llms.txt", e);
+        }
+    }
+
+    private void serve(HttpServletRequest request, HttpServletResponse response) throws IOException {
         Target target = Target.of((String) request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI),
                 Jahia.getContextPath(), request.getParameter("site"), request.getParameter("file"));
         if (target == null) {

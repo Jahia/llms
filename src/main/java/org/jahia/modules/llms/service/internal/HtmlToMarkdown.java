@@ -26,6 +26,9 @@ import java.util.regex.Pattern;
  */
 public final class HtmlToMarkdown {
 
+    private static final String ARTICLE = "article";
+    private static final String TABLE = "table";
+
     /**
      * Never content. A form is not in the list: sites wrap whole pages in one, so only its controls and
      * their labels go.
@@ -38,7 +41,7 @@ public final class HtmlToMarkdown {
     private static final String NEVER_REVEALED = "dialog, [role=dialog], [role=alertdialog], .modal";
     private static final String HEADINGS = "h1, h2, h3, h4, h5, h6, summary";
     /** Where the main content of a page usually is, most specific first (the order url2md settled on). */
-    private static final String[] CONTENT_ROOTS = {"main, [role=main]", "article", "#content", "#main", ".content", ".main"};
+    private static final String[] CONTENT_ROOTS = {"main, [role=main]", ARTICLE, "#content", "#main", ".content", ".main"};
     /**
      * A usual place is taken as the content only when it holds nearly all the text of the page. Sites put
      * content beside their {@code <main>} (an intro above it, sections after it): below this share, the
@@ -76,9 +79,9 @@ public final class HtmlToMarkdown {
     private static final String SENTENCE_END = ".:!?";
     private static final Set<String> LINK_SCHEMES = Set.of("http", "https", "mailto", "tel");
     private static final Set<String> IMAGE_SCHEMES = Set.of("http", "https");
-    private static final Set<String> BLOCKS = Set.of("address", "article", "aside", "blockquote", "dd", "details",
+    private static final Set<String> BLOCKS = Set.of("address", ARTICLE, "aside", "blockquote", "dd", "details",
             "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
-            "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "summary", "table", "tbody", "td",
+            "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "summary", TABLE, "tbody", "td",
             "tfoot", "th", "thead", "tr", "ul");
 
     private HtmlToMarkdown() {
@@ -185,7 +188,7 @@ public final class HtmlToMarkdown {
         for (String selector : CONTENT_ROOTS) {
             List<Element> found = body.select(selector);
             // Several articles are a list of teasers, not the content.
-            if (found.isEmpty() || ("article".equals(selector) && found.size() != 1)) {
+            if (found.isEmpty() || (ARTICLE.equals(selector) && found.size() != 1)) {
                 continue;
             }
             if (all > 0 && found.get(0).text().length() >= all * WHOLE_CONTENT_SHARE) {
@@ -291,7 +294,7 @@ public final class HtmlToMarkdown {
                 case "ul", "ol" -> add(list(el, listDepth));
                 case "blockquote" -> add(quote(el));
                 case "pre" -> add("```\n" + el.wholeText().stripTrailing() + "\n```");
-                case "table" -> add(table(el));
+                case TABLE -> add(table(el));
                 case "hr" -> add("---");
                 default -> blocks(el, listDepth);
             }
@@ -370,7 +373,7 @@ public final class HtmlToMarkdown {
             List<List<String>> rows = new ArrayList<>();
             int columns = 0;
             for (Element row : table.select("tr")) {
-                if (row.closest("table") != table) {
+                if (row.closest(TABLE) != table) {
                     continue;
                 }
                 List<String> cells = new ArrayList<>();
@@ -503,7 +506,7 @@ public final class HtmlToMarkdown {
             for (String line : text.split("\n", -1)) {
                 String l = line.strip();
                 if (!l.isEmpty()) {
-                    if (sb.length() > 0) {
+                    if (!sb.isEmpty()) {
                         sb.append(' ');
                     }
                     sb.append(l);
@@ -528,7 +531,7 @@ public final class HtmlToMarkdown {
             for (String line : text.replace('\u00a0', ' ').split("\n", -1)) {
                 String l = SPACES.matcher(line).replaceAll(" ").trim();
                 if (!l.isEmpty()) {
-                    if (sb.length() > 0) {
+                    if (!sb.isEmpty()) {
                         sb.append('\n');
                     }
                     sb.append(l);

@@ -33,7 +33,7 @@ public class DiscoveryLinksFilter extends AbstractFilter {
     private static final Logger LOGGER = LoggerFactory.getLogger(DiscoveryLinksFilter.class);
     private static final String MODULE = "llms";
 
-    private LlmsService service;
+    private LlmsService llms;
 
     /** Registers where the filter applies. */
     @Activate
@@ -51,7 +51,7 @@ public class DiscoveryLinksFilter extends AbstractFilter {
     public String execute(String previousOut, RenderContext renderContext, Resource resource, RenderChain chain) throws Exception {
         try {
             JCRSiteNode site = renderContext.getSite();
-            if (!service.discoveryLinks() || site == null || !site.getInstalledModulesWithAllDependencies().contains(MODULE)) {
+            if (!llms.discoveryLinks() || site == null || !site.getInstalledModulesWithAllDependencies().contains(MODULE)) {
                 return previousOut;
             }
             return DiscoveryLinks.addTo(previousOut, markdownHref(resource, site), llmsHref(resource.getNode(), site));
@@ -68,7 +68,7 @@ public class DiscoveryLinksFilter extends AbstractFilter {
      * their making.
      */
     private String markdownHref(Resource resource, JCRSiteNode site) {
-        if (!service.servesPageMarkdown() || !"html".equals(resource.getTemplateType()) || resource.getLocale() == null) {
+        if (!llms.servesPageMarkdown() || !"html".equals(resource.getTemplateType()) || resource.getLocale() == null) {
             return null;
         }
         return DiscoveryLinks.markdownHref(resource.getNode().getUrl(), Jahia.getContextPath(),
@@ -97,6 +97,6 @@ public class DiscoveryLinksFilter extends AbstractFilter {
      */
     @Reference
     public void setService(LlmsService service) {
-        this.service = service;
+        this.llms = service;
     }
 }

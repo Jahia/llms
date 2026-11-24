@@ -28,8 +28,10 @@ import java.util.regex.Pattern;
  */
 public final class PublicUrls {
 
+    private static final String URL_PROPERTY = "j:url";
+
     /** Scheme, host and optional port, nothing else: the shape the CND constraint of {@code j:llmsBaseUrl} accepts. */
-    public static final Pattern BASE_URL = Pattern.compile("^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$");
+    public static final Pattern BASE_URL = Pattern.compile("^https?://[A-Za-z0-9.-]+(:\\d{1,5})?$");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PublicUrls.class);
 
@@ -48,7 +50,10 @@ public final class PublicUrls {
         }
         this.base = base;
         URI uri = URI.create(base);
-        int port = uri.getPort() == -1 ? ("https".equals(uri.getScheme()) ? 443 : 80) : uri.getPort();
+        int port = uri.getPort();
+        if (port == -1) {
+            port = "https".equals(uri.getScheme()) ? 443 : 80;
+        }
         this.request = request(uri.getScheme(), uri.getHost(), port, Jahia.getContextPath());
         this.response = response();
     }
@@ -90,8 +95,8 @@ public final class PublicUrls {
             Node v = it.nextNode();
             if (v.isNodeType("jnt:vanityUrl") && flag(v, "j:default", false) && flag(v, "j:active", true)
                     && (language == null || !v.hasProperty("jcr:language") || language.equals(v.getProperty("jcr:language").getString()))
-                    && v.hasProperty("j:url") && v.getProperty("j:url").getString().startsWith("/")) {
-                return Jahia.getContextPath() + v.getProperty("j:url").getString();
+                    && v.hasProperty(URL_PROPERTY) && v.getProperty(URL_PROPERTY).getString().startsWith("/")) {
+                return Jahia.getContextPath() + v.getProperty(URL_PROPERTY).getString();
             }
         }
         return null;

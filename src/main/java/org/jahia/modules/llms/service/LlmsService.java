@@ -3,7 +3,6 @@ package org.jahia.modules.llms.service;
 import org.jahia.bin.Jahia;
 import org.jahia.modules.llms.service.internal.HtmlToMarkdown;
 import org.jahia.modules.llms.service.internal.PageFetcher;
-import org.jahia.modules.llms.service.internal.PageMarkdown;
 import org.jahia.modules.llms.service.internal.PublicUrls;
 import org.jahia.modules.llms.service.internal.SectionFile;
 import org.jahia.modules.llms.service.internal.SiteWalker;
@@ -74,6 +73,10 @@ import java.util.concurrent.TimeoutException;
 @Component(service = LlmsService.class, configurationPid = "org.jahia.modules.llms", immediate = true)
 @Designate(ocd = LlmsConfig.class)
 public class LlmsService {
+
+    private static final String SITE_KEY_PROPERTY = "siteKey";
+    private static final String SITES = "/sites/";
+    private static final String PAGE_TYPE = "jnt:page";
 
     /** Mixin that carries the files on the site node. */
     public static final String MIXIN = "jmix:llms";
@@ -321,10 +324,10 @@ public class LlmsService {
             }
         }
         // The file goes when it says nothing any more. A key an operator added to it keeps it.
-        if (stored.keySet().stream().allMatch("siteKey"::equals)) {
+        if (stored.keySet().stream().allMatch(SITE_KEY_PROPERTY::equals)) {
             configService.deleteConfig(config);
         } else {
-            stored.put("siteKey", siteKey);
+            stored.put(SITE_KEY_PROPERTY, siteKey);
             configService.storeConfig(config);
         }
         return settingsOf(written, Map.of());
@@ -339,7 +342,7 @@ public class LlmsService {
         String candidate = identifier;
         for (int attempt = 0; attempt < OWN_CONFIG_ATTEMPTS; attempt++) {
             Config config = configService.getConfig(SITE_PID, candidate);
-            String owner = config.getRawProperties().get("siteKey");
+            String owner = config.getRawProperties().get(SITE_KEY_PROPERTY);
             if (owner == null || owner.isBlank() || owner.trim().equals(siteKey)) {
                 return config;
             }
@@ -642,7 +645,7 @@ public class LlmsService {
 
     /** {@code /cms/render/live/en/sites/key/} for each language and context the listed pages render under. */
     static Set<String> sitePrefixes(List<SiteWalker.Page> pages, String siteKey) {
-        String sitePath = "/sites/" + siteKey + "/";
+        String sitePath = SITES + siteKey + "/";
         Set<String> prefixes = new HashSet<>();
         for (SiteWalker.Page page : pages) {
             int at = page.renderPath().indexOf(sitePath);
@@ -689,7 +692,7 @@ public class LlmsService {
     private List<SiteWalker.Page> sectionFiles(String siteKey, String sectionPath, String language, String baseUrl)
             throws RepositoryException {
         Locale locale = Locale.forLanguageTag(language.replace('_', '-'));
-        String root = sectionPath == null ? "/sites/" + siteKey : sectionPath;
+        String root = sectionPath == null ? SITES + siteKey : sectionPath;
         JCRUserNode guest = JahiaUserManagerService.getInstance().lookupUser(JahiaUserManagerService.GUEST_USERNAME);
         if (guest == null) {
             throw new RepositoryException("guest user not found");
@@ -705,7 +708,7 @@ public class LlmsService {
                     while (carrying.hasNext()) {
                         JCRNodeWrapper page = (JCRNodeWrapper) carrying.nextNode();
                         String href = SectionFile.hrefOf(page.getPath());
-                        if (href != null && page.isNodeType("jnt:page") && page.hasProperty(LLMS)
+                        if (href != null && page.isNodeType(PAGE_TYPE) && page.hasProperty(LLMS)
                                 && !page.getProperty(LLMS).getString().isBlank()) {
                             out.add(new SiteWalker.Page(page.getDisplayableName(), baseUrl + Jahia.getContextPath() + href,
                                     SiteWalker.oneLine(page.hasProperty("jcr:description") ? page.getProperty("jcr:description").getString() : null),
@@ -748,12 +751,12 @@ public class LlmsService {
                             throw new IllegalStateException(NOT_PUBLIC);
                         }
                         JCRNodeWrapper page = session.getNode(sectionPath);
-                        if (!page.isNodeType("jnt:page")) {
+                        if (!page.isNodeType(PAGE_TYPE)) {
                             throw new RepositoryException("not a page");
                         }
                         return walker.walkSection(page);
                     }
-                    JCRNodeWrapper node = session.getNode("/sites/" + siteKey);
+                    JCRNodeWrapper node = session.getNode(SITES + siteKey);
                     if (!(node instanceof JCRSiteNode site)) {
                         throw new RepositoryException("not a site");
                     }
@@ -767,7 +770,7 @@ public class LlmsService {
      * @return whether the path is below that site, written plainly: no dot segment, no empty segment
      */
     public static boolean isSectionOf(String siteKey, String path) {
-        String root = "/sites/" + siteKey + "/";
+        String root = SITES + siteKey + "/";
         return path != null && path.startsWith(root) && path.length() > root.length() && !path.endsWith("/")
                 && !path.contains("//") && !path.contains("/../") && !path.contains("/./") && !path.endsWith("/..")
                 && !path.endsWith("/.") && path.indexOf('\\') < 0;
@@ -900,12 +903,12 @@ public class LlmsService {
         NodeIterator carrying = query.execute().getNodes();
         while (carrying.hasNext()) {
             JCRNodeWrapper page = (JCRNodeWrapper) carrying.nextNode();
-            if (page.isNodeType("jnt:page")) {
+            if (page.isNodeType(PAGE_TYPE)) {
                 out.put(page.getPath(), new SectionRef(page.getPath(), page.getDisplayableName(), true));
             }
         }
         for (JCRNodeWrapper home : session.getNode(site.getPath()).getNodes()) {
-            if (home.isNodeType("jnt:page")) {
+            if (home.isNodeType(PAGE_TYPE)) {
                 candidates(out, home, "", 0);
             }
         }
@@ -923,7 +926,7 @@ public class LlmsService {
             if (out.size() >= MAX_SECTIONS) {
                 return;
             }
-            if (child.isNodeType("jnt:page")) {
+            if (child.isNodeType(PAGE_TYPE)) {
                 if (hasSubPage(child, 0)) {
                     out.putIfAbsent(child.getPath(), new SectionRef(child.getPath(), group + child.getDisplayableName(), false));
                 }
@@ -936,7 +939,7 @@ public class LlmsService {
     /** Whether a page has a sub-page, right below it or below a menu group. */
     private static boolean hasSubPage(JCRNodeWrapper page, int groupDepth) throws RepositoryException {
         for (JCRNodeWrapper child : page.getNodes()) {
-            if (child.isNodeType("jnt:page")
+            if (child.isNodeType(PAGE_TYPE)
                     || (child.isNodeType(MENU_GROUP) && groupDepth < MAX_GROUP_DEPTH && hasSubPage(child, groupDepth + 1))) {
                 return true;
             }
@@ -989,10 +992,10 @@ public class LlmsService {
      * @throws RepositoryException when the site cannot be read
      */
     public static JCRNodeWrapper siteNode(JCRSessionWrapper session, String siteKey) throws RepositoryException {
-        if (!session.nodeExists("/sites/" + siteKey)) {
+        if (!session.nodeExists(SITES + siteKey)) {
             return null;
         }
-        JCRNodeWrapper site = session.getNode("/sites/" + siteKey);
+        JCRNodeWrapper site = session.getNode(SITES + siteKey);
         return site.isNodeType(MIXIN) ? site : null;
     }
 

@@ -25,7 +25,7 @@ final class SiteAccess {
     /** Lets its holder change what a site lists: a permission of the site administration. */
     static final String SETTINGS = "siteAdminLlmsSettings";
     private static final Pattern SITE_KEY = Pattern.compile("^[A-Za-z0-9_-]{1,64}$");
-    private static final Pattern LANGUAGE = Pattern.compile("^[a-z]{2,3}([_-][A-Za-z0-9]{2,8})*$");
+    private static final Pattern LANGUAGE = Pattern.compile("^[a-z]{2,3}(?:[_-][A-Za-z0-9]{2,8}){0,3}$");
 
     private SiteAccess() {
     }

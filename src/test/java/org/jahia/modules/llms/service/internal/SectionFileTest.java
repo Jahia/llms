@@ -38,4 +38,15 @@ class SectionFileTest {
         assertThat(SectionFile.hrefOf("/sites/a")).isNull();
         assertThat(SectionFile.hrefOf(null)).isNull();
     }
+
+    /** A path of thousands of segments is read in one pass: it is a file of a section like another, not a crash. */
+    @Test
+    void readsAVeryLongPath() {
+        String path = "/sites/a" + "/p".repeat(50_000);
+        assertThat(SectionFile.of(path + "/llms.txt")).isEqualTo(new SectionFile(path, false));
+        assertThat(SectionFile.hrefOf(path)).isEqualTo(path + "/llms.txt");
+        assertThat(SectionFile.of("/sites/a" + "/p".repeat(50_000) + "//x/llms.txt")).isNull();
+        assertThat(SectionFile.of("/sites/a/home/.hidden/llms.txt")).isNull();
+        assertThat(SectionFile.of("/sites/a/home/llms.txt/")).isNull();
+    }
 }

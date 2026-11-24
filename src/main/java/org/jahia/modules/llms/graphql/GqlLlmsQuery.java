@@ -29,6 +29,8 @@ import java.util.List;
 @GraphQLDescription("llms.txt and llms-full.txt queries")
 public class GqlLlmsQuery {
 
+    private static final String FULL_EXCEPTION = "Full exception";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(GqlLlmsQuery.class);
     private static final String PUBLISH = "publish";
 
@@ -51,7 +53,7 @@ public class GqlLlmsQuery {
             return service.sections(site).stream().map(GqlLlmsSection::new).toList();
         } catch (RepositoryException e) {
             LOGGER.warn("Could not list the sections of {}: {}", siteKey, e.getMessage());
-            LOGGER.debug("Full exception", e);
+            LOGGER.debug(FULL_EXCEPTION, e);
             throw new DataFetchingException("The sections could not be read");
         }
     }
@@ -122,7 +124,7 @@ public class GqlLlmsQuery {
             return new GqlLlmsStatus(service.status(SiteAccess.scope(site, path)));
         } catch (RepositoryException e) {
             LOGGER.warn("Could not read the status of the llms files of {}: {}", siteKey, e.getMessage());
-            LOGGER.debug("Full exception", e);
+            LOGGER.debug(FULL_EXCEPTION, e);
             throw new DataFetchingException("The status of the files could not be read");
         }
     }
@@ -162,7 +164,7 @@ public class GqlLlmsQuery {
             throw new DataFetchingException(e.getMessage());
         } catch (RepositoryException | RuntimeException e) {
             LOGGER.warn("Could not generate {} for {}: {}", full ? "llms-full.txt" : "llms.txt", siteKey, e.getMessage());
-            LOGGER.debug("Full exception", e);
+            LOGGER.debug(FULL_EXCEPTION, e);
             throw new DataFetchingException("The file could not be generated");
         }
     }
