@@ -22,8 +22,10 @@ import org.jsoup.nodes.Document;
 import javax.jcr.PathNotFoundException;
 import javax.jcr.RepositoryException;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -54,6 +56,11 @@ public final class NativeMarkdown {
      * path and at its vanity URL, and on any host. Whoever serves the Markdown writes the address there.
      */
     public static final String PAGE_URL = "https://llms-page.invalid";
+    /**
+     * Set on a request while the module renders for it: the Markdown views answer no other request (see
+     * {@link MarkdownGate}). A visitor cannot set an attribute of a request.
+     */
+    static final String STARTED_BY_MODULE = "org.jahia.modules.llms.render.startedByModule";
     private static final String SERVLET_PATH = "/cms/render";
     private static final String LIVE = "live";
 
@@ -86,12 +93,17 @@ public final class NativeMarkdown {
         for (String name : Collections.list(request.getAttributeNames())) {
             attributes.put(name, request.getAttribute(name));
         }
+        // Jahia keeps what is rendered for every visitor: nothing one of them added to the address may
+        // change it. A page that reads a parameter (a pager, a search) is rendered as without any.
+        HttpServletRequest rendered = new WithoutParameters(request);
         try {
             sessions.setCurrentUser(guest);
+            // Removed with the other attributes of the rendering, below.
+            request.setAttribute(STARTED_BY_MODULE, Boolean.TRUE);
             return JCRTemplate.getInstance().doExecute(guest, LIVE, locale, (JCRCallback<String>) session -> {
                 JCRNodeWrapper node = session.getNode(path);
                 JCRSiteNode site = node.getResolveSite();
-                RenderContext context = new RenderContext(request, response, guest);
+                RenderContext context = new RenderContext(rendered, response, guest);
                 context.setSite(site);
                 context.setSiteInfo(new SiteInfo(site));
                 context.setChannel(ChannelService.getInstance().getChannel("generic"));
@@ -128,5 +140,38 @@ public final class NativeMarkdown {
      */
     public static String convert(Document page, String title, boolean keepImages) {
         return (title.isEmpty() ? "" : "# " + title + "\n\n") + HtmlToMarkdown.convert(page, title, href -> href, keepImages) + "\n";
+    }
+
+    /** A request as its visitor sent it, without the parameters of its address. */
+    static final class WithoutParameters extends HttpServletRequestWrapper {
+
+        WithoutParameters(HttpServletRequest request) {
+            super(request);
+        }
+
+        @Override
+        public String getParameter(String name) {
+            return null;
+        }
+
+        @Override
+        public Map<String, String[]> getParameterMap() {
+            return Map.of();
+        }
+
+        @Override
+        public Enumeration<String> getParameterNames() {
+            return Collections.emptyEnumeration();
+        }
+
+        @Override
+        public String[] getParameterValues(String name) {
+            return null;
+        }
+
+        @Override
+        public String getQueryString() {
+            return null;
+        }
     }
 }
