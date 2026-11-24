@@ -38,7 +38,7 @@ public final class DiscoveryLinks {
         if (llmsHref != null && !html.contains("rel=\"describedby\"")) {
             links.append("<link rel=\"describedby\" href=\"").append(attribute(llmsHref)).append("\"/>");
         }
-        return links.length() == 0 ? html : html.substring(0, head.end()) + links + html.substring(head.end());
+        return links.isEmpty() ? html : html.substring(0, head.end()) + links + html.substring(head.end());
     }
 
     /**
@@ -77,9 +77,9 @@ public final class DiscoveryLinks {
             value.append('<').append(uriReference(canonicalHref)).append(">; rel=\"canonical\"");
         }
         if (llmsHref != null) {
-            value.append(value.length() == 0 ? "" : ", ").append('<').append(uriReference(llmsHref)).append(">; rel=\"describedby\"");
+            value.append(value.isEmpty() ? "" : ", ").append('<').append(uriReference(llmsHref)).append(">; rel=\"describedby\"");
         }
-        return value.length() == 0 ? null : value.toString();
+        return value.isEmpty() ? null : value.toString();
     }
 
     /** An address as the value of an HTML attribute: nothing in it may end the attribute or the tag. */

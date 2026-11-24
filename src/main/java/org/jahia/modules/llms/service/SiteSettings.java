@@ -25,6 +25,15 @@ import java.util.function.Predicate;
 record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String> excluded, Set<String> excludedTrees,
                     Set<String> included, boolean linkToMarkdown, boolean keepImages) {
 
+    private static final String MAX_PAGES = "maxPages";
+    private static final String MAX_DEPTH = "maxDepth";
+    private static final String MAX_MAIN_RESOURCES = "maxMainResources";
+    private static final String INCLUDED_TYPES = "includedNodeTypes";
+    private static final String EXCLUDED_TYPES = "excludedNodeTypes";
+    private static final String EXCLUDED_TREES = "excludedTreeNodeTypes";
+    private static final String LINK_TO_MARKDOWN = "linkToMarkdown";
+    private static final String KEEP_IMAGES = "keepImages";
+
     static final int MAX_LISTED = 2000;
     /** Written in place of a list of types to empty it for one site. */
     static final String NONE = "none";
@@ -45,14 +54,14 @@ record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String
 
     /** The values a site may set, in the order the panel shows them. */
     static final List<Definition> DEFINITIONS = List.of(
-            new Definition("maxPages", Kind.NUMBER, 1, MAX_LISTED),
-            new Definition("maxDepth", Kind.NUMBER, 1, 10),
-            new Definition("maxMainResources", Kind.NUMBER, 0, MAX_LISTED),
-            new Definition("includedNodeTypes", Kind.TYPES, 0, 0),
-            new Definition("excludedNodeTypes", Kind.TYPES, 0, 0),
-            new Definition("excludedTreeNodeTypes", Kind.TYPES, 0, 0),
-            new Definition("linkToMarkdown", Kind.FLAG, 0, 0),
-            new Definition("keepImages", Kind.FLAG, 0, 0));
+            new Definition(MAX_PAGES, Kind.NUMBER, 1, MAX_LISTED),
+            new Definition(MAX_DEPTH, Kind.NUMBER, 1, 10),
+            new Definition(MAX_MAIN_RESOURCES, Kind.NUMBER, 0, MAX_LISTED),
+            new Definition(INCLUDED_TYPES, Kind.TYPES, 0, 0),
+            new Definition(EXCLUDED_TYPES, Kind.TYPES, 0, 0),
+            new Definition(EXCLUDED_TREES, Kind.TYPES, 0, 0),
+            new Definition(LINK_TO_MARKDOWN, Kind.FLAG, 0, 0),
+            new Definition(KEEP_IMAGES, Kind.FLAG, 0, 0));
 
     /**
      * Why a value is refused.
@@ -94,7 +103,7 @@ record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String
     }
 
     private static Refusal checkNumber(String text, Definition definition) {
-        if (!text.matches("[0-9]{1,6}")) {
+        if (!text.matches("\\d{1,6}")) {
             return new Refusal("number", null);
         }
         int number = Integer.parseInt(text);
@@ -136,14 +145,14 @@ record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String
      */
     String textOf(String key) {
         return switch (key) {
-            case "maxDepth" -> String.valueOf(maxDepth);
-            case "maxPages" -> String.valueOf(maxPages);
-            case "maxMainResources" -> String.valueOf(maxMainResources);
-            case "excludedNodeTypes" -> String.join(", ", excluded);
-            case "excludedTreeNodeTypes" -> String.join(", ", excludedTrees);
-            case "includedNodeTypes" -> String.join(", ", included);
-            case "linkToMarkdown" -> String.valueOf(linkToMarkdown);
-            case "keepImages" -> String.valueOf(keepImages);
+            case MAX_DEPTH -> String.valueOf(maxDepth);
+            case MAX_PAGES -> String.valueOf(maxPages);
+            case MAX_MAIN_RESOURCES -> String.valueOf(maxMainResources);
+            case EXCLUDED_TYPES -> String.join(", ", excluded);
+            case EXCLUDED_TREES -> String.join(", ", excludedTrees);
+            case INCLUDED_TYPES -> String.join(", ", included);
+            case LINK_TO_MARKDOWN -> String.valueOf(linkToMarkdown);
+            case KEEP_IMAGES -> String.valueOf(keepImages);
             default -> throw new IllegalArgumentException("Unknown setting");
         };
     }
@@ -164,14 +173,14 @@ record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String
      */
     SiteSettings with(Map<String, ?> site) {
         return new SiteSettings(
-                number(site, "maxDepth", maxDepth, 1, 10),
-                number(site, "maxPages", maxPages, 1, MAX_LISTED),
-                number(site, "maxMainResources", maxMainResources, 0, MAX_LISTED),
-                types(site, "excludedNodeTypes", excluded),
-                types(site, "excludedTreeNodeTypes", excludedTrees),
-                types(site, "includedNodeTypes", included),
-                flag(site, "linkToMarkdown", linkToMarkdown),
-                flag(site, "keepImages", keepImages));
+                number(site, MAX_DEPTH, maxDepth, 1, 10),
+                number(site, MAX_PAGES, maxPages, 1, MAX_LISTED),
+                number(site, MAX_MAIN_RESOURCES, maxMainResources, 0, MAX_LISTED),
+                types(site, EXCLUDED_TYPES, excluded),
+                types(site, EXCLUDED_TREES, excludedTrees),
+                types(site, INCLUDED_TYPES, included),
+                flag(site, LINK_TO_MARKDOWN, linkToMarkdown),
+                flag(site, KEEP_IMAGES, keepImages));
     }
 
     private static String text(Map<String, ?> site, String key) {

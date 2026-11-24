@@ -66,7 +66,8 @@ public final class PageMarkdown {
             return null;
         }
         int end = path.indexOf('/', 1);
-        return RESERVED.contains(end < 0 ? path.substring(1) : path.substring(1, end)) ? null : path;
+        String first = end < 0 ? path.substring(1) : path.substring(1, end);
+        return RESERVED.contains(first) ? null : path;
     }
 
     /**

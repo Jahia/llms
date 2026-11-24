@@ -32,6 +32,8 @@ import java.util.Map;
 @GraphQLDescription("llms.txt and llms-full.txt mutations")
 public class GqlLlmsMutation {
 
+    private static final String PUBLISH = "publish";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(GqlLlmsMutation.class);
     /** llms.txt is an index: a file this large is a mistake, not a list of pages. */
     private static final int MAX_LLMS_BYTES = 1024 * 1024;
@@ -59,7 +61,7 @@ public class GqlLlmsMutation {
             @GraphQLName("llms") @GraphQLDescription("llms.txt; blank removes it, omitted leaves it unchanged") String llms,
             @GraphQLName("llmsFull") @GraphQLDescription("llms-full.txt; blank removes it, omitted leaves it unchanged") String llmsFull,
             @GraphQLName("baseUrl") @GraphQLDescription("Public base URL; blank removes it, omitted leaves it unchanged") String baseUrl) {
-        JCRSiteNode site = SiteAccess.site(siteKey, "jcr:modifyProperties", "publish");
+        JCRSiteNode site = SiteAccess.site(siteKey, "jcr:modifyProperties", PUBLISH);
         if (baseUrl != null && !baseUrl.isBlank() && !PublicUrls.BASE_URL.matcher(baseUrl).matches()) {
             throw new DataFetchingException("The public URL must be a scheme, a host and an optional port");
         }
@@ -67,7 +69,7 @@ public class GqlLlmsMutation {
             throw new DataFetchingException("The file is larger than the configured limit");
         }
         try {
-            JCRNodeWrapper scope = SiteAccess.scope(site, path, "jcr:modifyProperties", "publish");
+            JCRNodeWrapper scope = SiteAccess.scope(site, path, "jcr:modifyProperties", PUBLISH);
             // The public URL belongs to the site: saving the files of a section leaves it alone.
             service.save(scope, llms, llmsFull, scope == site ? baseUrl : null);
             return true;
@@ -136,7 +138,7 @@ public class GqlLlmsMutation {
             @GraphQLName("language") @GraphQLNonNull @GraphQLDescription("Language of the file") String language,
             @GraphQLName("baseUrl") @GraphQLNonNull @GraphQLDescription("Public base URL of the site, scheme, host and port") String baseUrl,
             DataFetchingEnvironment environment) {
-        JCRSiteNode site = SiteAccess.site(siteKey, "publish");
+        JCRSiteNode site = SiteAccess.site(siteKey, PUBLISH);
         String lang = SiteAccess.language(site, language);
         if (!PublicUrls.BASE_URL.matcher(baseUrl).matches()) {
             throw new DataFetchingException("The public URL must be a scheme, a host and an optional port");

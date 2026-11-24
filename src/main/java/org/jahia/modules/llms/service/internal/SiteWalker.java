@@ -37,6 +37,8 @@ import java.util.regex.Pattern;
  */
 public final class SiteWalker {
 
+    private static final String DESCRIPTION = "jcr:description";
+
     /** One listed page. {@code renderPath} is the page's render URL on this Jahia, used to fetch it. */
     public record Page(String title, String url, String description, String renderPath) {
     }
@@ -96,7 +98,7 @@ public final class SiteWalker {
      * template sets (jahia.com, Academy), which say of a page what j:hideFromNavigationMenu says.
      */
     public static final String DEFAULT_EXCLUDED = NO_INDEX + ", jcmix:hidePage, jacademix:hidePage";
-    private static final Pattern TYPE_NAME = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*:[A-Za-z][A-Za-z0-9_.-]*$");
+    private static final Pattern TYPE_NAME = Pattern.compile("^[A-Za-z]\\w*:[A-Za-z][\\w.-]*$");
     private static final int MAX_DESCRIPTION = 300;
     /** A description is cut to MAX_DESCRIPTION: nothing past this many characters of the source is read. */
     private static final int MAX_DESCRIPTION_SOURCE = 4000;
@@ -263,7 +265,7 @@ public final class SiteWalker {
         choose(List.of(sectionPage));
         below(sections, sectionPage);
         contents(sections, sectionPage);
-        return new Walk(title(sectionPage), oneLine(property(sectionPage, "jcr:description")), sections, truncated || cut);
+        return new Walk(title(sectionPage), oneLine(property(sectionPage, DESCRIPTION)), sections, truncated || cut);
     }
 
     /**
@@ -383,7 +385,7 @@ public final class SiteWalker {
             return;
         }
         listed++;
-        pages.add(new Page(title(page), url, oneLine(property(page, "jcr:description")), page.getUrl()));
+        pages.add(new Page(title(page), url, oneLine(property(page, DESCRIPTION)), page.getUrl()));
     }
 
     /**
@@ -435,7 +437,7 @@ public final class SiteWalker {
                 section = new Section(title(holder), new ArrayList<>());
                 byHolder.put(holder.getPath(), section);
             }
-            section.pages().add(new Page(title(node), url, oneLine(property(node, "jcr:description")), node.getUrl()));
+            section.pages().add(new Page(title(node), url, oneLine(property(node, DESCRIPTION)), node.getUrl()));
             seen.add(node.getPath());
         } catch (RepositoryException e) {
             // A node above it that a visitor cannot read, or a node gone since it was found: not listed.

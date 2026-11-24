@@ -36,7 +36,16 @@ public class LlmsSectionServlet extends HttpServlet {
     private static final String PATH_PARAMETER = "path=";
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            serve(request, response);
+        } catch (IOException e) {
+            // The visitor went away before the end: nothing is left to answer, and nothing to report.
+            LOGGER.debug("Could not write the file of a section", e);
+        }
+    }
+
+    private void serve(HttpServletRequest request, HttpServletResponse response) throws IOException {
         SectionFile file = fileOf((String) request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI),
                 Jahia.getContextPath(), request.getQueryString());
         String content = null;
