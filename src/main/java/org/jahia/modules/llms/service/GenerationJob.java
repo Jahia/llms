@@ -4,6 +4,7 @@ import org.jahia.modules.llms.service.internal.SiteWalker;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 /**
@@ -56,9 +57,10 @@ public final class GenerationJob implements LlmsService.Progress {
     private final String id;
     private final String siteKey;
     private final long createdNanos = System.nanoTime();
-    private volatile List<SiteWalker.Page> pages;
-    private volatile AtomicReferenceArray<PageState> states;
-    private volatile LlmsService.Generation generation;
+    // Each of these is written whole, once, and never changed after: a reader gets all of it or none.
+    private final AtomicReference<List<SiteWalker.Page>> pages = new AtomicReference<>();
+    private final AtomicReference<AtomicReferenceArray<PageState>> states = new AtomicReference<>();
+    private final AtomicReference<LlmsService.Generation> generation = new AtomicReference<>();
     private volatile String error;
     private volatile boolean finished;
 
@@ -89,13 +91,13 @@ public final class GenerationJob implements LlmsService.Progress {
             all.set(i, PageState.PENDING);
         }
         // The states first: a reader that sees the pages must find their states.
-        this.states = all;
-        this.pages = List.copyOf(listed);
+        states.set(all);
+        pages.set(List.copyOf(listed));
     }
 
     @Override
     public void page(int index, PageState state) {
-        AtomicReferenceArray<PageState> all = states;
+        AtomicReferenceArray<PageState> all = states.get();
         if (all != null && index >= 0 && index < all.length()) {
             // Left out for good: a page still being rendered when the file filled up reports after that.
             all.updateAndGet(index, current -> current == PageState.SKIPPED ? current : state);
@@ -103,7 +105,7 @@ public final class GenerationJob implements LlmsService.Progress {
     }
 
     void finish(LlmsService.Generation result) {
-        this.generation = result;
+        generation.set(result);
         this.finished = true;
     }
 
@@ -116,8 +118,8 @@ public final class GenerationJob implements LlmsService.Progress {
      * @return the job as it stands now
      */
     public Snapshot snapshot() {
-        List<SiteWalker.Page> listed = pages;
-        AtomicReferenceArray<PageState> all = states;
+        List<SiteWalker.Page> listed = pages.get();
+        AtomicReferenceArray<PageState> all = states.get();
         // Read before the pages: a job seen as finished has all its states written.
         boolean over = finished;
         List<PageProgress> out = new ArrayList<>();
@@ -131,6 +133,6 @@ public final class GenerationJob implements LlmsService.Progress {
                 out.add(new PageProgress(listed.get(i).title(), listed.get(i).url(), state));
             }
         }
-        return new Snapshot(listed != null, out, done, over, error, over ? generation : null);
+        return new Snapshot(listed != null, out, done, over, error, over ? generation.get() : null);
     }
 }
