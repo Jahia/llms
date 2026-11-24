@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (unreleased)
+## 2.0.0 (2026-11-24)
 
 A major version. 1.0.0 was an editor for one file, llms.txt, and a servlet that served it. 2.0.0
 generates the files from the site, adds llms-full.txt, serves each page as Markdown, and asks for more
