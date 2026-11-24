@@ -61,7 +61,8 @@ const followGeneration = async ({client, siteKey, id, isMounted, onProgress}) =>
     });
     const state = result.llms.generationProgress;
     if (!isMounted.current) {
-        throw new Error('');
+        // Nobody is left to tell: the panel was closed while the file was generated.
+        throw new Error('The panel was closed');
     }
 
     onProgress({runId: id, isStarted: state.started, total: state.total, done: state.done, pages: state.pages});

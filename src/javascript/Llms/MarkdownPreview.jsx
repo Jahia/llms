@@ -38,7 +38,7 @@ const sanitizerFor = newTab => {
             node.setAttribute('target', '_blank');
             node.setAttribute('rel', 'noopener noreferrer');
             const note = node.ownerDocument.createElement('span');
-            note.setAttribute('data-llms-new-tab', '');
+            note.dataset.llmsNewTab = '';
             note.textContent = ` (${newTab})`;
             node.appendChild(note);
         }
@@ -50,7 +50,7 @@ const sanitizerFor = newTab => {
     });
 };
 
-const demote = html => html.replace(HEADING, (match, closing, level) => `<${closing}h${Math.min(6, Number(level) + HEADING_SHIFT)}`);
+const demote = html => html.replaceAll(HEADING, (match, closing, level) => `<${closing}h${Math.min(6, Number(level) + HEADING_SHIFT)}`);
 
 /**
  * A file as a person reads it: its Markdown rendered. Read only; the text is edited in the editor. The
