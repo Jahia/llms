@@ -75,6 +75,34 @@ class HtmlToMarkdownTest {
         assertThat(md).isEqualTo("- [B](https://www.example.com/b.html)");
     }
 
+    /**
+     * A documentation template wraps the menu of the section and the table of contents of the page in
+     * main, beside the article: they are navigation, and every page of the section would repeat them.
+     */
+    @Test
+    void dropsTheMenuOfASectionAndTheTableOfContentsPutInsideMain() {
+        String md = convert("<main><div><aside><nav aria-label='Docs navigation'><ul>"
+                + "<li><a href='/a.html'>Introduction</a></li><li><a href='/b.html'>Setting up</a></li>"
+                + "<li>Java<ul><li><a href='/c.html'>Views</a></li><li><a href='/d.html'>Rules</a></li></ul></li></ul></nav></aside>"
+                + "<article><h1>Making a hero section</h1><p>" + LONG + "</p><h2>Working with content</h2><p>" + LONG + "</p>"
+                + "<p>Next: <a href='/e.html'>The about page</a></p></article>"
+                + "<nav id='toc'><strong>In this page</strong><ul></ul><a href='#'>Back to top</a></nav></div></main>", "Making a hero section");
+        assertThat(md).doesNotContain("Introduction").doesNotContain("Setting up").doesNotContain("Views")
+                .doesNotContain("In this page").doesNotContain("Back to top");
+        assertThat(md).startsWith(LONG).contains("## Working with content").endsWith("Next: [The about page](https://www.example.com/e.html)");
+    }
+
+    /** The menu is the page when it is most of its text, whatever stands around it. */
+    @Test
+    void keepsAMenuThatIsThePage() {
+        String md = convert("<main><h1>Site map</h1><p>Every page of the site.</p><nav><ul>"
+                + "<li><a href='/a.html'>Products and services of the company</a></li>"
+                + "<li><a href='/b.html'>Documentation and tutorials for developers</a></li>"
+                + "<li><a href='/c.html'>Contact and offices around the world</a></li></ul></nav></main>", "Site map");
+        assertThat(md).contains("[Products and services of the company](https://www.example.com/a.html)")
+                .contains("[Contact and offices around the world](https://www.example.com/c.html)");
+    }
+
     @Test
     void dropsATagLeftOpenAsTextAndKeepsTextAboutTags() {
         // As served by a page whose rich text is broken: the tag is text, between a paragraph and a list item.
