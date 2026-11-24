@@ -88,8 +88,8 @@ class HtmlToMarkdownTest {
                 + "<p>Next: <a href='/e.html'>The about page</a></p></article>"
                 + "<nav id='toc'><strong>In this page</strong><ul></ul><a href='#'>Back to top</a></nav></div></main>", "Making a hero section");
         assertThat(md).doesNotContain("Introduction").doesNotContain("Setting up").doesNotContain("Views")
-                .doesNotContain("In this page").doesNotContain("Back to top");
-        assertThat(md).startsWith(LONG).contains("## Working with content").endsWith("Next: [The about page](https://www.example.com/e.html)");
+                .doesNotContain("In this page").doesNotContain("Back to top")
+                .startsWith(LONG).contains("## Working with content").endsWith("Next: [The about page](https://www.example.com/e.html)");
     }
 
     /** On a short page the menu of the section is most of the text, and is no more the content for that. */
