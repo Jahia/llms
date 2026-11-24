@@ -1,5 +1,6 @@
 package org.jahia.modules.llms.render;
 
+import org.jahia.bin.Jahia;
 import org.jahia.modules.llms.service.internal.HtmlToMarkdown;
 import org.jahia.modules.llms.service.internal.PageMarkdown;
 import org.jahia.services.channels.ChannelService;
@@ -95,7 +96,7 @@ public final class NativeMarkdown {
         }
         // Jahia keeps what is rendered for every visitor: nothing one of them added to the address may
         // change it. A page that reads a parameter (a pager, a search) is rendered as without any.
-        HttpServletRequest rendered = new WithoutParameters(request);
+        HttpServletRequest rendered = new AsJahiaRendersIt(request);
         try {
             sessions.setCurrentUser(guest);
             // Removed with the other attributes of the rendering, below.
@@ -142,11 +143,22 @@ public final class NativeMarkdown {
         return (title.isEmpty() ? "" : "# " + title + "\n\n") + HtmlToMarkdown.convert(page, title, href -> href, keepImages) + "\n";
     }
 
-    /** A request as its visitor sent it, without the parameters of its address. */
-    static final class WithoutParameters extends HttpServletRequestWrapper {
+    /**
+     * The request a page is rendered with: the one of the visitor, as Jahia's own render servlet would
+     * see it. Without the parameters of its address, and under the context path of Jahia: inside a
+     * servlet of a module the context path of the request is {@code /modules}, and Jahia writes it in
+     * front of every link of the page it generates.
+     */
+    static final class AsJahiaRendersIt extends HttpServletRequestWrapper {
 
-        WithoutParameters(HttpServletRequest request) {
+        AsJahiaRendersIt(HttpServletRequest request) {
             super(request);
+        }
+
+        @Override
+        public String getContextPath() {
+            String context = Jahia.getContextPath();
+            return context == null ? "" : context;
         }
 
         @Override
