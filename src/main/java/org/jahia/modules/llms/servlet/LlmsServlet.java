@@ -82,43 +82,23 @@ public class LlmsServlet extends HttpServlet {
         }
         String property = target.full() ? LlmsService.LLMS_FULL : LlmsService.LLMS;
         String ifNoneMatch = request.getHeader("If-None-Match");
-        String content = null;
-        String cacheKey = null;
-        String stamp = null;
-        try {
-            JCRSessionWrapper live = JCRSessionFactory.getInstance().getCurrentUserSession("live");
-            String siteKey = target.siteKey();
-            if (siteKey == null || siteKey.isEmpty()) {
-                siteKey = siteOfHost(request.getServerName(), live);
-            }
-            // Read with the visitor's session, on every request: a site they may not read stays a 404.
-            JCRNodeWrapper site = siteKey != null && SITE_KEY.matcher(siteKey).matches() ? LlmsService.siteNode(live, siteKey) : null;
-            if (site != null) {
-                cacheKey = siteKey + '/' + property;
-                stamp = stamp(site);
-                Validator known = validators.get(cacheKey);
-                if (known != null && known.isFor(stamp, System.nanoTime()) && matches(ifNoneMatch, known.etag())) {
-                    // The caller holds the file as it is served now: answered without reading or hashing it.
-                    headers(response, known.etag());
-                    response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
-                    return;
-                }
-                content = LlmsService.read(site, property);
-            }
-        } catch (Exception e) {
-            // Debug only: the URL is public, a failing read must not write one line per request.
-            LOGGER.debug("Could not read {}", property, e);
+        Read read = read(target, property, request.getServerName(), ifNoneMatch);
+        if (read.unchanged() != null) {
+            // The caller holds the file as it is served now: answered without reading or hashing it.
+            headers(response, read.unchanged());
+            response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+            return;
         }
-        if (content == null || content.isBlank()) {
-            if (cacheKey != null) {
-                validators.remove(cacheKey);
+        if (read.content() == null || read.content().isBlank()) {
+            if (read.cacheKey() != null) {
+                validators.remove(read.cacheKey());
             }
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
-        byte[] body = content.getBytes(StandardCharsets.UTF_8);
+        byte[] body = read.content().getBytes(StandardCharsets.UTF_8);
         String etag = etag(body);
-        remember(cacheKey, stamp, etag);
+        remember(read.cacheKey(), read.stamp(), etag);
         headers(response, etag);
         if (matches(ifNoneMatch, etag)) {
             response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
@@ -127,6 +107,49 @@ public class LlmsServlet extends HttpServlet {
         response.setContentType("text/plain;charset=UTF-8");
         response.setContentLength(body.length);
         response.getOutputStream().write(body);
+    }
+
+    /**
+     * What was read for a request.
+     *
+     * @param content   the file, or null when there is none to serve
+     * @param cacheKey  what the validator of the file is kept under, or null when no site was found
+     * @param stamp     what the site said of its last change when the file was read
+     * @param unchanged the validator the caller already holds, when the file did not change since: it is
+     *                  then not read
+     */
+    private record Read(String content, String cacheKey, String stamp, String unchanged) {
+    }
+
+    /**
+     * Reads the file with the visitor's session, on every request: a site they may not read stays a 404.
+     * A read that fails is a file that is not there.
+     */
+    private Read read(Target target, String property, String host, String ifNoneMatch) {
+        String cacheKey = null;
+        String stamp = null;
+        try {
+            JCRSessionWrapper live = JCRSessionFactory.getInstance().getCurrentUserSession("live");
+            String siteKey = target.siteKey();
+            if (siteKey == null || siteKey.isEmpty()) {
+                siteKey = siteOfHost(host, live);
+            }
+            JCRNodeWrapper site = siteKey != null && SITE_KEY.matcher(siteKey).matches() ? LlmsService.siteNode(live, siteKey) : null;
+            if (site == null) {
+                return new Read(null, null, null, null);
+            }
+            cacheKey = siteKey + '/' + property;
+            stamp = stamp(site);
+            Validator known = validators.get(cacheKey);
+            if (known != null && known.isFor(stamp, System.nanoTime()) && matches(ifNoneMatch, known.etag())) {
+                return new Read(null, cacheKey, stamp, known.etag());
+            }
+            return new Read(LlmsService.read(site, property), cacheKey, stamp, null);
+        } catch (Exception e) {
+            // Debug only: the URL is public, a failing read must not write one line per request.
+            LOGGER.debug("Could not read {}", property, e);
+            return new Read(null, cacheKey, stamp, null);
+        }
     }
 
     /**
