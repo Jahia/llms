@@ -17,6 +17,7 @@ import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import javax.jcr.RepositoryException;
 
 /**
@@ -33,11 +34,16 @@ public class DiscoveryLinksFilter extends AbstractFilter {
     private static final Logger LOGGER = LoggerFactory.getLogger(DiscoveryLinksFilter.class);
     private static final String MODULE = "llms";
 
-    private LlmsService llms;
+    private final LlmsService llms;
 
-    /** Registers where the filter applies. */
+    /**
+     * Registers where the filter applies.
+     *
+     * @param llms the llms service
+     */
     @Activate
-    public void activate() {
+    public DiscoveryLinksFilter(@Reference LlmsService llms) {
+        this.llms = llms;
         // The same place in the chain as the filter of the sitemap module that writes the robots meta tag.
         setPriority(17);
         // Pages, and the contents shown as a page of their own.
@@ -92,11 +98,14 @@ public class DiscoveryLinksFilter extends AbstractFilter {
         return file == null || file.isBlank() ? null : Jahia.getContextPath() + "/sites/" + site.getSiteKey() + "/llms.txt";
     }
 
-    /**
-     * @param service the llms service
-     */
-    @Reference
-    public void setService(LlmsService service) {
-        this.llms = service;
+    /** Two filters are the same when Jahia says so and they read the same service. */
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof DiscoveryLinksFilter that && super.equals(other) && Objects.equals(llms, that.llms);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), llms);
     }
 }

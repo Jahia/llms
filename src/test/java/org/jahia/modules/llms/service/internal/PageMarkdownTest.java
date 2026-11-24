@@ -82,4 +82,14 @@ class PageMarkdownTest {
             assertThat(PageMarkdown.vanityOf(odd, "")).as(odd).isNull();
         }
     }
+
+    @Test
+    void takesTheContextPathOffAnAddressAndNothingElse() {
+        assertThat(PageMarkdown.withoutContext("/ctx/sites/a/home.html", "/ctx")).isEqualTo("/sites/a/home.html");
+        assertThat(PageMarkdown.withoutContext("/sites/a/home.html", "")).isEqualTo("/sites/a/home.html");
+        assertThat(PageMarkdown.withoutContext("/sites/a/home.html", null)).isEqualTo("/sites/a/home.html");
+        // A path that only starts like the context path is not below it.
+        assertThat(PageMarkdown.withoutContext("/ctxother/home.html", "/ctx")).isEqualTo("/ctxother/home.html");
+        assertThat(PageMarkdown.withoutContext("/ctx", "/ctx")).isEqualTo("/ctx");
+    }
 }

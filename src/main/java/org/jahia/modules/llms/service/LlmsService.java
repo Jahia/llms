@@ -55,6 +55,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Generates and stores a site's llms.txt and llms-full.txt.
@@ -98,12 +99,14 @@ public class LlmsService {
     private final Semaphore fullSlots = new Semaphore(2);
     /** Walks of a page tree running for llms.txt. */
     private final Semaphore walkSlots = new Semaphore(4);
-    private volatile Limits limits;
+    // The configuration of the module, replaced whole each time it changes: a generation that started
+    // with one keeps it to its end.
+    private final AtomicReference<Limits> limits = new AtomicReference<>();
     private volatile boolean servePageMarkdown = true;
     private volatile boolean discoveryLinks = true;
     /** What a generation lists when the site has no configuration of its own. */
-    private volatile SiteSettings defaults = new SiteSettings(10, 200, 100, SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED),
-            Set.of(), Set.of(), false, false);
+    private final AtomicReference<SiteSettings> defaults = new AtomicReference<>(new SiteSettings(10, 200, 100,
+            SiteWalker.typeNames(SiteWalker.DEFAULT_EXCLUDED), Set.of(), Set.of(), false, false));
     /** The heading the files of the sections are listed under: the name of the file, the same in every language. */
     static final String SECTION_FILES_HEADING = "llms.txt";
     private static final String MENU_GROUP = "jnt:navMenuText";
@@ -111,7 +114,7 @@ public class LlmsService {
     private static final int MAX_GROUP_DEPTH = 5;
     private static final int OWN_CONFIG_ATTEMPTS = 5;
     private static final String SITE_PID = "org.jahia.modules.llms.site";
-    private volatile ConfigService configService;
+    private final AtomicReference<ConfigService> configService = new AtomicReference<>();
     /** The site configurations, one for each org.jahia.modules.llms.site-*.cfg. */
     private final List<SiteOverride> overrides = new CopyOnWriteArrayList<>();
     /** The generations started from the panel, by identifier, kept a while after they end. */
@@ -211,10 +214,11 @@ public class LlmsService {
         if (Limits.isRejected(config.renderBaseUrl())) {
             LOGGER.warn("renderBaseUrl is not a scheme, a host and an optional port: ignored, pages are rendered on 127.0.0.1");
         }
-        this.limits = Limits.of(config);
+        Limits configured = Limits.of(config);
+        limits.set(configured);
         this.servePageMarkdown = config.servePageMarkdown();
         this.discoveryLinks = config.discoveryLinks();
-        this.defaults = SiteSettings.of(limits, config);
+        defaults.set(SiteSettings.of(configured, config));
     }
 
     /**
@@ -237,7 +241,7 @@ public class LlmsService {
      */
     @Reference
     public void setConfigService(ConfigService service) {
-        this.configService = service;
+        configService.set(service);
     }
 
     /**
@@ -271,7 +275,7 @@ public class LlmsService {
     }
 
     private List<Setting> settingsOf(Map<String, String> values, Map<String, SiteSettings.Refusal> refused) {
-        SiteSettings module = defaults;
+        SiteSettings module = defaults.get();
         List<Setting> out = new ArrayList<>();
         for (SiteSettings.Definition d : SiteSettings.DEFINITIONS) {
             SiteSettings.Refusal refusal = refused.get(d.key());
@@ -322,10 +326,10 @@ public class LlmsService {
         }
         // The file goes when it says nothing any more. A key an operator added to it keeps it.
         if (stored.keySet().stream().allMatch(SITE_KEY_PROPERTY::equals)) {
-            configService.deleteConfig(config);
+            configService.get().deleteConfig(config);
         } else {
             stored.put(SITE_KEY_PROPERTY, siteKey);
-            configService.storeConfig(config);
+            configService.get().storeConfig(config);
         }
         return settingsOf(written, Map.of());
     }
@@ -338,7 +342,7 @@ public class LlmsService {
     private Config ownConfig(String siteKey, String identifier) throws IOException {
         String candidate = identifier;
         for (int attempt = 0; attempt < OWN_CONFIG_ATTEMPTS; attempt++) {
-            Config config = configService.getConfig(SITE_PID, candidate);
+            Config config = configService.get().getConfig(SITE_PID, candidate);
             String owner = config.getRawProperties().get(SITE_KEY_PROPERTY);
             if (owner == null || owner.isBlank() || owner.trim().equals(siteKey)) {
                 return config;
@@ -366,7 +370,8 @@ public class LlmsService {
     /** What a generation lists for a site: the module configuration, then what the site's own changes. */
     private SiteSettings settingsOf(String siteKey) {
         SiteOverride override = overrideOf(siteKey);
-        return override == null ? defaults : defaults.with(override.properties());
+        SiteSettings module = defaults.get();
+        return override == null ? module : module.with(override.properties());
     }
 
     /** The nodes of a type below a node, the most recently modified first. A type this Jahia does not know has none. */
@@ -544,7 +549,7 @@ public class LlmsService {
     }
 
     private Generation full(SiteWalker.Walk walk, String siteKey, String renderBase, Progress progress) {
-        Limits c = limits;
+        Limits c = limits.get();
         boolean images = settingsOf(siteKey).keepImages();
         String base = c.renderBaseUrl() == null ? renderBase : c.renderBaseUrl();
         List<SiteWalker.Page> pages = walk.pages();
@@ -604,7 +609,7 @@ public class LlmsService {
 
     /** {@code /cms/render/live/en/sites/key/} for each language and context the listed pages render under. */
     static Set<String> sitePrefixes(List<SiteWalker.Page> pages, String siteKey) {
-        String sitePath = SITES + siteKey + "/";
+        String sitePath = SITES + siteKey + '/';
         Set<String> prefixes = new HashSet<>();
         for (SiteWalker.Page page : pages) {
             int at = page.renderPath().indexOf(sitePath);
@@ -916,7 +921,7 @@ public class LlmsService {
      * @return the configured size limit of llms-full.txt, in bytes
      */
     public int maxFullBytes() {
-        return limits.maxFullBytes();
+        return limits.get().maxFullBytes();
     }
 
     /**

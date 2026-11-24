@@ -10,6 +10,7 @@ import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.seo.VanityUrl;
 import org.jahia.services.seo.jcr.VanityUrlService;
 import org.jahia.services.sites.JahiaSitesService;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -58,7 +59,15 @@ public class LlmsPageServlet extends HttpServlet {
     private static final String NODE_PARAMETER = "node=";
     private static final String VANITY_NODE = "/vanityUrlMapping/";
 
-    private transient LlmsService service;
+    private final transient LlmsService service;
+
+    /**
+     * @param service the llms service
+     */
+    @Activate
+    public LlmsPageServlet(@Reference LlmsService service) {
+        this.service = service;
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) {
@@ -165,10 +174,7 @@ public class LlmsPageServlet extends HttpServlet {
         // The first parameter is the one the rule wrote. A second "path" a visitor appended is never read.
         int end = queryString.indexOf('&');
         String path = queryString.substring(PATH_PARAMETER.length(), end < 0 ? queryString.length() : end);
-        String asked = forwardedUri.substring(0, forwardedUri.length() - SUFFIX.length());
-        if (contextPath != null && !contextPath.isEmpty() && asked.startsWith(contextPath + "/")) {
-            asked = asked.substring(contextPath.length());
-        }
+        String asked = PageMarkdown.withoutContext(forwardedUri.substring(0, forwardedUri.length() - SUFFIX.length()), contextPath);
         return PageMarkdown.siteKeyOf(path) != null && PageMarkdown.isSamePage(asked, path) ? path : null;
     }
 
@@ -188,10 +194,7 @@ public class LlmsPageServlet extends HttpServlet {
         }
         int end = queryString.indexOf('&');
         String path = queryString.substring(NODE_PARAMETER.length(), end < 0 ? queryString.length() : end) + HTML_EXTENSION;
-        String asked = forwardedUri.substring(0, forwardedUri.length() - SUFFIX.length()) + HTML_EXTENSION;
-        if (contextPath != null && !contextPath.isEmpty() && asked.startsWith(contextPath + "/")) {
-            asked = asked.substring(contextPath.length());
-        }
+        String asked = PageMarkdown.withoutContext(forwardedUri.substring(0, forwardedUri.length() - SUFFIX.length()), contextPath) + HTML_EXTENSION;
         return PageMarkdown.siteKeyOf(path) != null && PageMarkdown.isSamePage(asked, path) ? path : null;
     }
 
@@ -241,8 +244,7 @@ public class LlmsPageServlet extends HttpServlet {
                 JCRNodeWrapper node = JCRSessionFactory.getInstance()
                         .getCurrentUserSession("live", Locale.forLanguageTag(vanityUrl.getLanguage().replace('_', '-')))
                         .getNode(vanityUrl.getPath().substring(0, at));
-                String url = node.getUrl();
-                String path = context != null && !context.isEmpty() && url.startsWith(context + "/") ? url.substring(context.length()) : url;
+                String path = PageMarkdown.withoutContext(node.getUrl(), context);
                 if (PageMarkdown.siteKeyOf(path) != null) {
                     paths.add(path);
                 }
@@ -253,12 +255,4 @@ public class LlmsPageServlet extends HttpServlet {
         return paths;
     }
 
-
-    /**
-     * @param service the llms service
-     */
-    @Reference
-    public void setService(LlmsService service) {
-        this.service = service;
-    }
 }

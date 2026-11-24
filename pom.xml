@@ -25,6 +25,29 @@
         <jahia-depends>default,jcontent,graphql-dxm-provider</jahia-depends>
         <yarn.arguments>build:production</yarn.arguments>
         <sonar.sources>src/javascript,src/main/java</sonar.sources>
+        <!-- Two SonarQube rules left out, in the files of the panel where they were raised and nowhere else.
+             Both were looked at in an accessibility review, which kept the code as it is.
+             S6819 asks for a native element in place of an ARIA role: <output> for role="status", <fieldset>
+             for role="group", <section> for role="region". <output> only holds phrasing content, and the
+             status region of the panel receives a banner and a list; <fieldset> is for form controls; a
+             named <section> exposes the same role as the div it would replace.
+             S6845 asks for no tabIndex on an element that is not a control. The log of a generation and the
+             preview scroll: without tabIndex a keyboard cannot reach them in Safari (WCAG 2.1.1), and the
+             panel moves the focus to the preview after Save and Discard.
+             A new file of the panel, or one of these rules elsewhere, is still reported. -->
+        <sonar.issue.ignore.multicriteria>role1,role2,role3,role4,tab1,tab2</sonar.issue.ignore.multicriteria>
+        <sonar.issue.ignore.multicriteria.role1.ruleKey>javascript:S6819</sonar.issue.ignore.multicriteria.role1.ruleKey>
+        <sonar.issue.ignore.multicriteria.role1.resourceKey>**/Llms/GenerationCard.jsx</sonar.issue.ignore.multicriteria.role1.resourceKey>
+        <sonar.issue.ignore.multicriteria.role2.ruleKey>javascript:S6819</sonar.issue.ignore.multicriteria.role2.ruleKey>
+        <sonar.issue.ignore.multicriteria.role2.resourceKey>**/Llms/GenerationProgress.jsx</sonar.issue.ignore.multicriteria.role2.resourceKey>
+        <sonar.issue.ignore.multicriteria.role3.ruleKey>javascript:S6819</sonar.issue.ignore.multicriteria.role3.ruleKey>
+        <sonar.issue.ignore.multicriteria.role3.resourceKey>**/Llms/LlmsEditor.jsx</sonar.issue.ignore.multicriteria.role3.resourceKey>
+        <sonar.issue.ignore.multicriteria.role4.ruleKey>javascript:S6819</sonar.issue.ignore.multicriteria.role4.ruleKey>
+        <sonar.issue.ignore.multicriteria.role4.resourceKey>**/Llms/MarkdownPreview.jsx</sonar.issue.ignore.multicriteria.role4.resourceKey>
+        <sonar.issue.ignore.multicriteria.tab1.ruleKey>javascript:S6845</sonar.issue.ignore.multicriteria.tab1.ruleKey>
+        <sonar.issue.ignore.multicriteria.tab1.resourceKey>**/Llms/GenerationProgress.jsx</sonar.issue.ignore.multicriteria.tab1.resourceKey>
+        <sonar.issue.ignore.multicriteria.tab2.ruleKey>javascript:S6845</sonar.issue.ignore.multicriteria.tab2.ruleKey>
+        <sonar.issue.ignore.multicriteria.tab2.resourceKey>**/Llms/MarkdownPreview.jsx</sonar.issue.ignore.multicriteria.tab2.resourceKey>
         <!-- The 8.2 parent sets <source>11</source> on the compiler plugin: release takes precedence. -->
         <maven.compiler.release>17</maven.compiler.release>
         <graphql-dxm-provider.version>3.5.1</graphql-dxm-provider.version>
