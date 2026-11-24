@@ -3,7 +3,10 @@ package org.jahia.modules.llms.service.internal;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,8 +16,8 @@ import java.util.regex.Pattern;
  * a language model, and that is the page as Markdown, not its HTML.
  *
  * <p>This class decides which paths are pages of a site and nothing else. A request for a Markdown
- * version makes this Jahia fetch a path of itself: only a path that is plainly a page of one site is
- * ever fetched. Stateless and thread-safe.</p>
+ * version makes this Jahia render a node of its repository: only a path that is plainly a page of one
+ * site, and the one the visitor asked for, is ever rendered. Stateless and thread-safe.</p>
  */
 public final class PageMarkdown {
 
@@ -25,7 +28,45 @@ public final class PageMarkdown {
     private static final Pattern PAGE = Pattern.compile(
             "^(?:/cms(?:/render/live)?)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?/sites/([A-Za-z0-9_-]{1,64})/[^?#]*\\.html$");
 
+    /**
+     * A vanity URL as a visitor writes one: plain segments, none that starts with a dot, nothing encoded.
+     * What a vanity URL of Jahia looks like, and nothing that could be read two ways.
+     */
+    private static final Pattern VANITY = Pattern.compile("^(?:/[A-Za-z0-9_~-][A-Za-z0-9._~-]*){1,12}$");
+    private static final int MAX_VANITY_LENGTH = 255;
+    /** First segments that are Jahia's own, or a module's: never a vanity URL. */
+    private static final Set<String> RESERVED = Set.of("cms", "modules", "files", "repository", "engines", "gwt", "tools",
+            "sites", "welcome", "start", "administration", "jahia", "css", "javascript", "icons", "flow", "validateTicket");
+    private static final String MARKDOWN = ".md";
+
     private PageMarkdown() {
+    }
+
+    /**
+     * The vanity URL a request for a Markdown version is about, when it is one: the address asked for
+     * without its {@code .md}, as long as it is not a page address ({@code page.html.md}, which has its
+     * own rule) and reads like a vanity URL.
+     *
+     * @param forwardedUri the URL the visitor asked for
+     * @param contextPath  the context path of Jahia
+     * @return the vanity URL, from the root of the context, or null
+     */
+    public static String vanityOf(String forwardedUri, String contextPath) {
+        if (forwardedUri == null || !forwardedUri.endsWith(MARKDOWN) || forwardedUri.endsWith(".html" + MARKDOWN)) {
+            return null;
+        }
+        String path = forwardedUri.substring(0, forwardedUri.length() - MARKDOWN.length());
+        if (contextPath != null && !contextPath.isEmpty()) {
+            if (!path.startsWith(contextPath + "/")) {
+                return null;
+            }
+            path = path.substring(contextPath.length());
+        }
+        if (path.length() > MAX_VANITY_LENGTH || !VANITY.matcher(path).matches()) {
+            return null;
+        }
+        int end = path.indexOf('/', 1);
+        return RESERVED.contains(end < 0 ? path.substring(1) : path.substring(1, end)) ? null : path;
     }
 
     /**
@@ -48,7 +89,30 @@ public final class PageMarkdown {
      *         page fetched is then the page asked for
      */
     public static boolean isSamePage(String asked, String fetched) {
-        return asked != null && fetched != null && !asked.isEmpty() && asked.startsWith("/") && fetched.endsWith(asked);
+        if (asked == null || fetched == null || asked.isEmpty() || !asked.startsWith("/")) {
+            return false;
+        }
+        if (fetched.endsWith(asked)) {
+            return true;
+        }
+        // The rules hand over the path decoded, where the address asked for is still encoded: a name
+        // with a space or an accent (my%20page) reads "my page" there. Decoded once, and only an
+        // address that reads one way.
+        String decoded = isAmbiguous(asked) ? null : decoded(asked);
+        return decoded != null && fetched.endsWith(decoded);
+    }
+
+    /**
+     * @param rawPath a path, still encoded
+     * @return the path with its percent escapes decoded, a plus sign staying a plus sign, or null when an
+     *         escape is not one
+     */
+    public static String decoded(String rawPath) {
+        try {
+            return URLDecoder.decode(rawPath.replace("+", "%2B"), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     /**

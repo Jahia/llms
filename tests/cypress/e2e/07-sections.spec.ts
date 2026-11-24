@@ -127,6 +127,26 @@ describe('llms.txt of a section of the site', () => {
     });
 
     /**
+     * An editor picks a section among the pages of the editing workspace, while its files list what a
+     * visitor reads: a page that is not published yet is refused with the reason, not with a bare failure.
+     */
+    it('says why the files of a page that is not published cannot be generated', () => {
+        page(`/sites/${SITE}/home`, 'upcoming', 'Upcoming');
+        page(`/sites/${SITE}/home/upcoming`, 'beta', 'Beta');
+        generate(`/sites/${SITE}/home/upcoming`).then(response => {
+            expect(errorOf(response)).to.contain('A visitor without an account cannot read this page');
+        });
+        gql(ROOT(), GENERATE, {siteKey: SITE, path: `/sites/${SITE}/home/upcoming`, language: 'en', baseUrl: 'https://www.example.com', full: true})
+            .then(response => expect(errorOf(response)).to.contain('A visitor without an account cannot read this page'));
+        // Published, it is a section like the others.
+        publishAndWaitJobEnding(`/sites/${SITE}/home/upcoming`, ['en']);
+        generate(`/sites/${SITE}/home/upcoming`).then(response => {
+            expect(errorOf(response)).to.eq(null);
+            expect(response.body.data.llms.generate.content).to.contain('[Beta]');
+        });
+    });
+
+    /**
      * "The most specific file applies": a page inside the section names the file of the section, a page
      * outside names the file of the site.
      */

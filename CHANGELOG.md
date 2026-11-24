@@ -33,16 +33,28 @@ A major version: the module asks for more of the platform and does more by defau
 
 **What the llms.txt proposal (v2) asks**
 
-* **Each page has a Markdown version at its own URL followed by `.md`** (`page.html.md`). It is the page
-  as a visitor without an account gets it: no Markdown version of a page that is not published or not
-  open to visitors. `linkToMarkdown` makes a generated llms.txt link to these versions.
+* **Each page has a Markdown version at its own URL followed by `.md`** (`page.html.md`), and at the
+  shorter `page.md`. It is the page as a visitor without an account gets it, whoever asks: no Markdown
+  version of a page that is not published or not open to visitors. `linkToMarkdown` makes a generated
+  llms.txt link to these versions.
+* **The Markdown version is a view of the module** (template type `md`, for `jnt:page` and
+  `jmix:mainResource`): Jahia renders the page with its own template, the module converts its main
+  content, and Jahia keeps the result in its cache until the page or a content below it is published.
+  It needs the module enabled on the site.
+* **A Markdown version names its page**: it starts with a YAML block that gives the `title` of the
+  page, its `url` (the page as HTML, the one to quote), its `description` and the day it was last
+  published (`last_updated`), for a reader that has the file without its HTTP headers.
+* **A vanity URL has a Markdown version too**: the vanity URL followed by `.md`, on the hosts where
+  Jahia answers that vanity URL. `linkToMarkdown` links to it, so the contents known by a vanity URL (news, articles) are linked
+  as Markdown like the pages.
 * **Pages name their Markdown version and the llms.txt of their site** in their `<head>`
   (`rel="alternate" type="text/markdown"`, `rel="describedby"`), and a Markdown version does so in a
   `Link` header.
 * **A section of the site can have its own llms.txt and llms-full.txt**, as the proposal defines a file
   in a sub-path. In the panel, "Files of" switches between the whole site and a section; the files are
   generated from the page of the section down and served under its path (`/home/docs/llms.txt`). The
-  pages below a menu group can be chosen too, named after their group.
+  pages below a menu group can be chosen too, named after their group. A page a visitor without an
+  account cannot read is refused as a section, and the panel says why.
 * **Chaining.** A generated llms.txt ends with the links to the llms.txt of the sections that have one:
   the proposal has no paging, and this is how the files of a large site chain.
 

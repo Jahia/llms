@@ -10,7 +10,8 @@ from jContent. No file to edit on a server, no deployment.
   pages by section, each with a link and its description.
 - **llms-full.txt** holds the text of those pages, converted to Markdown, so an assistant can read the
   site in one file.
-- **Each page** is also served as Markdown, at its own URL followed by `.md`.
+- **Each page** is also served as Markdown, at its own URL followed by `.md` (`about.html.md`), or with
+  `.md` in place of `.html` (`about.md`).
 
 Everything describes the site as a visitor without an account gets it: published content only, read
 with the rights of the guest user.
@@ -88,6 +89,10 @@ is a page of the site with the pages below it.
   path of that page: the page `/home/docs.html` has `/home/docs/llms.txt` and `/home/docs/llms-full.txt`.
 - A page name with a character an address would have to encode (a space, an accent) cannot be the top
   of a section.
+- The list is read in the editing workspace, with your rights, while the files list what a visitor
+  without an account reads in live. A page you can pick may therefore be one a visitor cannot read: not
+  published yet, not published in the language chosen, or closed to visitors. Generating its files is
+  then refused, and the panel says so. Publish the page, or pick another section.
 
 **Chaining.** The proposal has no paging. A generated llms.txt ends with a `## llms.txt` list: one link
 per section below it that has a published llms.txt of its own. For a site too large for one file:
@@ -187,7 +192,7 @@ URL. A page with nothing to read adds no block.
 | `/llms.txt`, `/llms-full.txt` | The files of the site, on the site's own domain |
 | `/sites/<siteKey>/llms.txt`, `/sites/<siteKey>/llms-full.txt` | The same, whatever the host |
 | `<path of a page>/llms.txt`, `<path of a page>/llms-full.txt` | The files of a section |
-| `<address of a page>.md` | That page as Markdown |
+| `<address of a page>.md`, `<vanity URL>.md` | That page as Markdown |
 
 **The files.** Served as `text/plain` with an `ETag`; a request with `If-None-Match` for an unchanged
 file gets `304 Not Modified`. `Cache-Control` is `public, no-cache` for a visitor without an account
@@ -199,15 +204,44 @@ published change is served at once. A file is served whether or not the module i
 ```
 https://www.example.com/home/about.html      the page
 https://www.example.com/home/about.html.md   the same page as Markdown
+https://www.example.com/home/about.md        the same Markdown, at a shorter address
+https://www.example.com/news/launch.md       a vanity URL (/news/launch) as Markdown
 ```
 
-- It is the page as a visitor without an account gets it, whoever asks. A page that is not published or
-  not open to visitors has no Markdown version (404).
-- Served as `text/markdown`, with a `Link: <page>; rel="canonical"` header.
-- Works for pages and for contents shown as a page. A page reached only through a vanity URL that does
-  not end in `.html` has no Markdown version.
-- Each request renders the page: eight are converted at the same time at most, beyond which the answer
-  is `503` with `Retry-After`.
+- It is the page as a visitor without an account gets it, whoever asks: a signed-in user gets the same
+  text. A page that is not published or not open to visitors has no Markdown version (404).
+- Served as `text/markdown`, with an `ETag` and a `Link: <page>; rel="canonical"` header. The reference
+  is the page a visitor reads: `about.html` for both `about.html.md` and `about.md`, the vanity URL for
+  a vanity URL.
+- Starts with a YAML block that names the page to a reader that only has the file, once it has left
+  HTTP and its headers: `title`, `url` (the same address as the `canonical`, the one to quote),
+  `description` (the SEO description of the page, when it has one) and `last_updated` (the day the page
+  itself was last published, UTC). The title of the page follows, as a `#` heading.
+
+  ```markdown
+  ---
+  title: "About us"
+  url: "https://www.example.com/home/about.html"
+  description: "Who we are"
+  last_updated: 2026-11-21
+  ---
+
+  # About us
+  ```
+- A page or a content whose name has a space or an accent is served at its address as Jahia writes it,
+  encoded (`my%20page.html.md`). A plus sign is a plus sign, not a space.
+- Works for pages and for contents shown as a page (`jmix:mainResource`: a news item, an article), at
+  their address and at their vanity URL followed by `.md`. A vanity URL is answered wherever Jahia
+  answers it: on the host of its site, and on a host several sites share. On a shared host, a vanity
+  URL that two sites use is not answered, since nothing says which one is meant.
+- **The module must be enabled on the site**: the Markdown version is a view of the module (template
+  type `md`), which Jahia finds on the sites that use the module. Elsewhere the address answers 404.
+- **Jahia renders it and keeps it in its cache**, as it does the HTML of the page: the page is rendered
+  with its own template, its main content is converted, and the result is kept. Publishing the page, or
+  a content below it, removes what was kept. A content the page shows from elsewhere in the site (a
+  reference, a list of news) does not: when it is published alone, the Markdown of the page follows up
+  to ten minutes later (`cache.expiration` of the two `md` views), where the HTML follows at once.
+- An address that names a template (`about.print.html.md`) has no Markdown version.
 
 **Discovery links.** Each published page of a site where the module is enabled carries two links in its
 `<head>`, so that an agent holding a page finds the rest:
@@ -261,7 +295,7 @@ What is served. The same for every site:
 
 | Key | Default | Meaning |
 |---|---|---|
-| `servePageMarkdown` | `true` | Serve each published page as Markdown at its URL followed by `.md` |
+| `servePageMarkdown` | `true` | Serve each published page as Markdown, at its URL followed by `.md` and at `<page>.md` |
 | `discoveryLinks` | `true` | Write the two discovery links in the head of each published page |
 
 A value of this file that is out of range is brought back into it, and a `renderBaseUrl` that is not a
@@ -394,9 +428,16 @@ reads: `j:llms` in live and both URLs, and it links to the panel.
   server: time, size, pages rendered at once.
 - **Large sites.** The query that finds the contents shown as a page was not measured on a large
   repository.
-- **Markdown versions of pages** are rendered at each request, not cached by the module.
+- **Markdown versions of pages** are kept by Jahia's cache, not by the module. They were not measured on
+  a cluster, on Jahia Cloud, with a context path, or with templates written in JavaScript.
 - **The pages of a chained section** are still listed in the file of the site: chaining adds a way to
   the detail, it does not free room.
+- **The YAML block of a Markdown version.** `title` is the first `h1` of the page as rendered, else the
+  title of its HTML document: on a template that writes neither, the key is left out. `last_updated` is
+  the day the page itself was last published. Whether it moves when only a content inside the page is
+  published was not measured: it may be older than the text.
+- **What the server says when it refuses** (a section a visitor cannot read, a generation already
+  running) is in English only.
 - Plurals of the English texts are not handled ("1 pages").
 
 ## Build and tests

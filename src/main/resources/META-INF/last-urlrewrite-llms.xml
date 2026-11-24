@@ -14,6 +14,16 @@
         <to last="true">/modules/llmspage?path=$1</to>
     </rule>
     <rule>
+        <name>Markdown version of a node or of a vanity URL</name>
+        <note>What ends in .md and is not a page address (page.html.md, above): the address of a node
+            (about.md) or a vanity URL followed by .md. On the host of a site, Jahia's own rules have
+            given both the same form by now, so one rule takes them and the servlet tells them apart,
+            from the address the visitor wrote. A file of the media library, a resource of a module and
+            Jahia's own tools keep their URL.</note>
+        <from>^(?!/(?:files|modules|repository|engines|gwt|tools|css|javascript|icons|administration|jahia|welcome|start)/)(?!.*\.html\.md$)(.*[^/])\.md$</from>
+        <to last="true">/modules/llmspage?node=$1</to>
+    </rule>
+    <rule>
         <name>Llms files of a section</name>
         <note>A file under the path of a page covers the pages below it: /sites/{siteKey}/home/docs/llms.txt.
             At least one page between the site and the file: the files of the site itself are the rules below.</note>
