@@ -432,7 +432,13 @@ reads: `j:llms` in live and both URLs, and it links to the panel.
 - **Large sites.** The query that finds the contents shown as a page was not measured on a large
   repository.
 - **Markdown versions of pages** are kept by Jahia's cache, not by the module. They were not measured on
-  a cluster, on Jahia Cloud, with a context path, or with templates written in JavaScript.
+  a cluster, on Jahia Cloud, with a context path, with templates written in JavaScript, or on a Jahia
+  8.2 older than 8.2.3.
+- **A relative link written by hand in a text** (`href="next-page"`, not a link made with the editor's
+  link tool) is resolved against the path of the node in the repository, not against the address the
+  visitor used. Where the page is reached at a vanity URL, the link works in the page and not in its
+  Markdown version. Links made with the link tool, and links that start with `/`, are not concerned.
+- **Code samples** are written without the name of their language.
 - **The pages of a chained section** are still listed in the file of the site: chaining adds a way to
   the detail, it does not free room.
 - **The YAML block of a Markdown version.** `title` is the first `h1` of the page as rendered, else the

@@ -53,6 +53,10 @@ of the platform.
 * **What a visitor can open**: the panels of accordions and of tabs, under the name of their tab,
   carousel slides, the title of an accordion, the content of a form wrapped around a page, an article's
   own header and asides, embedded videos as a link, lazy-loaded images. Dialogs stay out.
+* **Not the menus beside it.** Templates of documentation put the menu of a section, the table of
+  contents of the page and the switches of version inside `<main>`. A menu is left out when it is in
+  an `<aside>`, when the page has an `<article>` and the menu is outside it, or when it is a small part
+  of the text. A page that is a menu, as a site map, keeps it.
 * **Images are left out** unless `keepImages` is set: a text reader gains nothing from an address it
   cannot open, and most images of a page are logos and decorations.
 * A page with nothing to read adds no block, instead of a bare title.
@@ -67,7 +71,8 @@ of the platform.
 * **The Markdown version is a view of the module** (template type `md`, for `jnt:page` and
   `jmix:mainResource`): Jahia renders the page with its own template, the module converts its main
   content, and Jahia keeps the result in its cache until the page or a content below it is published.
-  A content the page only refers to follows within ten minutes. It needs the module enabled on the
+  A content the page only refers to follows within ten minutes. The links of the page are the ones a
+  visitor gets: its short address on the host of the site, its vanity URL. It needs the module enabled on the
   site.
 * **A Markdown version names its page**: it starts with a YAML block that gives the `title` of the
   page, its `url` (the page as HTML, the one to quote), its `description` and the day it was last
@@ -173,6 +178,13 @@ What the new features were built to hold, since a public URL now makes Jahia ren
   request the rewrite rules forwarded.
 * **A Markdown version is the same for everyone.** It is rendered for a visitor without an account, in
   live, whoever asks: nothing a signed-in user alone may read is written in it.
+* **The Markdown of a page leaves by one door.** The view behind a Markdown version has an address of
+  its own in Jahia (`about.md/`, `about.md.ajax`). It answers 404 there: served by Jahia's own render
+  servlet it would leave as HTML, with the text of the page no longer escaped. Only the addresses of
+  the README answer, as `text/markdown`, with `nosniff`.
+* **What a visitor adds to an address reaches nothing that is kept.** A page is rendered without the
+  parameters of the request, so a pager or a search of the page cannot be made to write in what Jahia
+  keeps for every visitor.
 * **The Markdown Jahia keeps in its cache holds no host.** The host of each request is written when
   the file is served, so a request cannot make its own `Host` header reach the next visitor.
 * **Generation is bounded.** A generation of llms-full.txt has an overall deadline (`maxTotalSeconds`),
