@@ -33,5 +33,10 @@
     "cross-fetch": "Not used by this suite directly. @jahia/cypress 8.5.0 requires it from dist/support/apollo/links.js without declaring it.",
     "mochawesome": "Required by @jahia/cypress dist/support/contextReporter.js without being declared; also this suite's reporter.",
     "cypress-wait-until": "Required by @jahia/cypress dist/support/commands.js, which declares it only in its own devDependencies."
+  },
+  "resolutions": {
+    "qs": "^6.16.1",
+    "serialize-javascript": "^7.1.3",
+    "uuid": "^11.1.1"
   }
 }
