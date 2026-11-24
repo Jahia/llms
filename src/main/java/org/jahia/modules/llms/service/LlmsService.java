@@ -88,6 +88,9 @@ public class LlmsService {
 
     /** The text the CND autocreates for llms.txt when the mixin is added: not a file an editor wrote. */
     static final String PLACEHOLDER = "# Title";
+    /** Said to the editor: the files of a section list what a visitor reads, and this one reads nothing. */
+    static final String NOT_PUBLIC = "A visitor without an account cannot read this page in this language: it is not published, "
+            + "or it is not open to visitors. Its files would list nothing. Publish the page, or pick another section.";
     private static final String BUSY = "Too many generations are running, try again in a moment";
 
     private final Set<String> running = ConcurrentHashMap.newKeySet();
@@ -739,6 +742,10 @@ public class LlmsService {
                     if (sectionPath != null) {
                         if (!isSectionOf(siteKey, sectionPath)) {
                             throw new RepositoryException("not a section of the site");
+                        }
+                        if (!session.nodeExists(sectionPath)) {
+                            // The editor picked it in the editing workspace, where they can read it.
+                            throw new IllegalStateException(NOT_PUBLIC);
                         }
                         JCRNodeWrapper page = session.getNode(sectionPath);
                         if (!page.isNodeType("jnt:page")) {

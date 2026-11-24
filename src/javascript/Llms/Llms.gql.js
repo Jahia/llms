@@ -5,6 +5,7 @@ export const LLMS_SITE = gql`
         jcr {
             nodeByPath(path: $path) {
                 uuid
+                workspace
                 path
                 displayName
                 llms: property(name: "j:llms") {
@@ -85,6 +86,7 @@ export const LLMS_SCOPE = gql`
         jcr {
             nodeByPath(path: $path) {
                 uuid
+                workspace
                 path
                 displayName
                 llms: property(name: "j:llms") {
