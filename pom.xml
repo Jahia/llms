@@ -52,7 +52,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <graphql-dxm-provider.version>3.5.1</graphql-dxm-provider.version>
         <graphql-java-annotations.version>21.1</graphql-java-annotations.version>
-        <jsoup.version>1.18.3</jsoup.version>
+        <jsoup.version>1.23.2</jsoup.version>
     </properties>
 
     <repositories>
@@ -211,7 +211,7 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>3.25.3</version>
+            <version>3.27.7</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
