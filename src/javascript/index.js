@@ -1,6 +1,6 @@
 import {registry} from '@jahia/ui-extender';
 
-export default function () {
+export default function registerLlms() {
     registry.add('callback', 'llms', {
         targets: ['jahiaApp-init:50'],
         callback: async () => {

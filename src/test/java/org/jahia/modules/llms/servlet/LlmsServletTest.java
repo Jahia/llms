@@ -49,6 +49,16 @@ class LlmsServletTest {
         // The forms Jahia's own rules produce, which the rewrite rules of the module accept too.
         assertThat(LlmsServlet.Target.of("/cms/render/live/en/sites/a/llms.txt", "", null, null)).isEqualTo(new LlmsServlet.Target("a", false));
         assertThat(LlmsServlet.Target.of("/cms/fr_FR/sites/a/llms-full.txt", "", null, null)).isEqualTo(new LlmsServlet.Target("a", true));
+        // Every form of what Jahia's rules put in front, with and without a site.
+        assertThat(LlmsServlet.Target.of("/cms/llms.txt", "", null, null)).isEqualTo(new LlmsServlet.Target(null, false));
+        assertThat(LlmsServlet.Target.of("/cms/en/llms.txt", "", null, null)).isEqualTo(new LlmsServlet.Target(null, false));
+        assertThat(LlmsServlet.Target.of("/cms/render/live/llms-full.txt", "", null, null)).isEqualTo(new LlmsServlet.Target(null, true));
+        assertThat(LlmsServlet.Target.of("/cms/sites/a/llms.txt", "", null, null)).isEqualTo(new LlmsServlet.Target("a", false));
+        // Nothing else is read as that prefix.
+        assertThat(LlmsServlet.Target.of("/cmsx/llms.txt", "", null, null)).isNull();
+        assertThat(LlmsServlet.Target.of("/cms/render/llms.txt", "", null, null)).isNull();
+        assertThat(LlmsServlet.Target.of("/cms/en/fr/llms.txt", "", null, null)).isNull();
+        assertThat(LlmsServlet.Target.of("/en/sites/a/llms.txt", "", null, null)).isNull();
     }
 
     @Test

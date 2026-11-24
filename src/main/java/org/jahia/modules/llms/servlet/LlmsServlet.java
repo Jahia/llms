@@ -162,9 +162,10 @@ public class LlmsServlet extends HttpServlet {
      */
     record Target(String siteKey, boolean full) {
 
-        /** The paths the rewrite rules of the module accept, written the same way. */
-        private static final Pattern PUBLIC_URL = Pattern.compile(
-                "^(?:/cms(?:/render/live)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?)?(?:/sites/([A-Za-z0-9_-]{1,64}))?/llms(-full)?\\.txt$");
+        /** What Jahia's own rewrite rules may have put in front of the path: /cms, the render servlet, a language. */
+        private static final Pattern RENDER_PREFIX = Pattern.compile("^/cms(?:/render/live)?(?:/[a-z]{2,3}(?:_[A-Z]{2})?)?(?=/)");
+        /** The paths the rewrite rules of the module accept, once that prefix is gone, written the same way. */
+        private static final Pattern PUBLIC_URL = Pattern.compile("^(?:/sites/([A-Za-z0-9_-]{1,64}))?/llms(-full)?\\.txt$");
 
         /**
          * @param forwardedUri  the URL the visitor asked for when a rewrite rule forwarded the request, else null
@@ -180,7 +181,7 @@ public class LlmsServlet extends HttpServlet {
             }
             String path = contextPath != null && !contextPath.isEmpty() && forwardedUri.startsWith(contextPath + "/")
                     ? forwardedUri.substring(contextPath.length()) : forwardedUri;
-            Matcher m = PUBLIC_URL.matcher(path);
+            Matcher m = PUBLIC_URL.matcher(RENDER_PREFIX.matcher(path).replaceFirst(""));
             return m.matches() ? new Target(m.group(1), m.group(2) != null) : null;
         }
     }

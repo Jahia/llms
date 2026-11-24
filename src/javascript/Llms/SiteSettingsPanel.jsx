@@ -11,7 +11,7 @@ import styles from './Llms.module.css';
 const PLAIN = {interpolation: {escapeValue: false}};
 const NUMBER = /^\d{1,6}$/;
 // A prefixed name (jseomix:noIndex), as the server reads one.
-const TYPE_NAME = /^[A-Za-z][A-Za-z0-9_]*:[A-Za-z][A-Za-z0-9_.-]*$/;
+const TYPE_NAME = /^[A-Za-z]\w*:[A-Za-z][\w.-]*$/;
 const NONE = 'none';
 
 const valuesOf = fields => Object.fromEntries(fields.map(field => [field.key, field.value]));
