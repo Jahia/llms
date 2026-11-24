@@ -89,6 +89,10 @@ is a page of the site with the pages below it.
   path of that page: the page `/home/docs.html` has `/home/docs/llms.txt` and `/home/docs/llms-full.txt`.
 - A page name with a character an address would have to encode (a space, an accent) cannot be the top
   of a section.
+- The list is read in the editing workspace, with your rights, while the files list what a visitor
+  without an account reads in live. A page you can pick may therefore be one a visitor cannot read: not
+  published yet, not published in the language chosen, or closed to visitors. Generating its files is
+  then refused, and the panel says so. Publish the page, or pick another section.
 
 **Chaining.** The proposal has no paging. A generated llms.txt ends with a `## llms.txt` list: one link
 per section below it that has a published llms.txt of its own. For a site too large for one file:
@@ -224,6 +228,8 @@ https://www.example.com/news/launch.md       a vanity URL (/news/launch) as Mark
 
   # About us
   ```
+- A page or a content whose name has a space or an accent is served at its address as Jahia writes it,
+  encoded (`my%20page.html.md`). A plus sign is a plus sign, not a space.
 - Works for pages and for contents shown as a page (`jmix:mainResource`: a news item, an article), at
   their address and at their vanity URL followed by `.md`. A vanity URL is answered wherever Jahia
   answers it: on the host of its site, and on a host several sites share. On a shared host, a vanity
@@ -426,6 +432,12 @@ reads: `j:llms` in live and both URLs, and it links to the panel.
   a cluster, on Jahia Cloud, with a context path, or with templates written in JavaScript.
 - **The pages of a chained section** are still listed in the file of the site: chaining adds a way to
   the detail, it does not free room.
+- **The YAML block of a Markdown version.** `title` is the first `h1` of the page as rendered, else the
+  title of its HTML document: on a template that writes neither, the key is left out. `last_updated` is
+  the day the page itself was last published. Whether it moves when only a content inside the page is
+  published was not measured: it may be older than the text.
+- **What the server says when it refuses** (a section a visitor cannot read, a generation already
+  running) is in English only.
 - Plurals of the English texts are not handled ("1 pages").
 
 ## Build and tests

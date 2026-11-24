@@ -53,7 +53,8 @@ A major version: the module asks for more of the platform and does more by defau
 * **A section of the site can have its own llms.txt and llms-full.txt**, as the proposal defines a file
   in a sub-path. In the panel, "Files of" switches between the whole site and a section; the files are
   generated from the page of the section down and served under its path (`/home/docs/llms.txt`). The
-  pages below a menu group can be chosen too, named after their group.
+  pages below a menu group can be chosen too, named after their group. A page a visitor without an
+  account cannot read is refused as a section, and the panel says why.
 * **Chaining.** A generated llms.txt ends with the links to the llms.txt of the sections that have one:
   the proposal has no paging, and this is how the files of a large site chain.
 
