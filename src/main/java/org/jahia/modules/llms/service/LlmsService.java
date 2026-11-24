@@ -37,7 +37,6 @@ import javax.jcr.NodeIterator;
 import javax.jcr.RepositoryException;
 import javax.jcr.query.Query;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -50,14 +49,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * Generates and stores a site's llms.txt and llms-full.txt.
@@ -558,9 +555,28 @@ public class LlmsService {
         PageFetcher fetcher = new PageFetcher(base, c.fetchTimeoutSeconds(), c.maxPageBytes(),
                 path -> sitePrefixes.stream().anyMatch(path::startsWith));
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(c.maxTotalSeconds());
+        Map<String, String> publicUrls = publicUrlsOf(pages);
 
-        // A link of one page to another listed page is written with that page's public URL. Rendered
-        // from inside the container, links come as the render URL, or without its /cms/render/live prefix.
+        ExecutorService pool = Executors.newFixedThreadPool(c.fetchThreads());
+        try {
+            List<Future<String>> markdown = new ArrayList<>();
+            for (int i = 0; i < pages.size(); i++) {
+                SiteWalker.Page page = pages.get(i);
+                int index = i;
+                markdown.add(pool.submit(() -> render(page, index, fetcher, publicUrls, images, progress)));
+            }
+            FullFile.Bounds bounds = new FullFile.Bounds(deadline, c.fetchTimeoutSeconds() * 2L, c.maxFullBytes());
+            return FullFile.assemble(header(walk), pages, markdown, bounds, walk.truncated(), progress);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    /**
+     * A link of one page to another listed page is written with that page's public URL. Rendered from
+     * inside the container, links come as the render URL, or without its /cms/render/live prefix.
+     */
+    private static Map<String, String> publicUrlsOf(List<SiteWalker.Page> pages) {
         Map<String, String> publicUrls = new HashMap<>();
         String renderPrefix = Jahia.getContextPath() + "/cms/render/live";
         for (SiteWalker.Page p : pages) {
@@ -569,77 +585,20 @@ public class LlmsService {
                 publicUrls.put(Jahia.getContextPath() + p.renderPath().substring(renderPrefix.length()), p.url());
             }
         }
+        return publicUrls;
+    }
 
-        ExecutorService pool = Executors.newFixedThreadPool(c.fetchThreads());
+    /** Renders one page as Markdown, and says what became of it as soon as it is known, not when its turn comes to be written. */
+    private static String render(SiteWalker.Page page, int index, PageFetcher fetcher, Map<String, String> publicUrls, boolean images,
+                                 Progress progress) throws IOException, InterruptedException {
         try {
-            List<Future<String>> markdown = new ArrayList<>();
-            for (int i = 0; i < pages.size(); i++) {
-                SiteWalker.Page page = pages.get(i);
-                int index = i;
-                markdown.add(pool.submit(() -> {
-                    try {
-                        Document doc = Jsoup.parse(fetcher.fetch(page.renderPath()), page.url());
-                        String md = HtmlToMarkdown.convert(doc, page.title(), href -> relink(href, page.url(), publicUrls), images);
-                        // Said as soon as the page is rendered, not when its turn comes to be written.
-                        progress.page(index, md.isBlank() ? GenerationJob.PageState.EMPTY : GenerationJob.PageState.RENDERED);
-                        return md;
-                    } catch (Exception e) {
-                        progress.page(index, GenerationJob.PageState.FAILED);
-                        throw e;
-                    }
-                }));
-            }
-            StringBuilder sb = header(walk);
-            List<String> failed = new ArrayList<>();
-            int maxBytes = c.maxFullBytes();
-            int bytes = sb.toString().getBytes(StandardCharsets.UTF_8).length;
-            int written = 0;
-            boolean truncated = walk.truncated();
-            String cutBy = truncated ? CUT_BY_PAGES : null;
-            int skipped = 0;
-            for (int i = 0; i < pages.size(); i++) {
-                SiteWalker.Page page = pages.get(i);
-                long left = TimeUnit.NANOSECONDS.toSeconds(deadline - System.nanoTime());
-                if (left <= 0) {
-                    // Out of time: the pages not rendered yet are named, not waited for.
-                    truncated = true;
-                    cutBy = CUT_BY_TIME;
-                    for (int rest = i; rest < pages.size(); rest++) {
-                        failed.add(pages.get(rest).url());
-                        progress.page(rest, GenerationJob.PageState.FAILED);
-                    }
-                    break;
-                }
-                String body = body(markdown.get(i), page, Math.min(c.fetchTimeoutSeconds() * 2L, left), failed);
-                if (body == null) {
-                    // Also a page that did not answer in time, which its own thread has not reported.
-                    progress.page(i, GenerationJob.PageState.FAILED);
-                }
-                // A page with nothing to read (an empty page, a page that is only a form) adds no block:
-                // a title and an address with nothing under them tell a reader nothing.
-                if (body == null || body.isBlank()) {
-                    continue;
-                }
-                String block = "\n---\n\n# " + page.title() + "\n\nSource: " + page.url() + "\n\n" + body + "\n";
-                int size = block.getBytes(StandardCharsets.UTF_8).length;
-                if (bytes + size > maxBytes) {
-                    // The file is full: this page and the ones after it are said to be left out, not left
-                    // unsaid. The ones still being rendered are stopped below, and are not failures.
-                    truncated = true;
-                    cutBy = CUT_BY_SIZE;
-                    skipped = pages.size() - i;
-                    for (int rest = i; rest < pages.size(); rest++) {
-                        progress.page(rest, GenerationJob.PageState.SKIPPED);
-                    }
-                    break;
-                }
-                sb.append(block);
-                bytes += size;
-                written++;
-            }
-            return new Generation(sb.toString(), written, failed, truncated, cutBy, skipped);
-        } finally {
-            pool.shutdownNow();
+            Document doc = Jsoup.parse(fetcher.fetch(page.renderPath()), page.url());
+            String md = HtmlToMarkdown.convert(doc, page.title(), href -> relink(href, page.url(), publicUrls), images);
+            progress.page(index, md.isBlank() ? GenerationJob.PageState.EMPTY : GenerationJob.PageState.RENDERED);
+            return md;
+        } catch (IOException | InterruptedException | RuntimeException e) {
+            progress.page(index, GenerationJob.PageState.FAILED);
+            throw e;
         }
     }
 
@@ -654,19 +613,6 @@ public class LlmsService {
             }
         }
         return prefixes;
-    }
-
-    private static String body(Future<String> future, SiteWalker.Page page, long waitSeconds, List<String> failed) {
-        try {
-            return future.get(waitSeconds, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            failed.add(page.url());
-        } catch (ExecutionException | TimeoutException e) {
-            LOGGER.debug("Could not render {} for llms-full.txt", page.renderPath(), e);
-            failed.add(page.url());
-        }
-        return null;
     }
 
     /** Writes a link to another listed page with its public URL; any other link is left as resolved. */
