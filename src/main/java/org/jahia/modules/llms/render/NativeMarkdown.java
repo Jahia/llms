@@ -176,7 +176,9 @@ public final class NativeMarkdown {
             return Collections.emptyEnumeration();
         }
 
+        /** Null, as the servlet API asks for a parameter that is not there: an empty array would say it is there, without a value. */
         @Override
+        @SuppressWarnings("java:S1168")
         public String[] getParameterValues(String name) {
             return null;
         }
