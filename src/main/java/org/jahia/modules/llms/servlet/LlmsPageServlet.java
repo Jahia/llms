@@ -36,14 +36,15 @@ import java.util.regex.Pattern;
  * ({@code /sites/a/home/about.html.md}), as the llms.txt proposal asks.
  *
  * <p>A rewrite rule of the module forwards those URLs here ({@code /modules/llmspage}: Jahia mounts a
- * servlet at {@code /modules/<alias>}) with the path Jahia's own rules made of them. The page is rendered by an anonymous request to this Jahia, so a visitor gets as Markdown
- * exactly what they may read as HTML: a page that is not published, or not open to visitors without an
- * account, answers 404 here as it does there.</p>
+ * servlet at {@code /modules/<alias>}) with the path Jahia's own rules made of them. Jahia renders the
+ * page itself, for a visitor without an account and in live, whoever asks: a visitor gets as Markdown
+ * exactly what they may read as HTML, and a page that is not published, or not open to visitors without
+ * an account, answers 404 here as it does there.</p>
  *
  * <p>Only a request the rule forwarded is answered, for a path that is plainly a page of one site and
  * that is the page asked for (the context path is Jahia's own: inside a servlet of a module, the one of
  * the request is {@code /modules}): called directly, or with any other path, the servlet answers 404. It
- * never fetches a path a visitor chose freely. Stateless and thread-safe.</p>
+ * never renders a node a visitor chose freely. Stateless and thread-safe.</p>
  */
 @Component(service = {HttpServlet.class, Servlet.class}, property = {"alias=/llmspage", "osgi.http.whiteboard.servlet.asyncSupported=true"})
 public class LlmsPageServlet extends HttpServlet {
@@ -188,7 +189,7 @@ public class LlmsPageServlet extends HttpServlet {
      * URL: among the vanity URLs of the site of the host first, then among those of every site, since
      * Jahia answers a vanity URL on a host that is not its site's (a host several sites share, as an
      * authoring or pre-production one). When the vanity URL names several contents across sites and the
-     * host does not say which site is meant, none is chosen. The path fetched is the one Jahia gives
+     * host does not say which site is meant, none is chosen. The path rendered is the one Jahia gives
      * the content, never one written by the visitor.
      *
      * @return the path of the page from the root of the context, or null when the request is not for the

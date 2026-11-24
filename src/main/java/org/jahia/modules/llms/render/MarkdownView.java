@@ -7,6 +7,7 @@ import org.jahia.osgi.BundleUtils;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.render.Resource;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 import javax.jcr.RepositoryException;
 import javax.servlet.http.HttpServletRequest;
@@ -46,11 +47,12 @@ public final class MarkdownView {
         // name as it likes, must not be written in it. The links get the host of each request when served.
         String base = NativeMarkdown.ORIGIN + node.getUrl();
         String html = NativeMarkdown.render(node.getPath(), resource.getLocale(), "html", request, response);
-        String title = PageMarkdown.titleOf(Jsoup.parse(html == null ? "" : html));
+        Document page = Jsoup.parse(html == null ? "" : html, base);
+        String title = PageMarkdown.titleOf(page);
         String description = node.hasProperty("jcr:description") ? node.getProperty("jcr:description").getString() : null;
         Calendar published = node.hasProperty("j:lastPublished") ? node.getProperty("j:lastPublished").getDate() : null;
         return frontMatter(title, SiteWalker.oneLine(description), published == null ? null : published.toInstant())
-                + NativeMarkdown.convert(html, base, keepImages);
+                + NativeMarkdown.convert(page, title, keepImages);
     }
 
     /**

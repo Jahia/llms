@@ -12,7 +12,7 @@ export type User = {name: string; password: string} | null;
 export const ROOT = (): User => ({name: 'root', password: Cypress.env('SUPER_USER_PASSWORD')});
 export const GUEST: User = null;
 
-export const origin = (): string => new URL(Cypress.config('baseUrl') as string).origin;
+const origin = (): string => new URL(Cypress.config('baseUrl') as string).origin;
 
 /** Ends the current session, so it stops counting against the instance's license. */
 export const signOut = (): void => {

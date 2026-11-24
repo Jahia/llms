@@ -16,8 +16,8 @@ import java.util.regex.Pattern;
  * a language model, and that is the page as Markdown, not its HTML.
  *
  * <p>This class decides which paths are pages of a site and nothing else. A request for a Markdown
- * version makes this Jahia fetch a path of itself: only a path that is plainly a page of one site is
- * ever fetched. Stateless and thread-safe.</p>
+ * version makes this Jahia render a node of its repository: only a path that is plainly a page of one
+ * site, and the one the visitor asked for, is ever rendered. Stateless and thread-safe.</p>
  */
 public final class PageMarkdown {
 

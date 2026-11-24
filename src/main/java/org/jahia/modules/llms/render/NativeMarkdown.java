@@ -17,7 +17,6 @@ import org.jahia.services.render.SiteInfo;
 import org.jahia.services.render.URLGenerator;
 import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import javax.jcr.PathNotFoundException;
@@ -122,14 +121,12 @@ public final class NativeMarkdown {
     }
 
     /**
-     * @param html       a page as Jahia rendered it
-     * @param baseUri    the address relative links resolve against
+     * @param page       a page as Jahia rendered it, parsed with the address its relative links resolve against
+     * @param title      its title, as {@link PageMarkdown#titleOf} reads it
      * @param keepImages whether images are written
      * @return the page as Markdown, under its title
      */
-    public static String convert(String html, String baseUri, boolean keepImages) {
-        Document page = Jsoup.parse(html == null ? "" : html, baseUri);
-        String title = PageMarkdown.titleOf(page);
+    public static String convert(Document page, String title, boolean keepImages) {
         return (title.isEmpty() ? "" : "# " + title + "\n\n") + HtmlToMarkdown.convert(page, title, href -> href, keepImages) + "\n";
     }
 }
