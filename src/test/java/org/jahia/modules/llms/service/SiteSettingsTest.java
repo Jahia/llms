@@ -50,8 +50,8 @@ class SiteSettingsTest {
                 "jseomix:noIndex"::equals);
         assertThat(refused.get("maxDepth").code()).isEqualTo("range");
         assertThat(refused.get("maxPages").code()).isEqualTo("number");
-        assertThat(refused).doesNotContainKey("maxMainResources");
-        assertThat(refused).containsEntry("excludedNodeTypes", new SiteSettings.Refusal("types", "acme:unknown, notAType"));
+        assertThat(refused).doesNotContainKey("maxMainResources")
+                .containsEntry("excludedNodeTypes", new SiteSettings.Refusal("types", "acme:unknown, notAType"));
         assertThat(refused.get("linkToMarkdown").code()).isEqualTo("flag");
     }
 

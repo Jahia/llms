@@ -28,8 +28,8 @@ record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String
     private static final String MAX_PAGES = "maxPages";
     private static final String MAX_DEPTH = "maxDepth";
     private static final String MAX_MAIN_RESOURCES = "maxMainResources";
-    private static final String INCLUDED = "includedNodeTypes";
-    private static final String EXCLUDED = "excludedNodeTypes";
+    private static final String INCLUDED_TYPES = "includedNodeTypes";
+    private static final String EXCLUDED_TYPES = "excludedNodeTypes";
     private static final String EXCLUDED_TREES = "excludedTreeNodeTypes";
     private static final String LINK_TO_MARKDOWN = "linkToMarkdown";
     private static final String KEEP_IMAGES = "keepImages";
@@ -57,8 +57,8 @@ record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String
             new Definition(MAX_PAGES, Kind.NUMBER, 1, MAX_LISTED),
             new Definition(MAX_DEPTH, Kind.NUMBER, 1, 10),
             new Definition(MAX_MAIN_RESOURCES, Kind.NUMBER, 0, MAX_LISTED),
-            new Definition(INCLUDED, Kind.TYPES, 0, 0),
-            new Definition(EXCLUDED, Kind.TYPES, 0, 0),
+            new Definition(INCLUDED_TYPES, Kind.TYPES, 0, 0),
+            new Definition(EXCLUDED_TYPES, Kind.TYPES, 0, 0),
             new Definition(EXCLUDED_TREES, Kind.TYPES, 0, 0),
             new Definition(LINK_TO_MARKDOWN, Kind.FLAG, 0, 0),
             new Definition(KEEP_IMAGES, Kind.FLAG, 0, 0));
@@ -148,9 +148,9 @@ record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String
             case MAX_DEPTH -> String.valueOf(maxDepth);
             case MAX_PAGES -> String.valueOf(maxPages);
             case MAX_MAIN_RESOURCES -> String.valueOf(maxMainResources);
-            case EXCLUDED -> String.join(", ", excluded);
+            case EXCLUDED_TYPES -> String.join(", ", excluded);
             case EXCLUDED_TREES -> String.join(", ", excludedTrees);
-            case INCLUDED -> String.join(", ", included);
+            case INCLUDED_TYPES -> String.join(", ", included);
             case LINK_TO_MARKDOWN -> String.valueOf(linkToMarkdown);
             case KEEP_IMAGES -> String.valueOf(keepImages);
             default -> throw new IllegalArgumentException("Unknown setting");
@@ -176,9 +176,9 @@ record SiteSettings(int maxDepth, int maxPages, int maxMainResources, Set<String
                 number(site, MAX_DEPTH, maxDepth, 1, 10),
                 number(site, MAX_PAGES, maxPages, 1, MAX_LISTED),
                 number(site, MAX_MAIN_RESOURCES, maxMainResources, 0, MAX_LISTED),
-                types(site, EXCLUDED, excluded),
+                types(site, EXCLUDED_TYPES, excluded),
                 types(site, EXCLUDED_TREES, excludedTrees),
-                types(site, INCLUDED, included),
+                types(site, INCLUDED_TYPES, included),
                 flag(site, LINK_TO_MARKDOWN, linkToMarkdown),
                 flag(site, KEEP_IMAGES, keepImages));
     }
