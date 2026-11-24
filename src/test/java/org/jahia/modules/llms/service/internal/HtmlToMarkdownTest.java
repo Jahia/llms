@@ -92,6 +92,35 @@ class HtmlToMarkdownTest {
         assertThat(md).startsWith(LONG).contains("## Working with content").endsWith("Next: [The about page](https://www.example.com/e.html)");
     }
 
+    /** On a short page the menu of the section is most of the text, and is no more the content for that. */
+    @Test
+    void dropsTheMenuOfASectionEvenWhenThePageIsShorterThanItsMenu() {
+        String menu = "<nav aria-label='Docs navigation'><p>Tutorials</p><ul>"
+                + "<li><a href='/a.html'>Introduction to the platform</a></li><li><a href='/b.html'>Setting up your environment</a></li>"
+                + "<li><a href='/c.html'>Rendering contents with views</a></li><li><a href='/d.html'>Permissions and roles</a></li></ul></nav>";
+        String article = "<article><h1>Templating</h1><p>There are two ways to create templates.</p></article>";
+        // In an aside: HTML says it is beside the content.
+        assertThat(convert("<main><aside>" + menu + "</aside>" + article + "</main>", "Templating"))
+                .isEqualTo("There are two ways to create templates.");
+        // Beside the article, without an aside.
+        assertThat(convert("<main><div>" + menu + "</div>" + article + "</main>", "Templating"))
+                .isEqualTo("There are two ways to create templates.");
+        // A menu the article holds is part of it.
+        assertThat(convert("<main><article><h1>Templating</h1><p>Two ways.</p>" + menu + "</article></main>", "Templating"))
+                .contains("[Introduction to the platform](https://www.example.com/a.html)");
+    }
+
+    /** The list a button opens to switch version is a menu, though the template does not call it a nav. */
+    @Test
+    void dropsTheListAButtonOpensBesideTheArticle() {
+        String md = convert("<main><div><button data-bs-toggle='dropdown'>Jahia 8.2</button><ul class='dropdown-menu'>"
+                + "<li><a href='/82.html'>Jahia 8.2</a></li><li><a href='/81.html'>Jahia 8.1</a></li></ul></div>"
+                + "<ul class='nav nav-underline'><li class='nav-item'><a href='/user.html'>End User</a></li>"
+                + "<li class='nav-item'><a href='/dev.html'>Developer</a></li></ul>"
+                + "<article><h1>About Jahia</h1><p>What is Jahia?</p></article></main>", "About Jahia");
+        assertThat(md).isEqualTo("What is Jahia?");
+    }
+
     /** The menu is the page when it is most of its text, whatever stands around it. */
     @Test
     void keepsAMenuThatIsThePage() {

@@ -65,13 +65,21 @@ public final class HtmlToMarkdown {
     private static final double WRAPPER_SHARE = 0.9;
     /** Breadcrumbs repeat what llms.txt lists. */
     private static final String BREADCRUMB = "[class*=breadcrumb], [aria-label~=(?i)breadcrumb|ariane|brotkr]";
-    private static final String MENU = "nav, [role=navigation]";
+    /**
+     * What is a menu: what HTML and ARIA call one, and what Bootstrap names one without them, a list of
+     * class {@code nav} or the list a button opens ({@code dropdown-menu}). Templates of documentation
+     * use those to switch to another version or another audience.
+     */
+    private static final String MENU = "nav, [role=navigation], [role=menu], [role=menubar], .dropdown-menu, ul.nav, ol.nav";
     /**
      * A menu inside the content is the content when it is most of it: a site map page is a menu. Below
      * this share of the text it sits beside the content, as the menu of a documentation section or the
      * table of contents of a page do, and is navigation like the menu of the site.
      */
     private static final double MENU_PAGE_SHARE = 0.5;
+    /** Where HTML says a menu is beside the content, whatever its size. */
+    private static final String BESIDE = "aside, [role=complementary]";
+    private static final String ARTICLES = "article, [role=article]";
     private static final String CHROME = "header, footer, nav, aside, [role=navigation], [role=banner], "
             + "[role=contentinfo], [role=complementary], [role=search]";
     /** Compiled once: the converter runs these on every fragment of text of every page. */
@@ -225,13 +233,21 @@ public final class HtmlToMarkdown {
     /**
      * Drops the menus a template puts inside the content element, beside the content: templates of
      * documentation wrap the menu of the section and the table of contents of the page in {@code <main>}.
-     * A menu that is most of the text is kept: the page is that menu.
+     * A menu is beside the content when HTML says so: it is in an {@code <aside>}, or the page has an
+     * {@code <article>} and the menu is outside it. That holds on a page so short that its menu is most
+     * of its text. Where HTML says nothing, a menu that is most of the text is kept: the page is that
+     * menu, as a site map is.
      */
     private static void removeMenusBesideContent(Element main) {
         int total = main.text().length();
+        boolean hasArticle = !main.select(ARTICLES).isEmpty();
         for (Element menu : main.select(MENU)) {
             // Still in the page: a menu inside a menu already removed went with it.
-            if (menu != main && menu.parent() != null && menu.text().length() < total * MENU_PAGE_SHARE) {
+            if (menu == main || menu.parent() == null) {
+                continue;
+            }
+            boolean beside = menu.closest(BESIDE) != null || (hasArticle && menu.closest(ARTICLES) == null);
+            if (beside || menu.text().length() < total * MENU_PAGE_SHARE) {
                 menu.remove();
             }
         }
