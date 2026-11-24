@@ -219,18 +219,12 @@ public final class SiteWalker {
         // Every list of children is a read of the repository: each one is read once and kept.
         List<JCRNodeWrapper> top = new ArrayList<>();
         for (JCRNodeWrapper child : site.getNodes()) {
-            if (!hasAny(child, excludedTrees)) {
+            if (!hasAny(child, excludedTrees) && (isPage(child) || isGroup(child))) {
                 top.add(child);
             }
         }
         JCRNodeWrapper home = home(top);
-        List<JCRNodeWrapper> start = new ArrayList<>();
-        for (JCRNodeWrapper node : top) {
-            if (isPage(node) || isGroup(node)) {
-                start.add(node);
-            }
-        }
-        choose(start);
+        choose(top);
         if (home != null) {
             below(sections, home);
         }
@@ -238,18 +232,22 @@ public final class SiteWalker {
             if (truncated) {
                 break;
             }
-            if ((home != null && other.getPath().equals(home.getPath())) || !(isPage(other) || isGroup(other))) {
-                continue;
+            if (home == null || !other.getPath().equals(home.getPath())) {
+                beside(sections, other);
             }
-            List<Page> pages = new ArrayList<>();
-            if (isPage(other)) {
-                add(pages, other);
-            }
-            descend(pages, pagesBelow(other), 1);
-            section(sections, title(other), pages);
         }
         contents(sections, site);
         return new Walk(title(site), oneLine(property(site, "j:description")), sections, truncated || cut);
+    }
+
+    /** A page or a menu group beside the home page: a section of its own, with all below it. */
+    private void beside(List<Section> sections, JCRNodeWrapper node) throws RepositoryException {
+        List<Page> pages = new ArrayList<>();
+        if (isPage(node)) {
+            add(pages, node);
+        }
+        descend(pages, pagesBelow(node), 1);
+        section(sections, title(node), pages);
     }
 
     /**
@@ -278,16 +276,7 @@ public final class SiteWalker {
         Set<String> chosen = new HashSet<>();
         List<JCRNodeWrapper> level = start;
         for (int depth = 0; depth <= maxDepth && !level.isEmpty() && !cut; depth++) {
-            for (JCRNodeWrapper node : level) {
-                if (isPage(node) && listable(node)) {
-                    if (chosen.size() >= maxPages) {
-                        cut = true;
-                        break;
-                    }
-                    chosen.add(node.getPath());
-                    reach = depth;
-                }
-            }
+            admit(chosen, level, depth);
             List<JCRNodeWrapper> next = new ArrayList<>();
             if (!cut && depth < maxDepth) {
                 for (JCRNodeWrapper node : level) {
@@ -297,6 +286,20 @@ public final class SiteWalker {
             level = next;
         }
         admitted = chosen;
+    }
+
+    /** Lets in the pages of one level, until the limit: the level it is reached at is the last one read. */
+    private void admit(Set<String> chosen, List<JCRNodeWrapper> level, int depth) throws RepositoryException {
+        for (JCRNodeWrapper node : level) {
+            if (isPage(node) && listable(node)) {
+                if (chosen.size() >= maxPages) {
+                    cut = true;
+                    return;
+                }
+                chosen.add(node.getPath());
+                reach = depth;
+            }
+        }
     }
 
     /**
@@ -405,19 +408,24 @@ public final class SiteWalker {
         for (String type : included.isEmpty() ? Set.of(MAIN_RESOURCE) : included) {
             for (int round = 0; round < MAX_CONTENT_BATCHES && seen.size() < maxContents; round++) {
                 List<JCRNodeWrapper> found = finder.find(root, type, round * batch, batch);
-                for (JCRNodeWrapper node : found) {
-                    if (seen.size() >= maxContents) {
-                        truncated = true;
-                        break;
-                    }
-                    content(byHolder, seen, node, root);
-                }
+                contents(byHolder, seen, found, root);
                 if (found.size() < batch) {
                     break;
                 }
             }
         }
         sections.addAll(byHolder.values());
+    }
+
+    /** Lists the contents found, as long as there is room: what is left over is said to be cut. */
+    private void contents(Map<String, Section> byHolder, Set<String> seen, List<JCRNodeWrapper> found, JCRNodeWrapper root) {
+        for (JCRNodeWrapper node : found) {
+            if (seen.size() >= maxContents) {
+                truncated = true;
+                return;
+            }
+            content(byHolder, seen, node, root);
+        }
     }
 
     /** Lists one content, when it is one to list. A content that cannot be read up to the root is passed over. */

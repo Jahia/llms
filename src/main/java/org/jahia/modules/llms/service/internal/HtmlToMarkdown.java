@@ -129,6 +129,24 @@ public final class HtmlToMarkdown {
      * and a dialog is mostly a form or a consent banner.
      */
     private static void revealDisclosed(Element body) {
+        Map<String, Element> controls = controlsOf(body);
+        for (Element hidden : body.select(HIDDEN)) {
+            if (hidden.closest(NEVER_REVEALED) == null) {
+                revealOrDrop(hidden, controls);
+            }
+        }
+        // The name of a tab is on its control, away from the panel: written at the top of the panel.
+        for (Map.Entry<String, Element> entry : controls.entrySet()) {
+            Element control = entry.getValue();
+            Element panel = body.getElementById(entry.getKey());
+            if (panel != null && namesItsPanel(control, panel)) {
+                panel.prependElement("p").appendElement("strong").text(control.text().trim());
+            }
+        }
+    }
+
+    /** The controls of the page, by the id of what each one shows. */
+    private static Map<String, Element> controlsOf(Element body) {
         Map<String, Element> controls = new HashMap<>();
         for (Element control : body.select("[aria-controls], [data-bs-target], [data-target], a[href^=#][data-toggle], a[href^=#][data-bs-toggle]")) {
             for (String attribute : new String[]{"aria-controls", "data-bs-target", "data-target", "href"}) {
@@ -140,27 +158,24 @@ public final class HtmlToMarkdown {
                 }
             }
         }
-        for (Element hidden : body.select(HIDDEN)) {
-            if (hidden.closest(NEVER_REVEALED) != null) {
-                continue;
-            }
-            if (isDisclosed(hidden, controls)) {
-                hidden.removeAttr("hidden").removeAttr("aria-hidden").removeAttr("style");
-            } else if (hidden.hasAttr("style") && !hidden.hasAttr("hidden") && !"true".equals(hidden.attr("aria-hidden"))) {
-                // display:none in a style attribute, opened by nothing: dropped here, DROPPED does not see it.
-                hidden.remove();
-            }
+        return controls;
+    }
+
+    /** A hidden element a control shows is content: it is made visible. One hidden by its style alone is removed. */
+    private static void revealOrDrop(Element hidden, Map<String, Element> controls) {
+        if (isDisclosed(hidden, controls)) {
+            hidden.removeAttr("hidden").removeAttr("aria-hidden").removeAttr("style");
+        } else if (hidden.hasAttr("style") && !hidden.hasAttr("hidden") && !"true".equals(hidden.attr("aria-hidden"))) {
+            // display:none in a style attribute, opened by nothing: dropped here, DROPPED does not see it.
+            hidden.remove();
         }
-        // The name of a tab is on its control, away from the panel: written at the top of the panel.
-        for (Map.Entry<String, Element> entry : controls.entrySet()) {
-            Element control = entry.getValue();
-            Element panel = body.getElementById(entry.getKey());
-            String label = control.text().trim();
-            if (panel != null && !label.isEmpty() && control.closest(HEADINGS) == null && control.closest("nav, [role=navigation]") == null
-                    && panel.closest(NEVER_REVEALED) == null && ("tab".equals(control.attr("role")) || "tabpanel".equals(panel.attr("role")))) {
-                panel.prependElement("p").appendElement("strong").text(label);
-            }
-        }
+    }
+
+    /** Whether the text of a control is the name of its panel: a tab, not a heading nor a link of the navigation. */
+    private static boolean namesItsPanel(Element control, Element panel) {
+        boolean tab = "tab".equals(control.attr("role")) || "tabpanel".equals(panel.attr("role"));
+        return tab && !control.text().isBlank() && control.closest(HEADINGS) == null
+                && control.closest("nav, [role=navigation]") == null && panel.closest(NEVER_REVEALED) == null;
     }
 
     private static boolean isDisclosed(Element hidden, Map<String, Element> controls) {
@@ -330,28 +345,32 @@ public final class HtmlToMarkdown {
             StringBuilder sb = new StringBuilder();
             int index = 1;
             for (Element item : list.children()) {
-                if (!"li".equals(item.normalName())) {
-                    continue;
-                }
-                StringBuilder text = new StringBuilder();
                 List<String> nested = new ArrayList<>();
-                for (Node child : item.childNodes()) {
-                    if (child instanceof Element el && ("ul".equals(el.normalName()) || "ol".equals(el.normalName()))) {
-                        nested.add(list(el, depth + 1));
-                    } else if (child instanceof Element el && BLOCKS.contains(el.normalName())) {
-                        text.append(' ').append(textOfBlock(el));
-                    } else {
-                        text.append(inline(child));
-                    }
+                String line = "li".equals(item.normalName()) ? itemLine(item, depth, nested) : "";
+                if (!line.isEmpty() || !nested.isEmpty()) {
+                    sb.append(indent).append(ordered ? index++ + ". " : "- ").append(line).append('\n');
+                    nested.forEach(n -> sb.append(n).append('\n'));
                 }
-                String line = tidy(text.toString());
-                if (line.isEmpty() && nested.isEmpty()) {
-                    continue;
-                }
-                sb.append(indent).append(ordered ? index++ + ". " : "- ").append(line).append('\n');
-                nested.forEach(n -> sb.append(n).append('\n'));
             }
             return sb.toString().stripTrailing();
+        }
+
+        /**
+         * @param nested receives the lists inside the item, each already written
+         * @return the text of a list item on one line, without the lists inside it
+         */
+        private String itemLine(Element item, int depth, List<String> nested) {
+            StringBuilder text = new StringBuilder();
+            for (Node child : item.childNodes()) {
+                if (child instanceof Element el && ("ul".equals(el.normalName()) || "ol".equals(el.normalName()))) {
+                    nested.add(list(el, depth + 1));
+                } else if (child instanceof Element el && BLOCKS.contains(el.normalName())) {
+                    text.append(' ').append(textOfBlock(el));
+                } else {
+                    text.append(inline(child));
+                }
+            }
+            return tidy(text.toString());
         }
 
         /** A block inside a list item or a table cell, flattened to one line. */
@@ -371,25 +390,17 @@ public final class HtmlToMarkdown {
 
         private String table(Element table) {
             List<List<String>> rows = new ArrayList<>();
-            int columns = 0;
             for (Element row : table.select("tr")) {
-                if (row.closest(TABLE) != table) {
-                    continue;
-                }
-                List<String> cells = new ArrayList<>();
-                for (Element cell : row.children()) {
-                    if ("td".equals(cell.normalName()) || "th".equals(cell.normalName())) {
-                        cells.add(textOfBlock(cell).replace("|", "\\|"));
-                    }
-                }
+                // The rows of a table inside a cell belong to that table.
+                List<String> cells = row.closest(TABLE) == table ? cellsOf(row) : List.of();
                 if (!cells.isEmpty()) {
                     rows.add(cells);
-                    columns = Math.max(columns, cells.size());
                 }
             }
             if (rows.isEmpty()) {
                 return "";
             }
+            int columns = rows.stream().mapToInt(List::size).max().orElse(0);
             StringBuilder sb = new StringBuilder();
             for (int r = 0; r < rows.size(); r++) {
                 List<String> cells = rows.get(r);
@@ -402,6 +413,17 @@ public final class HtmlToMarkdown {
                 }
             }
             return sb.toString().trim();
+        }
+
+        /** The cells of a row, each on one line. */
+        private List<String> cellsOf(Element row) {
+            List<String> cells = new ArrayList<>();
+            for (Element cell : row.children()) {
+                if ("td".equals(cell.normalName()) || "th".equals(cell.normalName())) {
+                    cells.add(textOfBlock(cell).replace("|", "\\|"));
+                }
+            }
+            return cells;
         }
 
         private String inlineOf(Element el) {
