@@ -1,6 +1,6 @@
 {
   "name": "@jahia/llms",
-  "version": "2.0.0-SNAPSHOT",
+  "version": "2.0.1-SNAPSHOT",
   "packageManager": "yarn@1.22.22",
   "description": "jContent panel to write, generate and publish a site's llms.txt and llms-full.txt",
   "main": "index.js",
