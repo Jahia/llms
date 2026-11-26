@@ -51,8 +51,8 @@
         <!-- The 8.2 parent sets <source>11</source> on the compiler plugin: release takes precedence. -->
         <maven.compiler.release>17</maven.compiler.release>
         <graphql-dxm-provider.version>3.5.1</graphql-dxm-provider.version>
-        <graphql-java-annotations.version>21.1</graphql-java-annotations.version>
-        <jsoup.version>1.23.2</jsoup.version>
+        <graphql-java-annotations.version>21.5</graphql-java-annotations.version>
+        <jsoup.version>1.24.1</jsoup.version>
     </properties>
 
     <repositories>
@@ -138,7 +138,7 @@
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
-            <version>3.1.0</version>
+            <version>4.0.1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -150,7 +150,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.36</version>
+            <version>2.0.20</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -180,7 +180,7 @@
         <dependency>
             <groupId>com.graphql-java</groupId>
             <artifactId>graphql-java</artifactId>
-            <version>21.5</version>
+            <version>26.2</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -205,7 +205,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.10.2</version>
+            <version>6.1.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -257,12 +257,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>3.6.1</version>
             </plugin>
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
-                <version>2.0.1</version>
+                <version>2.0.2</version>
                 <executions>
                     <execution>
                         <id>npm install node and yarn</id>
@@ -331,7 +331,7 @@
             <plugin>
                 <groupId>org.cyclonedx</groupId>
                 <artifactId>cyclonedx-maven-plugin</artifactId>
-                <version>2.7.11</version>
+                <version>2.9.3</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
